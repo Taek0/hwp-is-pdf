@@ -1,0 +1,19 @@
+[package]
+name = "hwp-engine"
+version = "0.1.0"
+edition = "2024"
+description = "Independent HWP 5 / HWPX reader and vector PDF renderer"
+
+[dependencies]
+anyhow = "1"
+roxmltree = "0.21"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+flate2 = "1"
+cfb = "0.15"
+crc32fast = "1"
+aes = "0.8"
+ttf-parser = "0.25"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+

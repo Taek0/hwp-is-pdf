@@ -1,0 +1,7 @@
+//! Reproducible batch validation; failed fixtures stay in the report.
+use anyhow::Result;
+use std::path::PathBuf;
+fn main()->Result<()>{let args:Vec<_>=std::env::args().skip(1).collect();let input=PathBuf::from(&args[0]);let out=PathBuf::from(&args[1]);std::fs::create_dir_all(&out)?;let fonts=if cfg!(windows){PathBuf::from("C:/Windows/Fonts")}else{PathBuf::from("/mnt/c/Windows/Fonts")};let mut results=Vec::new();
+ let mut paths:Vec<_>=std::fs::read_dir(input)?.filter_map(|p|p.ok().map(|p|p.path())).filter(|p|p.extension().is_some_and(|s|s=="hwp")).collect();paths.sort();
+ for p in paths{let target=out.join(p.file_stem().unwrap()).with_extension("pdf");let start=std::time::Instant::now();match hwp_engine::convert(&p,&target,&fonts){Ok(r)=>{let qa:serde_json::Value=serde_json::from_slice(&std::fs::read(target.with_extension("qa.json"))?)?;let counts:serde_json::Map<String,serde_json::Value>=["outside_page","text_overlaps","border_crossings","foreground_image_overlaps"].iter().map(|&k|(k.into(),serde_json::json!(qa[k].as_array().map(Vec::len).unwrap_or(0)))).collect();println!("OK {} pages={} qa={}",p.display(),r.pages,serde_json::Value::Object(counts.clone()));results.push(serde_json::json!({"input":p,"status":"converted","pages":r.pages,"warnings":r.warnings,"qa":counts,"seconds":start.elapsed().as_secs_f64()}));},Err(e)=>{println!("FAIL {}: {e:#}",p.display());results.push(serde_json::json!({"input":p,"status":"failed","error":format!("{e:#}")}));}}}
+ std::fs::write(out.join("corpus-report.json"),serde_json::to_vec_pretty(&results)?)?;Ok(())}
