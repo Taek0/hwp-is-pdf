@@ -3,6 +3,7 @@ fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.len() < 2 {
         eprintln!("Usage: cargo run -- INPUT.hwp|INPUT.hwpx OUTPUT.pdf [FONT_DIRECTORY]");
+        eprintln!("본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.");
         std::process::exit(2)
     }
     let fonts = args.get(2).map(PathBuf::from).unwrap_or_else(|| {

@@ -93,9 +93,20 @@ pub(crate) fn inflate(b: &[u8]) -> Result<Vec<u8>> {
         out.extend_from_slice(&buf[..produced]);
         if status == Status::StreamEnd {
             let tail = &b[pos..];
-            if tail.len() == 8 && !tail.iter().all(|b| *b == 0) {
+            if tail.len() == 32
+                && tail[4..16].iter().all(|b| *b == 0)
+                && tail[20..].iter().all(|b| *b == 0)
+            {
                 ensure!(
-                    (u32(tail, 0)? == 0 || u32(tail, 0)? == crc32fast::hash(&out)) && u32(tail, 4)? as usize == out.len(),
+                    (u32(tail, 0)? == 0 || u32(tail, 0)? == crc32fast::hash(&out))
+                        && u32(tail, 16)? as usize == out.len(),
+                    "Invalid block-aligned HWP trailer"
+                );
+            } else if tail.len() >= 8 && !tail.iter().all(|b| *b == 0) {
+                ensure!(
+                    (u32(tail, 0)? == 0 || u32(tail, 0)? == crc32fast::hash(&out))
+                        && u32(tail, 4)? as usize == out.len()
+                        && tail[8..].iter().all(|b| *b == 0),
                     "Invalid HWP CRC/size trailer"
                 );
             } else {
@@ -212,14 +223,23 @@ fn section_properties(r: &Record) -> Result<Node> {
     {
         margin = margin.at(key, u32(d, 8 + 4 * i)?);
     }
+    // HWP 5 table 132 stores nominal paper dimensions separately from orientation.
+    let (width, height) = (u32(d, 0)?, u32(d, 4)?);
+    let landscape = u32(d, 36)? & 1 != 0;
     let page = n("pagePr")
-        .at("width", u32(d, 0)?)
-        .at("height", u32(d, 4)?)
+        .at("width", if landscape { height } else { width })
+        .at("height", if landscape { width } else { height })
         .with(vec![margin]);
     Ok(n("secPr")
         .at("binaryHwp", 1)
-        .at("hideFirstHeader",if u32(&r.data,4)?&1!=0{1}else{0})
-        .at("hideFirstFooter",if u32(&r.data,4)?&2!=0{1}else{0})
+        .at(
+            "hideFirstHeader",
+            if u32(&r.data, 4)? & 1 != 0 { 1 } else { 0 },
+        )
+        .at(
+            "hideFirstFooter",
+            if u32(&r.data, 4)? & 2 != 0 { 1 } else { 0 },
+        )
         .at(
             "hideFirstMasterPage",
             if u32(&r.data, 4)? & 4 != 0 { 1 } else { 0 },
@@ -247,11 +267,12 @@ fn common(r: &Record, name: &str) -> Result<Node> {
         )
         .at("vertOffset", i32(d, 8)?)
         .at("horzOffset", i32(d, 12)?);
-    let mut object=n(name)
+    let mut object = n(name)
         .at("id", format!("hwp-{:x}", r.offset))
         .at(
             "textWrap",
             match (flags >> 21) & 7 {
+                1 => "TOP_AND_BOTTOM",
                 2 => "BEHIND_TEXT",
                 3 => "IN_FRONT_OF_TEXT",
                 _ => "SQUARE",
@@ -263,39 +284,133 @@ fn common(r: &Record, name: &str) -> Result<Node> {
             pos,
             margins("outMargin", d, 28)?,
         ]);
-    let marker=r.children.iter().find(|c|matches!(c.tag,76|77)).map(|c|c.offset).unwrap_or(usize::MAX);
-    for(header,paras)in groups(&r.children).into_iter().filter(|(h,_)|h.offset<marker){
-        let d=&header.data;
-        object.children.push(n("caption").at("side",["LEFT","RIGHT","TOP","BOTTOM"][(u32(d,8)?&3) as usize]).at("width",u32(d,12)?).at("gap",u16(d,16)?).at("fullWidth",u32(d,18)?).with(vec![list(header,&paras)?]));
+    let marker = r
+        .children
+        .iter()
+        .find(|c| matches!(c.tag, 76 | 77))
+        .map(|c| c.offset)
+        .unwrap_or(usize::MAX);
+    for (header, paras) in groups(&r.children)
+        .into_iter()
+        .filter(|(h, _)| h.offset < marker)
+    {
+        let d = &header.data;
+        object.children.push(
+            n("caption")
+                .at(
+                    "side",
+                    ["LEFT", "RIGHT", "TOP", "BOTTOM"][(u32(d, 8)? & 3) as usize],
+                )
+                .at("width", u32(d, 12)?)
+                .at("gap", u16(d, 16)?)
+                .at("fullWidth", u32(d, 18)?)
+                .at("expandToMargin", (u32(d, 8)? >> 2) & 1)
+                .with(vec![list(header, &paras)?]),
+        );
     }
     Ok(object)
 }
 fn control(r: &Record) -> Result<Node> {
     let d = &r.data;
     match r.id().as_str() {
-        "fn  "|"en  "=>{
-            let mut node=n(if r.id()=="fn  "{"footNote"}else{"endNote"});
-            for(h,ps)in groups(&r.children){node.children.push(list(h,&ps)?);}
-            let number=node.find("autoNum").map(|a|a.a("num").to_string()).unwrap_or_else(||"1".into());node=node.at("number",number);Ok(n("ctrl").with(vec![node]))
-        },
-        "tdut"=>{
-            let main_len=u16(d,4)? as usize;let main=utf16(bytes(d,6,main_len*2)?)?;let off=6+main_len*2;let sub_len=u16(d,off)? as usize;let sub=utf16(bytes(d,off+2,sub_len*2)?)?;let off=off+2+sub_len*2;
-            Ok(n("ctrl").with(vec![n("ruby").at("main",main).at("sub",sub).at("position",u32(d,off)?).at("ratio",u32(d,off+4)?)]))
-        },
-        "nwno"=>Ok(n("ctrl").with(vec![n("newNumber").at("type",u32(d,4)?&15).at("number",u16(d,8)?)])),
-        "pghd"=>{let f=u16(d,4)?;let mut h=n("pageHiding");for(i,key)in["hideHeader","hideFooter","hideMasterPage","hideBorder","hideFill","hidePageNum"].iter().enumerate(){h=h.at(key,(f>>i)&1);}Ok(n("ctrl").with(vec![h]))},
-        "bokm"|"idxm"|"tcmt"=>Ok(n("ctrl").with(vec![n("nonPrinting").at("sourceControl",r.id())])),
-        "eqed"=>{let eq=r.first(88).context("Missing equation payload")?;let ed=&eq.data;let len=u16(ed,4)? as usize;let end=6+2*len;let mut object=common(r,"equation")?.at("baseUnit",u32(ed,end)?).at("textColor",rgb(u32(ed,end+4)?)).at("baseLine",u16(ed,end+8)?);object.children.push(n("script").with(vec![txt(utf16(bytes(ed,6,len*2)?)?)]));Ok(object)},
-        "head"|"foot"=>{
-            let name=if r.id()=="head"{"header"}else{"footer"};let mut node=n(name).at("applyPageType",["BOTH","EVEN","ODD","BOTH"][(u32(d,4)?&3) as usize]);
-            for(h,ps)in groups(&r.children){node.children.push(list(h,&ps)?);}
+        "fn  " | "en  " => {
+            let mut node = n(if r.id() == "fn  " {
+                "footNote"
+            } else {
+                "endNote"
+            });
+            for (h, ps) in groups(&r.children) {
+                node.children.push(list(h, &ps)?);
+            }
+            let number = node
+                .find("autoNum")
+                .map(|a| a.a("num").to_string())
+                .unwrap_or_else(|| "1".into());
+            node = node.at("number", number);
             Ok(n("ctrl").with(vec![node]))
-        },
-        "tcps"=>{
-            let len=u16(d,4)? as usize;let off=6+2*len;let mut overlay=n("charOverlay").at("text",utf16(bytes(d,6,len*2)?)?).at("borderType",bytes(d,off,1)?[0]).at("innerSize",bytes(d,off+1,1)?[0] as i8).at("spread",bytes(d,off+2,1)?[0]);
-            let count=bytes(d,off+3,1)?[0] as usize;for i in 0..count{overlay.children.push(n("charRef").at("id",u32(d,off+4+i*4)?));}
+        }
+        "tdut" => {
+            let main_len = u16(d, 4)? as usize;
+            let main = utf16(bytes(d, 6, main_len * 2)?)?;
+            let off = 6 + main_len * 2;
+            let sub_len = u16(d, off)? as usize;
+            let sub = utf16(bytes(d, off + 2, sub_len * 2)?)?;
+            let off = off + 2 + sub_len * 2;
+            Ok(n("ctrl").with(vec![
+                n("ruby")
+                    .at("main", main)
+                    .at("sub", sub)
+                    .at("position", u32(d, off)?)
+                    .at("ratio", u32(d, off + 4)?),
+            ]))
+        }
+        "nwno" => Ok(n("ctrl").with(vec![
+            n("newNumber")
+                .at("type", u32(d, 4)? & 15)
+                .at("number", u16(d, 8)?),
+        ])),
+        "pghd" => {
+            let f = u16(d, 4)?;
+            let mut h = n("pageHiding");
+            for (i, key) in [
+                "hideHeader",
+                "hideFooter",
+                "hideMasterPage",
+                "hideBorder",
+                "hideFill",
+                "hidePageNum",
+            ]
+            .iter()
+            .enumerate()
+            {
+                h = h.at(key, (f >> i) & 1);
+            }
+            Ok(n("ctrl").with(vec![h]))
+        }
+        "bokm" | "idxm" | "tcmt" => {
+            Ok(n("ctrl").with(vec![n("nonPrinting").at("sourceControl", r.id())]))
+        }
+        "eqed" => {
+            let eq = r.first(88).context("Missing equation payload")?;
+            let ed = &eq.data;
+            let len = u16(ed, 4)? as usize;
+            let end = 6 + 2 * len;
+            let mut object = common(r, "equation")?
+                .at("baseUnit", u32(ed, end)?)
+                .at("textColor", rgb(u32(ed, end + 4)?))
+                .at("baseLine", u16(ed, end + 8)?);
+            object
+                .children
+                .push(n("script").with(vec![txt(utf16(bytes(ed, 6, len * 2)?)?)]));
+            Ok(object)
+        }
+        "head" | "foot" => {
+            let name = if r.id() == "head" { "header" } else { "footer" };
+            let mut node = n(name).at(
+                "applyPageType",
+                ["BOTH", "EVEN", "ODD", "BOTH"][(u32(d, 4)? & 3) as usize],
+            );
+            for (h, ps) in groups(&r.children) {
+                node.children.push(list(h, &ps)?);
+            }
+            Ok(n("ctrl").with(vec![node]))
+        }
+        "tcps" => {
+            let len = u16(d, 4)? as usize;
+            let off = 6 + 2 * len;
+            let mut overlay = n("charOverlay")
+                .at("text", utf16(bytes(d, 6, len * 2)?)?)
+                .at("borderType", bytes(d, off, 1)?[0])
+                .at("innerSize", bytes(d, off + 1, 1)?[0] as i8)
+                .at("spread", bytes(d, off + 2, 1)?[0]);
+            let count = bytes(d, off + 3, 1)?[0] as usize;
+            for i in 0..count {
+                overlay
+                    .children
+                    .push(n("charRef").at("id", u32(d, off + 4 + i * 4)?));
+            }
             Ok(n("ctrl").with(vec![overlay]))
-        },
+        }
         "secd" => section_properties(r),
         "cold" => Ok(n("ctrl").with(vec![
             n("colPr")
@@ -341,17 +456,27 @@ fn control(r: &Record) -> Result<Node> {
             out = out
                 .at("rowCnt", rows)
                 .at("colCnt", u16(td, 6)?)
-                .at("pageBreak",if u32(td,0)?&3==2{"NONE"}else{"CELL"})
-                .at("repeatHeader",(u32(td,0)?>>2)&1)
+                .at(
+                    "pageBreak",
+                    if u32(td, 0)? & 3 == 2 { "NONE" } else { "CELL" },
+                )
+                .at("repeatHeader", (u32(td, 0)? >> 2) & 1)
                 .at("borderFillIDRef", u16(td, 18 + 2 * rows)?);
             out.children.push(margins("inMargin", td, 10)?);
             let mut tr: Vec<Node> = (0..rows).map(|_| n("tr")).collect();
-            for (hdr, ps) in groups(&r.children).into_iter().filter(|(h,_)|h.offset>table.offset) {
+            for (hdr, ps) in groups(&r.children)
+                .into_iter()
+                .filter(|(h, _)| h.offset > table.offset)
+            {
                 let d = &hdr.data;
                 let row = u16(d, 10)? as usize;
                 ensure!(row < rows, "Invalid table row");
-                let mut cell_margin=margins("cellMargin",d,24)?;
-                for(i,key)in["left","right","top","bottom"].iter().enumerate(){if u16(d,24+2*i)?==u16::MAX{cell_margin=cell_margin.at(key,u16(td,10+2*i)?);}}
+                let mut cell_margin = margins("cellMargin", d, 24)?;
+                for (i, key) in ["left", "right", "top", "bottom"].iter().enumerate() {
+                    if u16(d, 24 + 2 * i)? == u16::MAX {
+                        cell_margin = cell_margin.at(key, u16(td, 10 + 2 * i)?);
+                    }
+                }
                 let cell = n("tc")
                     .at("hasMargin", 1)
                     .at("borderFillIDRef", u16(d, 32)?)
@@ -375,25 +500,91 @@ fn control(r: &Record) -> Result<Node> {
             let comp = r.first(76).context("Missing shape component")?;
             let cd = &comp.data;
             let kind = comp.id();
+            if kind == "$con" {
+                let mut group = common(r, "group")?;
+                let ow = u32(cd, 20)?.max(1) as f64;
+                let oh = u32(cd, 24)?.max(1) as f64;
+                let sx = u32(&r.data, 16)? as f64 / ow;
+                let sy = u32(&r.data, 20)? as f64 / oh;
+                for child in comp.children.iter().filter(|c| c.tag == 76) {
+                    let mut child = child.clone();
+                    if child.data.get(..4) != child.data.get(4..8) {
+                        let mut b = bytes(&child.data, 0, 4)?.to_vec();
+                        b.extend_from_slice(&child.data);
+                        child.data = b;
+                    }
+                    let mut d = vec![0u8; 46];
+                    d[..4].copy_from_slice(b" osg");
+                    d[4..8].copy_from_slice(&0x310u32.to_le_bytes());
+                    for (offset, value) in [
+                        (8, (i32(&child.data, 12)? as f64 * sy) as i32),
+                        (12, (i32(&child.data, 8)? as f64 * sx) as i32),
+                        (16, (u32(&child.data, 28)? as f64 * sx) as i32),
+                        (20, (u32(&child.data, 32)? as f64 * sy) as i32),
+                    ] {
+                        d[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+                    }
+                    let fake = Record {
+                        tag: 71,
+                        level: r.level + 1,
+                        data: d,
+                        offset: child.offset,
+                        children: vec![child],
+                    };
+                    group.children.push(control(&fake)?);
+                }
+                return Ok(group);
+            }
             let name = match kind.as_str() {
                 "$pic" => "pic",
                 "$rec" => "rect",
                 "$lin" => "line",
                 "$ell" => "ellipse",
-                "$pol"=>"polygon",
-                "$arc"=>"arc",
-                "$cur"=>"curve",
+                "$pol" => "polygon",
+                "$arc" => "arc",
+                "$cur" => "curve",
+                "$ole" => "ole",
                 _ => bail!("Unsupported HWP shape {kind}"),
             };
             let mut out = common(r, name)?;
-            out=out.at("originalWidth",u32(cd,20)?).at("originalHeight",u32(cd,24)?);
-            if matches!(name,"polygon"|"curve"){
-                let shape=comp.first(if name=="polygon"{82}else{83}).context("Missing path shape record")?;let sd=&shape.data;
-                // Public spec describes INT16; actual modern records use a 32-bit count.
-                let count=u32(sd,0)? as usize;ensure!(count<=100000,"Excessive path points");
-                for i in 0..count{out.children.push(n("point").at("x",i32(sd,4+i*8)?).at("y",i32(sd,8+i*8)?));}
+            if name == "ole" {
+                let ole = comp.first(84).context("Missing OLE record")?;
+                out.children.push(
+                    n("oleRef").at("binaryItemIDRef", format!("image{}", u16(&ole.data, 12)?)),
+                );
+                return Ok(out);
             }
-            if name=="arc"{let arc=comp.first(81).context("Missing arc record")?;let sd=&arc.data;let start=if sd.len()==25{1}else{4};for(i,label)in["center","axis1","axis2"].iter().enumerate(){out.children.push(n(label).at("x",i32(sd,start+i*8)?).at("y",i32(sd,start+4+i*8)?));}}
+            out = out
+                .at("originalWidth", u32(cd, 20)?)
+                .at("originalHeight", u32(cd, 24)?);
+            if matches!(name, "polygon" | "curve") {
+                let shape = comp
+                    .first(if name == "polygon" { 82 } else { 83 })
+                    .context("Missing path shape record")?;
+                let sd = &shape.data;
+                // Public spec describes INT16; actual modern records use a 32-bit count.
+                let count = u32(sd, 0)? as usize;
+                ensure!(count <= 100000, "Excessive path points");
+                for i in 0..count {
+                    out.children.push(
+                        n("point")
+                            .at("x", i32(sd, 4 + i * 8)?)
+                            .at("y", i32(sd, 8 + i * 8)?),
+                    );
+                }
+            }
+            if name == "arc" {
+                let arc = comp.first(81).context("Missing arc record")?;
+                let sd = &arc.data;
+                let start = if sd.len() == 25 { 1 } else { 4 };
+                for (i, label) in ["center", "axis1", "axis2"].iter().enumerate() {
+                    out.children.push(
+                        n(label)
+                            .at("x", i32(sd, start + i * 8)?)
+                            .at("y", i32(sd, start + 4 + i * 8)?),
+                    );
+                }
+            }
             if name == "pic" {
                 let pic = comp.first(85).context("Missing picture record")?;
                 let pd = &pic.data;
@@ -432,7 +623,9 @@ fn control(r: &Record) -> Result<Node> {
             Ok(out)
         }
         "%hlk" => Ok(n("ctrl").with(vec![n("hyperlink")])),
-        field if field.starts_with('%')=>Ok(n("ctrl").with(vec![n("cachedField").at("sourceControl",field)])),
+        field if field.starts_with('%') => {
+            Ok(n("ctrl").with(vec![n("cachedField").at("sourceControl", field)]))
+        }
         other => bail!("Unsupported HWP control {other}"),
     }
 }
@@ -669,8 +862,11 @@ pub fn open(path: &Path) -> Result<Document> {
     ensure!(fh.starts_with(b"HWP Document File"), "Not HWP 5");
     ensure!(bytes(&fh, 35, 1)?[0] == 5, "Unsupported HWP version");
     let flags = u32(&fh, 36)?;
-    ensure!(flags & 2 == 0, "Password-encrypted HWP requires a documented password decoder");
-    let distribution=flags&4!=0;
+    ensure!(
+        flags & 2 == 0,
+        "Password-encrypted HWP requires a documented password decoder"
+    );
+    let distribution = flags & 4 != 0;
     let compressed = flags & 1 != 0;
     let di = read(&mut cfb, "/DocInfo")?;
     let di = if compressed { inflate(&di)? } else { di };
@@ -698,9 +894,56 @@ pub fn open(path: &Path) -> Result<Document> {
     let mut chars = BTreeMap::new();
     let mut paras = BTreeMap::new();
     let mut borders = BTreeMap::new();
+    let mut header = n("head").at("binaryHwp", 1);
     for r in &all {
         let d = &r.data;
         match r.tag {
+            23 => {
+                let id = header.children_named("numbering").count() + 1;
+                let mut number = n("numbering").at("id", id);
+                let mut off = 0;
+                for level in 1..=7 {
+                    let props = u32(d, off)?;
+                    let count = u16(d, off + 12)? as usize;
+                    let fmt = utf16(bytes(d, off + 14, count * 2)?)?;
+                    let head = n("paraHead")
+                        .at("level", level)
+                        .at("charPrIDRef", u32(d, off + 8)?)
+                        .at("textOffset", u16(d, off + 6)?)
+                        .at(
+                            "textOffsetType",
+                            if props & 16 == 0 {
+                                "PERCENT"
+                            } else {
+                                "HWPUNIT"
+                            },
+                        )
+                        .with(vec![txt(fmt)]);
+                    number.children.push(head);
+                    off += 14 + count * 2;
+                }
+                let start = u16(d, off)?;
+                number = number.at("start", start);
+                header.children.push(number);
+            }
+            24 => {
+                let id = header.children_named("bullet").count() + 1;
+                header.children.push(
+                    n("bullet")
+                        .at("id", id)
+                        .at("charPrIDRef", u32(d, 8)?)
+                        .at("textOffset", u16(d, 6)?)
+                        .at(
+                            "textOffsetType",
+                            if u32(d, 0)? & 16 == 0 {
+                                "PERCENT"
+                            } else {
+                                "HWPUNIT"
+                            },
+                        )
+                        .at("char", utf16(bytes(d, 12, 2)?)?),
+                );
+            }
             21 => {
                 let id = chars.len().to_string();
                 let mut ch = n("charPr")
@@ -730,6 +973,22 @@ pub fn open(path: &Path) -> Result<Document> {
                 if u32(d, 46)? & 2 != 0 {
                     ch.children.push(n("bold"));
                 }
+                let props = u32(d, 46)?;
+                if (props >> 2) & 3 != 0 {
+                    ch.children.push(
+                        n("underline")
+                            .at(
+                                "type",
+                                if (props >> 2) & 3 == 3 {
+                                    "TOP"
+                                } else {
+                                    "BOTTOM"
+                                },
+                            )
+                            .at("style", (props >> 4) & 15)
+                            .at("color", rgb(u32(d, 56)?)),
+                    );
+                }
                 chars.insert(id, ch);
             }
             25 => {
@@ -748,6 +1007,14 @@ pub fn open(path: &Path) -> Result<Document> {
                     id.clone(),
                     n("paraPr").at("id", id).with(vec![
                         n("align").at("horizontal", align),
+                        n("heading")
+                            .at(
+                                "type",
+                                ["NONE", "OUTLINE", "NUMBER", "BULLET"]
+                                    [((u32(d, 0)? >> 23) & 3) as usize],
+                            )
+                            .at("level", (u32(d, 0)? >> 25) & 7)
+                            .at("idRef", u16(d, 30)?),
                         n("border")
                             .at("borderFillIDRef", u16(d, 32)?)
                             .at("offsetLeft", u16(d, 34)?)
@@ -819,7 +1086,11 @@ pub fn open(path: &Path) -> Result<Document> {
             binaries.insert(format!("image{id}"), raw);
         }
     }
-    let section_prefix=if distribution{"/ViewText/Section"}else{"/BodyText/Section"};
+    let section_prefix = if distribution {
+        "/ViewText/Section"
+    } else {
+        "/BodyText/Section"
+    };
     let mut section_names: Vec<_> = names
         .iter()
         .filter(|n| n.starts_with(section_prefix))
@@ -833,7 +1104,11 @@ pub fn open(path: &Path) -> Result<Document> {
     let mut masters = Vec::new();
     for name in section_names {
         let raw = read(&mut cfb, name)?;
-        let raw=if distribution{crate::distribution::decode(&raw)?}else{raw};
+        let raw = if distribution {
+            crate::distribution::decode(&raw)?
+        } else {
+            raw
+        };
         let raw = if compressed { inflate(&raw)? } else { raw };
         let roots = records(&raw)?;
         let mut section = n("sec").at("binaryHwp", 1);
@@ -911,8 +1186,99 @@ pub fn open(path: &Path) -> Result<Document> {
     }
     effects(&mut sections, &mut binaries)?;
     effects(&mut masters, &mut binaries)?;
+    fn static_ole(nodes: &mut [Node], binaries: &mut BTreeMap<String, Vec<u8>>) -> Result<()> {
+        for node in nodes {
+            if node.name == "ole" {
+                let id = node
+                    .child("oleRef")
+                    .context("OLE reference")?
+                    .a("binaryItemIDRef")
+                    .to_string();
+                let raw = binaries.get(&id).context("OLE binary missing")?;
+                let raw =
+                    if raw.get(4..12) == Some(&[0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]) {
+                        &raw[4..]
+                    } else {
+                        raw.as_slice()
+                    };
+                let mut storage = cfb::CompoundFile::open(Cursor::new(raw))?;
+                if storage.exists("/Contents") {
+                    let mut contents = vec![];
+                    storage
+                        .open_stream("/Contents")?
+                        .take(LIMIT as u64 + 1)
+                        .read_to_end(&mut contents)?;
+                    ensure!(contents.len() <= LIMIT, "Chart data too large");
+                    let chart = hwp_legacy_chart::parse_ole_chart_contents(&contents)?;
+                    let presentation =
+                        hwp_legacy_chart::ole_chart::legacy_presentation::parse(&contents);
+                    node.name = "chart".into();
+                    node.attrs.insert(
+                        "nativeType".into(),
+                        presentation
+                            .as_ref()
+                            .map(|p| p.chart_type.to_string())
+                            .unwrap_or_else(|| "unknown".into()),
+                    );
+                    node.attrs.insert(
+                        "axisEvidence".into(),
+                        format!("{:?}", chart.series_axis_evidence),
+                    );
+                    node.attrs
+                        .insert("title".into(), chart.title.unwrap_or_default());
+                    for category in chart.categories {
+                        node.children.push(n("category").at("name", category));
+                    }
+                    for (i, series) in chart.series.into_iter().enumerate() {
+                        let mut s = n("series").at(
+                            "name",
+                            series.name.unwrap_or_else(|| format!("Series {}", i + 1)),
+                        );
+                        if let Some(style) = presentation.as_ref().and_then(|p| p.series.get(i)) {
+                            s = s.at("color", rgb(style.fill));
+                        }
+                        for v in series.values {
+                            ensure!(v.is_finite(), "Non-finite chart value");
+                            s.children.push(n("value").at("n", v));
+                        }
+                        node.children.push(s);
+                    }
+                    continue;
+                }
+                let stream = "/\u{1}Ole10Native";
+                ensure!(
+                    storage.exists(stream),
+                    "OLE has no supported static raster presentation"
+                );
+                let mut bytes = vec![];
+                storage
+                    .open_stream(stream)?
+                    .take(LIMIT as u64 + 1)
+                    .read_to_end(&mut bytes)?;
+                ensure!(bytes.len() <= LIMIT, "OLE presentation too large");
+                let payload = if bytes.get(4..6) == Some(b"BM") {
+                    &bytes[4..]
+                } else {
+                    bytes.as_slice()
+                };
+                let image =
+                    image::load_from_memory(payload).context("Unsupported static OLE image")?;
+                let mut png = Cursor::new(Vec::new());
+                image.write_to(&mut png, image::ImageFormat::Png)?;
+                let name = format!("{id}-ole-static");
+                binaries.insert(name.clone(), png.into_inner());
+                node.name = "pic".into();
+                node.attrs.insert("staticOLE".into(), "1".into());
+                node.children.push(n("img").at("binaryItemIDRef", name));
+            }
+            static_ole(&mut node.children, binaries)?;
+        }
+        Ok(())
+    }
+    static_ole(&mut sections, &mut binaries)?;
+    static_ole(&mut masters, &mut binaries)?;
     Ok(Document {
-        header: n("head").at("binaryHwp", 1),
+        header,
         sections,
         masters,
         binaries,

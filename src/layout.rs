@@ -35,11 +35,38 @@ fn lines(p: &Node) -> Vec<&Node> {
         .map(|n| n.children_named("lineseg").collect())
         .unwrap_or_default()
 }
+fn paragraph_columns(p: &Node) -> Option<&Node> {
+    p.children_named("run")
+        .flat_map(|r| r.children_named("ctrl"))
+        .find_map(|c| c.child("colPr"))
+}
+fn section_columns(s: &Node) -> Option<&Node> {
+    s.children_named("p").find_map(paragraph_columns)
+}
 fn content_height(list: &Node) -> f64 {
-    list.children_named("p")
-        .flat_map(lines)
-        .map(|l| (l.n("vertpos") + l.n("vertsize")) / 100.)
+    flowing_lines(list)
+        .iter()
+        .map(|(p, i, y)| y + lines(p)[*i].n("vertsize") / 100.)
         .fold(0., f64::max)
+}
+fn flowing_lines(list: &Node) -> Vec<(&Node, usize, f64)> {
+    let mut out = Vec::new();
+    let mut shift = 0.;
+    let mut last = None;
+    let mut end = 0.;
+    for p in list.children_named("p") {
+        for (i, l) in lines(p).iter().enumerate() {
+            let y = l.n("vertpos") / 100.;
+            if last.is_some_and(|last| y < last) {
+                shift = end - y;
+            }
+            let actual = y + shift;
+            out.push((p, i, actual));
+            end = actual + (l.n("vertsize") + l.n("spacing")) / 100.;
+            last = Some(y);
+        }
+    }
+    out
 }
 fn effective_height(n: &Node) -> f64 {
     let declared = val(n.child("sz"), "height");
@@ -57,6 +84,27 @@ fn effective_height(n: &Node) -> f64 {
     } else {
         declared
     }
+}
+fn caption_extent(n: &Node) -> [f64; 4] {
+    let mut e = [0f64; 4];
+    for c in n.children_named("caption") {
+        let Some(list) = c.child("subList") else {
+            continue;
+        };
+        let side = match c.a("side") {
+            "LEFT" => 0,
+            "RIGHT" => 1,
+            "TOP" => 2,
+            _ => 3,
+        };
+        let size = if side < 2 {
+            c.n("width") / 100.
+        } else {
+            content_height(list)
+        };
+        e[side] = e[side].max(size + c.n("gap") / 100.);
+    }
+    e
 }
 
 #[cfg(test)]
@@ -129,8 +177,10 @@ struct Glyph {
     scale: f64,
     width: f64,
     color: [f64; 3],
-    ascent:f64,
-    descent:f64,
+    ascent: f64,
+    descent: f64,
+    ink_left: f64,
+    ink_right: f64,
 }
 #[derive(Serialize)]
 pub struct Bounds {
@@ -144,6 +194,7 @@ pub struct Bounds {
 }
 #[derive(Default, Serialize)]
 pub struct Report {
+    pub charts: usize,
     pub pages: usize,
     pub equations: usize,
     pub pictures: usize,
@@ -166,11 +217,13 @@ pub struct Engine<'a> {
     footer: f64,
     current: Page,
     notes: Vec<Node>,
-    footnotes:Vec<(Node,f64,f64)>,
+    footnotes: Vec<(Node, f64, f64)>,
     depth: usize,
     glyph_cache: BTreeMap<(char, String), Glyph>,
-    active_section:usize,
-    page_base:i64,
+    active_section: usize,
+    page_base: i64,
+    numbering: BTreeMap<(String, usize), usize>,
+    labels: BTreeMap<(usize, String), String>,
 }
 impl<'a> Engine<'a> {
     pub fn new(doc: &'a Document, fonts: &Path) -> Self {
@@ -189,11 +242,13 @@ impl<'a> Engine<'a> {
             footer: 0.,
             current: Page::default(),
             notes: Vec::new(),
-            footnotes:Vec::new(),
+            footnotes: Vec::new(),
             depth: 0,
             glyph_cache: BTreeMap::new(),
-            active_section:0,
-            page_base:1,
+            active_section: 0,
+            page_base: 1,
+            numbering: BTreeMap::new(),
+            labels: BTreeMap::new(),
         }
     }
     fn glyph(&mut self, c: char, style: &str) -> Result<Glyph> {
@@ -254,17 +309,21 @@ impl<'a> Engine<'a> {
             .map(|n| n.n(lang) / 100. * size)
             .unwrap_or(0.);
         let width = self.fonts.width(font, &c.to_string(), size) * scale + spacing;
-        let face=ttf_parser::Face::parse(&self.fonts.list[font].bytes,0).unwrap();
-        let bb=face.glyph_index(c).and_then(|id|face.glyph_bounding_box(id));
-        let unit=size/face.units_per_em() as f64;
+        let face = ttf_parser::Face::parse(&self.fonts.list[font].bytes, 0).unwrap();
+        let bb = face
+            .glyph_index(c)
+            .and_then(|id| face.glyph_bounding_box(id));
+        let unit = size / face.units_per_em() as f64;
         let glyph = Glyph {
             font,
             size,
             scale,
             width,
             color: color(ch.a("textColor")),
-            ascent:bb.map(|b|b.y_max as f64*unit).unwrap_or(0.),
-            descent:bb.map(|b|(-b.y_min as f64*unit).max(0.)).unwrap_or(0.),
+            ascent: bb.map(|b| b.y_max as f64 * unit).unwrap_or(0.),
+            descent: bb.map(|b| (-b.y_min as f64 * unit).max(0.)).unwrap_or(0.),
+            ink_left: bb.map(|b| b.x_min as f64 * unit * scale).unwrap_or(0.),
+            ink_right: bb.map(|b| b.x_max as f64 * unit * scale).unwrap_or(0.),
         };
         self.glyph_cache.insert(key, glyph.clone());
         Ok(glyph)
@@ -320,7 +379,8 @@ impl<'a> Engine<'a> {
                             }
                         }
                     }
-                    "tbl" | "pic" | "equation" | "rect" | "line" | "ellipse" | "polygon" | "curve" | "arc" => {
+                    "tbl" | "pic" | "equation" | "rect" | "line" | "ellipse" | "polygon"
+                    | "curve" | "arc" | "group" | "chart" => {
                         items.push(Item {
                             pos,
                             style: style.clone(),
@@ -376,38 +436,76 @@ impl<'a> Engine<'a> {
         let mut number_draw = None;
         if li == 0
             && let Some(heading) = style.and_then(|s| s.child("heading"))
-            && heading.a("type") == "NUMBER"
+            && matches!(heading.a("type"), "NUMBER" | "BULLET")
         {
-            let num = Self::items(p)
-                .iter()
-                .filter_map(|i| match &i.kind {
-                    ItemKind::Control(c) if c.name == "endNote" => Some(c.u("number")),
-                    _ => None,
+            let bullet = heading.a("type") == "BULLET";
+            let mut defs = Vec::new();
+            self.doc
+                .header
+                .all(if bullet { "bullet" } else { "numbering" }, &mut defs);
+            let definition = defs.into_iter().find(|d| d.a("id") == heading.a("idRef"));
+            let head = if bullet {
+                definition
+            } else {
+                definition.and_then(|n| {
+                    n.children_named("paraHead")
+                        .find(|h| h.u("level") == heading.u("level") + 1)
                 })
-                .next();
-            if let Some(num) = num {
-                let mut defs = Vec::new();
-                self.doc.header.all("numbering", &mut defs);
-                let head = defs
-                    .into_iter()
-                    .find(|d| d.a("id") == heading.a("idRef"))
-                    .and_then(|n| {
-                        n.children_named("paraHead")
-                            .find(|h| h.u("level") == heading.u("level") + 1)
+            }
+            .cloned();
+            if let Some(head) = head {
+                let key = (self.active_section, p.a("id").to_string());
+                let label = if bullet {
+                    head.a("char").to_string()
+                } else if let Some(label) = self.labels.get(&key) {
+                    label.clone()
+                } else {
+                    let derived = Self::items(p).iter().find_map(|i| match &i.kind {
+                        ItemKind::Control(c) if c.name == "endNote" => Some(c.u("number")),
+                        _ => None,
                     });
-                let style = head.map(|h| h.a("charPrIDRef")).unwrap_or("0");
-                let g = self.glyph('1', style)?;
-                let label = format!("{num}.");
-                let nw = self.fonts.width(g.font, &label, g.size);
-                let offset = head
-                    .map(|h| {
-                        if h.a("textOffsetType") == "PERCENT" {
-                            g.size * h.n("textOffset") / 100.
-                        } else {
-                            h.n("textOffset") / 100.
+                    let nk = (heading.a("idRef").to_string(), heading.u("level"));
+                    let num = if let Some(n) = derived {
+                        n
+                    } else {
+                        let start = definition.map(|d| d.u("start")).unwrap_or(1).max(1);
+                        let n = self.numbering.entry(nk.clone()).or_insert(start - 1);
+                        *n += 1;
+                        *n
+                    };
+                    let mut fmt = text(&head);
+                    if fmt.is_empty() {
+                        fmt = format!("{num}.");
+                    } else {
+                        for level in (1..=10).rev() {
+                            let v = if level == heading.u("level") + 1 {
+                                num
+                            } else {
+                                *self.numbering.get(&(nk.0.clone(), level - 1)).unwrap_or(&1)
+                            };
+                            fmt = fmt.replace(&format!("^{level}"), &v.to_string());
                         }
-                    })
-                    .unwrap_or(g.size * 0.5);
+                    }
+                    self.labels.insert(key, fmt.clone());
+                    fmt
+                };
+                let fallback = p
+                    .children_named("run")
+                    .next()
+                    .map(|n| n.a("charPrIDRef"))
+                    .unwrap_or("0");
+                let style = if self.doc.chars.contains_key(head.a("charPrIDRef")) {
+                    head.a("charPrIDRef")
+                } else {
+                    fallback
+                };
+                let g = self.glyph(label.chars().next().unwrap_or('1'), style)?;
+                let nw = self.fonts.width(g.font, &label, g.size);
+                let offset = if head.a("textOffsetType") == "PERCENT" {
+                    g.size * head.n("textOffset") / 100.
+                } else {
+                    head.n("textOffset") / 100.
+                };
                 x += nw + offset;
                 avail -= nw + offset;
                 number_draw = Some((label, g));
@@ -438,15 +536,35 @@ impl<'a> Engine<'a> {
                         },
                     )
                 }
-                ItemKind::Control(n) if n.name=="charOverlay"=>{let g=self.glyph('가',&i.style)?;let width=g.size;(Some(g),width)},
-                ItemKind::Control(n) if n.name=="ruby"=>{let g=self.glyph(n.a("main").chars().next().unwrap_or(' '),&i.style)?;let width=self.fonts.width(g.font,n.a("main"),g.size);(Some(g),width)},
+                ItemKind::Control(n) if n.name == "charOverlay" => {
+                    let g = self.glyph('가', &i.style)?;
+                    let width = g.size;
+                    (Some(g), width)
+                }
+                ItemKind::Control(n) if n.name == "ruby" => {
+                    let g = self.glyph(n.a("main").chars().next().unwrap_or(' '), &i.style)?;
+                    let width = self.fonts.width(g.font, n.a("main"), g.size);
+                    (Some(g), width)
+                }
                 ItemKind::Control(_) => (None, 0.),
             };
             gs.push(g);
             widths.push(w);
         }
+        // Source negative tracking can exceed a narrow replacement glyph's advance.
+        // Preserve distinct glyph ink before fitting the whole line to its cached width.
+        for i in 0..its.len().saturating_sub(1) {
+            if matches!(its[i].kind, ItemKind::Char(_))
+                && matches!(its[i + 1].kind, ItemKind::Char(_))
+                && let (Some(left), Some(right)) = (&gs[i], &gs[i + 1])
+            {
+                widths[i] = widths[i].max(left.ink_right - right.ink_left + 0.02);
+            }
+        }
         let mut total: f64 = widths.iter().sum();
-        if self.doc.header.a("binaryHwp")=="1"{base=base.max(line_y+gs.iter().flatten().map(|g|g.ascent).fold(0.,f64::max));}
+        if self.doc.header.a("binaryHwp") == "1" {
+            base = base.max(line_y + gs.iter().flatten().map(|g| g.ascent).fold(0., f64::max));
+        }
         if total > avail && !its.iter().any(|i| matches!(i.kind, ItemKind::Tab(_))) {
             let fixed: f64 = widths
                 .iter()
@@ -498,6 +616,8 @@ impl<'a> Engine<'a> {
             gap = (avail - total) / stretch as f64;
         }
         let origin = x;
+        let mut caption_cursor = line_y;
+        let mut underlines: Vec<(String, f64, f64, f64, f64)> = Vec::new();
         for (idx, it) in its.iter().enumerate() {
             match &it.kind {
                 ItemKind::Char(c) => {
@@ -511,6 +631,25 @@ impl<'a> Engine<'a> {
                         scale: g.scale,
                         color: g.color,
                     });
+                    if self
+                        .doc
+                        .chars
+                        .get(&it.style)
+                        .and_then(|s| s.child("underline"))
+                        .filter(|n| matches!(n.a("type"), "BOTTOM" | "TOP"))
+                        .is_some()
+                    {
+                        let end = x + widths[idx] + gap;
+                        if let Some(span) = underlines
+                            .last_mut()
+                            .filter(|s| s.0 == it.style && (s.2 - x).abs() < 0.01)
+                        {
+                            span.2 = end;
+                            span.4 = span.4.max(g.descent);
+                        } else {
+                            underlines.push((it.style.clone(), x, end, g.size, g.descent));
+                        }
+                    }
                     x += widths[idx]
                         + if atomic_display
                             && its.get(idx + 1).is_some_and(|next| next.pos == it.pos)
@@ -524,26 +663,151 @@ impl<'a> Engine<'a> {
                     x += *w;
                 }
                 ItemKind::Object(n) => {
-                    self.object(n, ox, line_y, base, x, width)?;
+                    let pos = n.child("pos");
+                    let block = n.a("textWrap") == "TOP_AND_BOTTOM"
+                        && pos.is_some_and(|p| {
+                            p.a("treatAsChar") != "1" && p.a("vertRelTo") == "PARA"
+                        });
+                    let mut object_y = line_y;
+                    if block && n.child("caption").is_some() {
+                        let e = caption_extent(n);
+                        let m = margin(n, "outMargin");
+                        let extent = effective_height(n) + e[2] + e[3] + m[2] + m[3];
+                        if self.depth == 0
+                            && caption_cursor + extent > self.ph - self.bottom
+                            && extent < self.ph - self.top - self.bottom
+                        {
+                            self.finish()?;
+                            caption_cursor = self.top;
+                        }
+                        object_y = caption_cursor;
+                        caption_cursor += extent;
+                    } else if block
+                        && n.name == "pic"
+                        && segs[0].n("vertpos") / 100. + 0.01
+                            >= effective_height(n) + margin(n, "outMargin")[3]
+                        && its
+                            .iter()
+                            .any(|i| matches!(i.kind, ItemKind::Char(c) if !c.is_whitespace()))
+                    {
+                        // Block pictures precede their paragraph's first text line in the cache.
+                        object_y -= effective_height(n) + margin(n, "outMargin")[3];
+                    }
+                    self.object(n, ox, object_y, base, x, width)?;
                     x += widths[idx];
                 }
                 ItemKind::Control(n) => match n.name.as_str() {
-                    "charOverlay"=>{
-                        let g=gs[idx].as_ref().unwrap();let w=widths[idx];let y=base-g.size*0.85;
-                        self.report.bounds.push(Bounds{page:self.pages.len()+1,kind:"intentional-overlay".into(),id:format!("{}-{}",p.a("id"),it.pos),x,y,w,h:g.size});
-                        let border=n.u("borderType");
-                        if border==1{for i in 0..48{let a=i as f64*std::f64::consts::TAU/48.;let b=(i+1)as f64*std::f64::consts::TAU/48.;self.current.ops.push(Op::Line{x:x+w/2.+w/2.*a.cos(),y:y+w/2.+w/2.*a.sin(),x2:x+w/2.+w/2.*b.cos(),y2:y+w/2.+w/2.*b.sin(),width:0.4,color:g.color});}}
-                        else if border!=0{self.box_lines(x,y,w,g.size,0.4,g.color);if border!=2{self.report.warnings.insert(format!("Overlay border type {border} approximated by rectangle"));}}
-                        let text=n.a("text");let factor=((g.size+n.n("innerSize"))/g.size).clamp(0.2,1.);
-                        let chars:Vec<String>=if n.a("spread")=="1"{vec![text.into()]}else{text.chars().map(|c|c.to_string()).collect()};
-                        for (i,t)in chars.iter().enumerate(){let style=n.children.get(i).map(|c|c.a("id")).filter(|s|self.doc.chars.contains_key(*s)).unwrap_or(&it.style);let gg=self.glyph(t.chars().next().unwrap_or(' '),style)?;let size=g.size*factor;let tw=self.fonts.width(gg.font,t,size);let scale=if tw>w{w/tw}else{1.};self.current.ops.push(Op::Text{x:x+(w-tw*scale)/2.,y:y+(g.size-size)/2.+size*0.85,text:t.clone(),font:gg.font,size,scale,color:gg.color});}
-                        x+=w;
-                    },
-                    "ruby"=>{let g=gs[idx].as_ref().unwrap();let w=widths[idx];self.current.ops.push(Op::Text{x,y:base,text:n.a("main").into(),font:g.font,size:g.size,scale:g.scale,color:g.color});let size=g.size*0.5;let tw=self.fonts.width(g.font,n.a("sub"),size);self.current.ops.push(Op::Text{x:x+(w-tw)/2.,y:if n.a("position")=="1"{base+size}else{base-g.size},text:n.a("sub").into(),font:g.font,size,scale:1.,color:g.color});x+=w;},
-                    "footNote"=>{let g=self.glyph('1',&it.style)?;self.current.ops.push(Op::Text{x,y:base-g.size*0.35,text:format!("{})",n.a("number")),font:g.font,size:g.size*0.6,scale:1.,color:g.color});x+=g.size*0.6;self.footnotes.push((n.clone(),ox,width));},
+                    "charOverlay" => {
+                        let g = gs[idx].as_ref().unwrap();
+                        let w = widths[idx];
+                        let y = base - g.size * 0.85;
+                        self.report.bounds.push(Bounds {
+                            page: self.pages.len() + 1,
+                            kind: "intentional-overlay".into(),
+                            id: format!("{}-{}", p.a("id"), it.pos),
+                            x,
+                            y,
+                            w,
+                            h: g.size,
+                        });
+                        let border = n.u("borderType");
+                        if border == 1 {
+                            for i in 0..48 {
+                                let a = i as f64 * std::f64::consts::TAU / 48.;
+                                let b = (i + 1) as f64 * std::f64::consts::TAU / 48.;
+                                self.current.ops.push(Op::Line {
+                                    x: x + w / 2. + w / 2. * a.cos(),
+                                    y: y + w / 2. + w / 2. * a.sin(),
+                                    x2: x + w / 2. + w / 2. * b.cos(),
+                                    y2: y + w / 2. + w / 2. * b.sin(),
+                                    width: 0.4,
+                                    color: g.color,
+                                });
+                            }
+                        } else if border != 0 {
+                            self.box_lines(x, y, w, g.size, 0.4, g.color);
+                            if border != 2 {
+                                self.report.warnings.insert(format!(
+                                    "Overlay border type {border} approximated by rectangle"
+                                ));
+                            }
+                        }
+                        let text = n.a("text");
+                        let factor = ((g.size + n.n("innerSize")) / g.size).clamp(0.2, 1.);
+                        let chars: Vec<String> = if n.a("spread") == "1" {
+                            vec![text.into()]
+                        } else {
+                            text.chars().map(|c| c.to_string()).collect()
+                        };
+                        for (i, t) in chars.iter().enumerate() {
+                            let style = n
+                                .children
+                                .get(i)
+                                .map(|c| c.a("id"))
+                                .filter(|s| self.doc.chars.contains_key(*s))
+                                .unwrap_or(&it.style);
+                            let gg = self.glyph(t.chars().next().unwrap_or(' '), style)?;
+                            let size = g.size * factor;
+                            let tw = self.fonts.width(gg.font, t, size);
+                            let scale = if tw > w { w / tw } else { 1. };
+                            self.current.ops.push(Op::Text {
+                                x: x + (w - tw * scale) / 2.,
+                                y: y + (g.size - size) / 2. + size * 0.85,
+                                text: t.clone(),
+                                font: gg.font,
+                                size,
+                                scale,
+                                color: gg.color,
+                            });
+                        }
+                        x += w;
+                    }
+                    "ruby" => {
+                        let g = gs[idx].as_ref().unwrap();
+                        let w = widths[idx];
+                        self.current.ops.push(Op::Text {
+                            x,
+                            y: base,
+                            text: n.a("main").into(),
+                            font: g.font,
+                            size: g.size,
+                            scale: g.scale,
+                            color: g.color,
+                        });
+                        let size = g.size * 0.5;
+                        let tw = self.fonts.width(g.font, n.a("sub"), size);
+                        self.current.ops.push(Op::Text {
+                            x: x + (w - tw) / 2.,
+                            y: if n.a("position") == "1" {
+                                base + size
+                            } else {
+                                base - g.size
+                            },
+                            text: n.a("sub").into(),
+                            font: g.font,
+                            size,
+                            scale: 1.,
+                            color: g.color,
+                        });
+                        x += w;
+                    }
+                    "footNote" => {
+                        let g = self.glyph('1', &it.style)?;
+                        self.current.ops.push(Op::Text {
+                            x,
+                            y: base - g.size * 0.35,
+                            text: format!("{})", n.a("number")),
+                            font: g.font,
+                            size: g.size * 0.6,
+                            scale: 1.,
+                            color: g.color,
+                        });
+                        x += g.size * 0.6;
+                        self.footnotes.push((n.clone(), ox, width));
+                    }
                     "autoNum" => {
                         let num = if n.a("numType") == "PAGE" {
-                            (self.pages.len() as i64+self.page_base).max(1) as usize
+                            (self.pages.len() as i64 + self.page_base).max(1) as usize
                         } else {
                             n.u("num")
                         };
@@ -565,6 +829,21 @@ impl<'a> Engine<'a> {
                     _ => {}
                 },
             }
+        }
+        for (style, x1, x2, size, descent) in underlines {
+            let def = self.doc.chars[&style].child("underline").unwrap();
+            let y = if def.a("type") == "TOP" {
+                base - size
+            } else {
+                base + descent + 0.9
+            };
+            self.current.ops.extend(crate::decoration::underline(
+                x1,
+                x2,
+                y,
+                def.u("style"),
+                color(def.a("color")),
+            ));
         }
         if let Some((label, g)) = number_draw {
             self.current.ops.push(Op::Text {
@@ -593,22 +872,35 @@ impl<'a> Engine<'a> {
         if self.depth > 64 {
             bail!("Excessive nested layout")
         }
-        for p in list.children_named("p") {
-            for i in 0..lines(p).len() {
-                self.line(p, i, x, y, w)?;
-            }
+        for (p, i, flow_y) in flowing_lines(list) {
+            self.line(p, i, x, y + flow_y - lines(p)[i].n("vertpos") / 100., w)?;
         }
         self.depth -= 1;
         Ok(())
     }
-    fn measured_height(&mut self,list:&Node)->Result<f64>{
-        let mut height=content_height(list);
-        for p in list.children_named("p"){let ls=lines(p);let items=Self::items(p);
-            for (i,l)in ls.iter().enumerate(){let end=ls.get(i+1).map(|n|n.u("textpos")).unwrap_or(usize::MAX);let mut ascent=l.n("baseline")/100.;let mut descent=0f64;
-                for it in items.iter().filter(|it|it.pos>=l.u("textpos")&&it.pos<end){if let ItemKind::Char(c)=it.kind{let g=self.glyph(c,&it.style)?;ascent=ascent.max(g.ascent);descent=descent.max(g.descent);}}
-                height=height.max(l.n("vertpos")/100.+ascent+descent);
+    fn measured_height(&mut self, list: &Node) -> Result<f64> {
+        let mut height = content_height(list);
+        for p in list.children_named("p") {
+            let ls = lines(p);
+            let items = Self::items(p);
+            for (i, l) in ls.iter().enumerate() {
+                let end = ls.get(i + 1).map(|n| n.u("textpos")).unwrap_or(usize::MAX);
+                let mut ascent = l.n("baseline") / 100.;
+                let mut descent = 0f64;
+                for it in items
+                    .iter()
+                    .filter(|it| it.pos >= l.u("textpos") && it.pos < end)
+                {
+                    if let ItemKind::Char(c) = it.kind {
+                        let g = self.glyph(c, &it.style)?;
+                        ascent = ascent.max(g.ascent);
+                        descent = descent.max(g.descent);
+                    }
+                }
+                height = height.max(l.n("vertpos") / 100. + ascent + descent);
             }
-        }Ok(height)
+        }
+        Ok(height)
     }
     fn object(
         &mut self,
@@ -627,9 +919,9 @@ impl<'a> Engine<'a> {
         let declared_h = h;
         let h = effective_height(n);
         let inline = pos.a("treatAsChar") == "1";
-        let x;
+        let mut x;
 
-        let y = if inline {
+        let mut y = if inline {
             x = anchor + m[0];
             let baseline = if n.name == "equation" {
                 n.n("baseLine") / 100.
@@ -682,6 +974,15 @@ impl<'a> Engine<'a> {
                     _ => 0.,
                 }
         };
+        if !inline && n.child("caption").is_some() && n.a("binaryHwp") == "1" {
+            let e = caption_extent(n);
+            x += m[0] + e[0];
+            y += m[2] + e[2];
+            // Position the combined caption/object box inside its containing column.
+            x = x
+                .max(ox + e[0])
+                .min((ox + container - w - e[1]).max(ox + e[0]));
+        }
         self.report.bounds.push(Bounds {
             page: self.pages.len() + 1,
             kind: if n.a("textWrap") == "BEHIND_TEXT" && n.name == "pic" {
@@ -698,13 +999,62 @@ impl<'a> Engine<'a> {
         let behind = n.a("textWrap") == "BEHIND_TEXT";
         let paint_start = self.current.ops.len();
         match n.name.as_str() {
-            "polygon"|"curve"|"arc"=>{
-                let sx=w/(n.n("originalWidth")/100.).max(0.01);let sy=h/(n.n("originalHeight")/100.).max(0.01);
-                let mut points:Vec<_>=n.children_named("point").map(|p|(x+p.n("x")/100.*sx,y+p.n("y")/100.*sy)).collect();
-                if n.name=="arc"{let c=n.child("center").context("arc center")?;let a=n.child("axis1").context("arc axis")?;let b=n.child("axis2").context("arc axis")?;for i in 0..=32{let t=i as f64*std::f64::consts::FRAC_PI_2/32.;points.push((x+(c.n("x")+(a.n("x")-c.n("x"))*t.cos()+(b.n("x")-c.n("x"))*t.sin())/100.*sx,y+(c.n("y")+(a.n("y")-c.n("y"))*t.cos()+(b.n("y")-c.n("y"))*t.sin())/100.*sy));}}
-                if n.name=="curve"{self.report.warnings.insert("Curve knots currently connected by line segments; cubic interpolation pending".into());}
-                let line=n.child("lineShape");let fill=n.find("winBrush").map(|f|color(f.a("faceColor")));self.current.ops.push(Op::Path{points,closed:n.name=="polygon",width:val(line,"width").max(0.1),color:color(line.map(|s|s.a("color")).unwrap_or("#000000")),fill});
-            },
+            "chart" => {
+                let (ops, warning) = crate::chart::draw(n, x, y, w, h, &mut self.fonts)?;
+                self.current.ops.extend(ops);
+                self.report.charts += 1;
+                if let Some(w) = warning {
+                    self.report.warnings.insert(w);
+                }
+                if n.a("axisEvidence") == "Inconclusive" {
+                    self.report.warnings.insert("Chart series orientation uses writer convention; axis evidence is inconclusive".into());
+                }
+            }
+            "group" => {
+                for child in n.children.iter().filter(|c| c.child("pos").is_some()) {
+                    self.object(child, x, y, y, x, w)?;
+                }
+            }
+            "polygon" | "curve" | "arc" => {
+                let sx = w / (n.n("originalWidth") / 100.).max(0.01);
+                let sy = h / (n.n("originalHeight") / 100.).max(0.01);
+                let mut points: Vec<_> = n
+                    .children_named("point")
+                    .map(|p| (x + p.n("x") / 100. * sx, y + p.n("y") / 100. * sy))
+                    .collect();
+                if n.name == "arc" {
+                    let c = n.child("center").context("arc center")?;
+                    let a = n.child("axis1").context("arc axis")?;
+                    let b = n.child("axis2").context("arc axis")?;
+                    for i in 0..=32 {
+                        let t = i as f64 * std::f64::consts::FRAC_PI_2 / 32.;
+                        points.push((
+                            x + (c.n("x")
+                                + (a.n("x") - c.n("x")) * t.cos()
+                                + (b.n("x") - c.n("x")) * t.sin())
+                                / 100.
+                                * sx,
+                            y + (c.n("y")
+                                + (a.n("y") - c.n("y")) * t.cos()
+                                + (b.n("y") - c.n("y")) * t.sin())
+                                / 100.
+                                * sy,
+                        ));
+                    }
+                }
+                if n.name == "curve" {
+                    self.report.warnings.insert("Curve knots currently connected by line segments; cubic interpolation pending".into());
+                }
+                let line = n.child("lineShape");
+                let fill = n.find("winBrush").map(|f| color(f.a("faceColor")));
+                self.current.ops.push(Op::Path {
+                    points,
+                    closed: n.name == "polygon",
+                    width: val(line, "width").max(0.1),
+                    color: color(line.map(|s| s.a("color")).unwrap_or("#000000")),
+                    fill,
+                });
+            }
             "equation" => {
                 let script = n.child("script").map(text).unwrap_or_default();
                 let b = math::layout(&script, n.n("baseUnit") / 100., &mut self.fonts)?;
@@ -784,11 +1134,29 @@ impl<'a> Engine<'a> {
             }
             _ => {}
         }
-        for caption in n.children_named("caption"){
-            if let Some(list)=caption.child("subList"){
-                let gap=caption.n("gap")/100.;let ch=content_height(list);let cw=if matches!(caption.a("side"),"LEFT"|"RIGHT"){caption.n("width")/100.}else{w};
-                let (cx,cy)=match caption.a("side"){"LEFT"=>(x-gap-cw,y),"RIGHT"=>(x+w+gap,y),"TOP"=>(x,y-gap-ch),_=>(x,y+h+gap)};
-                self.local(list,cx,cy,cw)?;
+        for caption in n.children_named("caption") {
+            if let Some(list) = caption.child("subList") {
+                let gap = caption.n("gap") / 100.;
+                let ch = content_height(list);
+                let cw = if matches!(caption.a("side"), "LEFT" | "RIGHT") {
+                    caption.n("width") / 100.
+                } else if caption.a("expandToMargin") == "1" {
+                    w + m[0] + m[1]
+                } else {
+                    w
+                };
+                let cy = y + match list.a("vertAlign") {
+                    "CENTER" => (h - ch) / 2.,
+                    "BOTTOM" => h - ch,
+                    _ => 0.,
+                };
+                let (cx, cy) = match caption.a("side") {
+                    "LEFT" => (x - gap - cw, cy),
+                    "RIGHT" => (x + w + gap, cy),
+                    "TOP" => (x - (cw - w) / 2., y - gap - ch),
+                    _ => (x - (cw - w) / 2., y + h + gap),
+                };
+                self.local(list, cx, cy, cw)?;
             }
         }
         if behind {
@@ -867,7 +1235,7 @@ impl<'a> Engine<'a> {
             .collect();
         let mut cw = vec![0f64; cols];
         let mut rh = vec![0f64; rows];
-        let mut minimum=vec![0f64;rows];
+        let mut minimum = vec![0f64; rows];
         for c in &cells {
             let a = c.child("cellAddr").context("cellAddr")?;
             let span = c.child("cellSpan").context("cellSpan")?;
@@ -933,46 +1301,155 @@ impl<'a> Engine<'a> {
                     b - a
                 })
                 .unwrap_or(0.);
-            let typed=if let Some(list)=c.child("subList"){self.measured_height(list)?}else{0.};
+            let typed = if let Some(list) = c.child("subList") {
+                self.measured_height(list)?
+            } else {
+                0.
+            };
             let needed = content.max(typed) + m[2] + m[3];
-            if rs==1{minimum[row]=minimum[row].max(needed);}else{let missing=(needed-minimum[row..row+rs].iter().sum::<f64>()).max(0.);minimum[row+rs-1]+=missing;}
+            if rs == 1 {
+                minimum[row] = minimum[row].max(needed);
+            } else {
+                let missing = (needed - minimum[row..row + rs].iter().sum::<f64>()).max(0.);
+                minimum[row + rs - 1] += missing;
+            }
             let current: f64 = rh[row..row + rs].iter().sum();
             if needed > current {
                 rh[row + rs - 1] += needed - current;
             }
         }
         let mut total: f64 = rh.iter().sum();
-        let min_total:f64=minimum.iter().sum();
-        if n.a("binaryHwp")=="1"&&total>h&&h>=min_total&&total>min_total{
-            let ratio=(h-min_total)/(total-min_total);for(i,height)in rh.iter_mut().enumerate(){*height=minimum[i]+(*height-minimum[i])*ratio;}total=h;
+        let min_total: f64 = minimum.iter().sum();
+        if n.a("binaryHwp") == "1" && total > h && h >= min_total && total > min_total {
+            let ratio = (h - min_total) / (total - min_total);
+            for (i, height) in rh.iter_mut().enumerate() {
+                *height = minimum[i] + (*height - minimum[i]) * ratio;
+            }
+            total = h;
         }
         if total < h
             && let Some(last) = rh.last_mut()
         {
             *last += h - total;
         }
+        let fixed_bottom = n.child("pos").is_some_and(|p| p.a("vertAlign") == "BOTTOM");
+        if self.depth == 0
+            && !fixed_bottom
+            && cells.len() == 1
+            && cols == 1
+            && total > self.ph - self.bottom - y
+        {
+            let cell = cells[0];
+            let list = cell.child("subList").context("Cell paragraphs")?;
+            let m = if cell.a("hasMargin") == "1" {
+                margin(cell, "cellMargin")
+            } else {
+                margin(n, "inMargin")
+            };
+            let flow = flowing_lines(list);
+            let mut at = 0;
+            let mut top = y;
+            while at < flow.len() {
+                let start = flow[at].2;
+                let capacity = self.ph - self.bottom - top - m[2] - m[3];
+                let mut end = at;
+                while end < flow.len() {
+                    let (p, i, yy) = flow[end];
+                    if end > at && yy - start + lines(p)[i].n("vertsize") / 100. > capacity {
+                        break;
+                    }
+                    end += 1;
+                }
+                let (p, i, yy) = flow[end - 1];
+                let height = yy - start + lines(p)[i].n("vertsize") / 100. + m[2] + m[3];
+                self.border(cell.a("borderFillIDRef"), x, top, w, height);
+                self.depth += 1;
+                for (p, i, yy) in &flow[at..end] {
+                    self.line(
+                        p,
+                        *i,
+                        x + m[0],
+                        top + m[2] + yy - start - lines(p)[*i].n("vertpos") / 100.,
+                        w - m[0] - m[1],
+                    )?;
+                }
+                self.depth -= 1;
+                at = end;
+                if at < flow.len() {
+                    self.finish()?;
+                    let section = &self.doc.sections[self.active_section];
+                    self.decorations(section, false, 1, 0.)?;
+                    top = self.top;
+                }
+            }
+            self.report
+                .warnings
+                .insert("Long single-cell table split at line boundaries".into());
+            return Ok(());
+        }
         // Cached table heights include minimum/automatic row growth; keep them
         // instead of stretching cells to a stale object rectangle.
-        let header_cells:Vec<_>=cells.iter().filter(|c|c.child("cellAddr").is_some_and(|a|a.u("rowAddr")==0)).map(|c|(*c).clone()).collect();
-        let mut page_row=0;let mut page_y=y;let mut previous_row=None;
+        let header_cells: Vec<_> = cells
+            .iter()
+            .filter(|c| c.child("cellAddr").is_some_and(|a| a.u("rowAddr") == 0))
+            .map(|c| (*c).clone())
+            .collect();
+        let mut page_row = 0;
+        let mut page_y = y;
+        let mut previous_row = None;
         for c in &cells {
             let a = c.child("cellAddr").unwrap();
             let s = c.child("cellSpan").unwrap();
             let col = a.u("colAddr");
             let row = a.u("rowAddr");
-            if self.depth==0 && (n.a("pageBreak")=="CELL" || total>self.ph-self.top-self.bottom) && previous_row!=Some(row) && row>page_row
-                && page_y+rh[page_row..=row].iter().sum::<f64>()>self.ph-self.bottom {
-                let merged_crossing=cells.iter().any(|cell|{let a=cell.child("cellAddr").unwrap();let s=cell.child("cellSpan").unwrap();a.u("rowAddr")<row&&a.u("rowAddr")+s.u("rowSpan")>row});
-                if !merged_crossing{
-                    self.finish()?;let section=&self.doc.sections[self.active_section];let columns=section.find("colPr");self.decorations(section,false,columns.map(|n|n.u("colCount")).unwrap_or(1),val(columns,"sameGap"))?;
-                    page_y=self.top;page_row=row;
-                    if n.a("repeatHeader")=="1"&&header_cells.iter().all(|c|c.child("cellSpan").unwrap().u("rowSpan")==1){
-                        let mut header=n.clone();header.attrs.insert("rowCnt".into(),"1".into());header.attrs.insert("pageBreak".into(),"NONE".into());header.attrs.insert("repeatHeader".into(),"0".into());header.children.retain(|c|c.name!="tr");header.children.push(Node{name:"tr".into(),children:header_cells.clone(),..Default::default()});self.table(&header,x,page_y,w,rh[0])?;page_y+=rh[0];
+            if self.depth == 0
+                && !fixed_bottom
+                && (n.a("pageBreak") == "CELL" || total > self.ph - self.top - self.bottom)
+                && previous_row != Some(row)
+                && row > page_row
+                && page_y + rh[page_row..=row].iter().sum::<f64>() > self.ph - self.bottom
+            {
+                let merged_crossing = cells.iter().any(|cell| {
+                    let a = cell.child("cellAddr").unwrap();
+                    let s = cell.child("cellSpan").unwrap();
+                    a.u("rowAddr") < row && a.u("rowAddr") + s.u("rowSpan") > row
+                });
+                if !merged_crossing {
+                    self.finish()?;
+                    let section = &self.doc.sections[self.active_section];
+                    let columns = section_columns(section);
+                    self.decorations(
+                        section,
+                        false,
+                        columns.map(|n| n.u("colCount")).unwrap_or(1),
+                        val(columns, "sameGap"),
+                    )?;
+                    page_y = self.top;
+                    page_row = row;
+                    if n.a("repeatHeader") == "1"
+                        && header_cells
+                            .iter()
+                            .all(|c| c.child("cellSpan").unwrap().u("rowSpan") == 1)
+                    {
+                        let mut header = n.clone();
+                        header.attrs.insert("rowCnt".into(), "1".into());
+                        header.attrs.insert("pageBreak".into(), "NONE".into());
+                        header.attrs.insert("repeatHeader".into(), "0".into());
+                        header.children.retain(|c| c.name != "tr");
+                        header.children.push(Node {
+                            name: "tr".into(),
+                            children: header_cells.clone(),
+                            ..Default::default()
+                        });
+                        self.table(&header, x, page_y, w, rh[0])?;
+                        page_y += rh[0];
                     }
-                    self.report.warnings.insert("Long table paginated by row with repeated header".into());
+                    self.report
+                        .warnings
+                        .insert("Long table paginated by row with repeated header".into());
                 }
             }
-            previous_row=Some(row);
+            previous_row = Some(row);
             let xx = x + cw[..col].iter().sum::<f64>();
             let yy = page_y + rh[page_row..row].iter().sum::<f64>();
             let ww = cw[col..col + s.u("colSpan")].iter().sum::<f64>();
@@ -998,8 +1475,30 @@ impl<'a> Engine<'a> {
         Ok(())
     }
     fn finish(&mut self) -> Result<()> {
-        let notes=std::mem::take(&mut self.footnotes);
-        if !notes.is_empty(){let height=notes.iter().filter_map(|(n,_,_)|n.child("subList")).map(|l|content_height(l)+4.).sum::<f64>();let mut y=self.ph-self.bottom-height-6.;let x=notes[0].1;self.current.ops.push(Op::Line{x,y:y-4.,x2:x+120.,y2:y-4.,width:0.5,color:[0.;3]});for(n,x,w)in notes{if let Some(list)=n.child("subList"){self.local(list,x,y,w)?;y+=content_height(list)+4.;}}}
+        let notes = std::mem::take(&mut self.footnotes);
+        if !notes.is_empty() {
+            let height = notes
+                .iter()
+                .filter_map(|(n, _, _)| n.child("subList"))
+                .map(|l| content_height(l) + 4.)
+                .sum::<f64>();
+            let mut y = self.ph - self.bottom - height - 6.;
+            let x = notes[0].1;
+            self.current.ops.push(Op::Line {
+                x,
+                y: y - 4.,
+                x2: x + 120.,
+                y2: y - 4.,
+                width: 0.5,
+                color: [0.; 3],
+            });
+            for (n, x, w) in notes {
+                if let Some(list) = n.child("subList") {
+                    self.local(list, x, y, w)?;
+                    y += content_height(list) + 4.;
+                }
+            }
+        }
 
         self.current.width = self.pw;
         self.current.height = self.ph;
@@ -1007,18 +1506,25 @@ impl<'a> Engine<'a> {
         Ok(())
     }
     fn decorations(&mut self, section: &Node, first: bool, cols: usize, gap: f64) -> Result<()> {
-        let hiding=if first{section.find("pageHiding")}else{None};
-        if let Some(number) = section.find("pageNumPos").filter(|_|hiding.is_none_or(|h|h.a("hidePageNum")!="1")) {
+        let hiding = if first {
+            section.find("pageHiding")
+        } else {
+            None
+        };
+        if let Some(number) = section
+            .find("pageNumPos")
+            .filter(|_| hiding.is_none_or(|h| h.a("hidePageNum") != "1"))
+        {
             let pos = number.u("position");
             if pos > 0 {
-                let page = (self.pages.len() as i64+self.page_base).max(1) as usize;
+                let page = (self.pages.len() as i64 + self.page_base).max(1) as usize;
                 let font = self.fonts.get("times.ttf")?;
                 let label = format!("{}{}{}", number.a("prefix"), page, number.a("suffix"));
                 let w = self.fonts.width(font, &label, 10.);
                 let right = match pos {
                     3 | 6 => true,
                     7 | 8 => page % 2 == 1,
-                    9 | 10 => page % 2 == 0,
+                    9 | 10 => page.is_multiple_of(2),
                     _ => false,
                 };
                 let x = if pos == 2 || pos == 5 {
@@ -1050,12 +1556,21 @@ impl<'a> Engine<'a> {
             .find(|n| n.a("type") == "BOTH")
         {
             let m = margin(b, "offset");
+            let paper = b.a("textBorder") == "PAPER";
             self.border(
                 b.a("borderFillIDRef"),
-                self.left - m[0],
-                self.top - m[2],
-                self.pw - self.left - self.right + m[0] + m[1],
-                self.ph - self.top - self.bottom + m[2] + m[3],
+                if paper { m[0] } else { self.left - m[0] },
+                if paper { m[2] } else { self.top - m[2] },
+                if paper {
+                    self.pw - m[0] - m[1]
+                } else {
+                    self.pw - self.left - self.right + m[0] + m[1]
+                },
+                if paper {
+                    self.ph - m[2] - m[3]
+                } else {
+                    self.ph - self.top - self.bottom + m[2] + m[3]
+                },
             );
         }
         if cols > 1 && sec.a("binaryHwp") != "1" {
@@ -1081,7 +1596,9 @@ impl<'a> Engine<'a> {
             });
         }
         for master in &self.doc.masters {
-            if hiding.is_some_and(|h|h.a("hideMasterPage")=="1"){continue}
+            if hiding.is_some_and(|h| h.a("hideMasterPage") == "1") {
+                continue;
+            }
             if first && sec.a("hideFirstMasterPage") == "1" {
                 continue;
             }
@@ -1108,8 +1625,18 @@ impl<'a> Engine<'a> {
                 for ctrl in run.children_named("ctrl") {
                     for c in &ctrl.children {
                         if let Some(list) = c.child("subList") {
-                            let parity=match c.a("applyPageType"){"ODD"=>(self.pages.len()+1)%2==1,"EVEN"=>(self.pages.len()+1)%2==0,_=>true};
-                            if c.name == "header" && parity && hiding.is_none_or(|h|h.a("hideHeader")!="1") && (!first||(sec.a("binaryHwp")=="1"&&sec.a("hideFirstHeader")!="1")) {
+                            let parity = match c.a("applyPageType") {
+                                "ODD" => (self.pages.len() + 1) % 2 == 1,
+                                "EVEN" => (self.pages.len() + 1).is_multiple_of(2),
+                                _ => true,
+                            };
+                            if c.name == "header"
+                                && parity
+                                && hiding.is_none_or(|h| h.a("hideHeader") != "1")
+                                && (!first
+                                    || (sec.a("binaryHwp") == "1"
+                                        && sec.a("hideFirstHeader") != "1"))
+                            {
                                 self.local(
                                     list,
                                     self.left,
@@ -1117,7 +1644,11 @@ impl<'a> Engine<'a> {
                                     self.pw - self.left - self.right,
                                 )?;
                             }
-                            if c.name == "footer" && parity && hiding.is_none_or(|h|h.a("hideFooter")!="1") && !(first&&sec.a("hideFirstFooter")=="1") {
+                            if c.name == "footer"
+                                && parity
+                                && hiding.is_none_or(|h| h.a("hideFooter") != "1")
+                                && !(first && sec.a("hideFirstFooter") == "1")
+                            {
                                 self.local(
                                     list,
                                     self.left,
@@ -1136,8 +1667,10 @@ impl<'a> Engine<'a> {
     pub fn render(&mut self) -> Result<()> {
         let mut note_start = (0., 0usize, 0., 0.);
         for (section_index, section) in self.doc.sections.iter().enumerate() {
-            self.active_section=section_index;
-            if let Some(number)=section.find("newNumber").filter(|n|n.a("type")=="0"){self.page_base=number.u("number") as i64-self.pages.len() as i64;}
+            self.active_section = section_index;
+            if let Some(number) = section.find("newNumber").filter(|n| n.a("type") == "0") {
+                self.page_base = number.u("number") as i64 - self.pages.len() as i64;
+            }
             let sec = section
                 .find("secPr")
                 .context("Missing section properties")?;
@@ -1151,10 +1684,10 @@ impl<'a> Engine<'a> {
             self.bottom = m[3] + val(p.child("margin"), "footer");
             self.header = val(p.child("margin"), "header");
             self.footer = val(p.child("margin"), "footer");
-            let col = section.find("colPr");
-            let cols = col.map(|c| c.u("colCount")).unwrap_or(1).max(1);
-            let gap = val(col, "sameGap");
-            let cw = (self.pw - self.left - self.right - gap * (cols - 1) as f64) / cols as f64;
+            let col = section_columns(section);
+            let mut cols = col.map(|c| c.u("colCount")).unwrap_or(1).max(1);
+            let mut gap = val(col, "sameGap");
+            let mut cw = (self.pw - self.left - self.right - gap * (cols - 1) as f64) / cols as f64;
             self.decorations(section, true, cols, gap)?;
             let mut col = 0;
             let mut last = None;
@@ -1164,9 +1697,27 @@ impl<'a> Engine<'a> {
                 if ls.is_empty() {
                     bail!("Missing saved layout cache in paragraph {}", p.a("id"))
                 }
+                if let Some(def) = paragraph_columns(p) {
+                    let next_count = def.u("colCount").max(1);
+                    let next_gap = val(Some(def), "sameGap");
+                    if next_count != cols || next_gap != gap {
+                        if last.is_some_and(|y| ls[0].n("vertpos") < y) || p.a("pageBreak") == "1" {
+                            self.finish()?;
+                            last = None;
+                            flow_shift = 0.;
+                        }
+                        cols = next_count;
+                        gap = next_gap;
+                        cw = (self.pw - self.left - self.right - gap * (cols - 1) as f64)
+                            / cols as f64;
+                        col = 0;
+                    }
+                }
                 for (i, l) in ls.iter().enumerate() {
                     let y = l.n("vertpos");
-                    if last.is_some_and(|last| y < last) || (i == 0 && p.a("pageBreak") == "1") {
+                    if last.is_some_and(|last| y < last)
+                        || (last.is_some() && i == 0 && p.a("pageBreak") == "1")
+                    {
                         col += 1;
                         flow_shift = 0.;
                         if i == 0 && p.a("pageBreak") == "1" {

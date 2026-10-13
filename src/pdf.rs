@@ -9,7 +9,13 @@ use std::{
 
 #[derive(Clone, Debug, Serialize)]
 pub enum Op {
-    Path{points:Vec<(f64,f64)>,closed:bool,width:f64,color:[f64;3],fill:Option<[f64;3]>},
+    Path {
+        points: Vec<(f64, f64)>,
+        closed: bool,
+        width: f64,
+        color: [f64; 3],
+        fill: Option<[f64; 3]>,
+    },
     Text {
         x: f64,
         y: f64,
@@ -231,9 +237,34 @@ pub fn save(
         let mut content = String::new();
         for op in &page.ops {
             match op {
-                Op::Path{points,closed,width,color,fill}=>{
-                    if let Some((x,y))=points.first(){content.push_str(&format!("q {} {} {} RG {width:.4} w {x:.4} {:.4} m\n",color[0],color[1],color[2],page.height-y));for(x,y)in points.iter().skip(1){content.push_str(&format!("{x:.4} {:.4} l\n",page.height-y));}if *closed{content.push_str("h\n")}if let Some(f)=fill{content.push_str(&format!("{} {} {} rg B Q\n",f[0],f[1],f[2]));}else{content.push_str("S Q\n")}}
-                },
+                Op::Path {
+                    points,
+                    closed,
+                    width,
+                    color,
+                    fill,
+                } => {
+                    if let Some((x, y)) = points.first() {
+                        content.push_str(&format!(
+                            "q {} {} {} RG {width:.4} w {x:.4} {:.4} m\n",
+                            color[0],
+                            color[1],
+                            color[2],
+                            page.height - y
+                        ));
+                        for (x, y) in points.iter().skip(1) {
+                            content.push_str(&format!("{x:.4} {:.4} l\n", page.height - y));
+                        }
+                        if *closed {
+                            content.push_str("h\n")
+                        }
+                        if let Some(f) = fill {
+                            content.push_str(&format!("{} {} {} rg B Q\n", f[0], f[1], f[2]));
+                        } else {
+                            content.push_str("S Q\n")
+                        }
+                    }
+                }
                 Op::Text {
                     x,
                     y,

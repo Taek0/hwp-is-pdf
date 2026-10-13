@@ -12,6 +12,7 @@ flate2 = "1"
 cfb = "0.15"
 crc32fast = "1"
 aes = "0.8"
+hwp-legacy-chart = {path="vendor/legacy-chart"}
 ttf-parser = "0.25"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp"] }
 serde = { version = "1", features = ["derive"] }

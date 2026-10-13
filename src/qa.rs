@@ -14,6 +14,7 @@ pub struct Audit {
     pub border_crossings: Vec<Finding>,
     pub foreground_image_overlaps: Vec<Finding>,
     pub background_images_exempted: usize,
+    pub intentional_overlays_exempted: usize,
 }
 #[derive(Serialize, Debug)]
 pub struct Finding {
@@ -26,6 +27,100 @@ struct Ink {
     r: [f64; 4],
     base: f64,
     text: char,
+    font: usize,
+    glyph: ttf_parser::GlyphId,
+    x: f64,
+    unit: f64,
+    scale: f64,
+}
+#[derive(Default)]
+struct Outline {
+    paths: Vec<Vec<(f64, f64)>>,
+    current: Vec<(f64, f64)>,
+}
+impl ttf_parser::OutlineBuilder for Outline {
+    fn move_to(&mut self, x: f32, y: f32) {
+        if !self.current.is_empty() {
+            self.paths.push(std::mem::take(&mut self.current));
+        }
+        self.current.push((x as f64, y as f64));
+    }
+    fn line_to(&mut self, x: f32, y: f32) {
+        self.current.push((x as f64, y as f64));
+    }
+    fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
+        let (a, b) = *self.current.last().unwrap();
+        for i in 1..=12 {
+            let t = i as f64 / 12.;
+            let s = 1. - t;
+            self.current.push((
+                s * s * a + 2. * s * t * x1 as f64 + t * t * x as f64,
+                s * s * b + 2. * s * t * y1 as f64 + t * t * y as f64,
+            ));
+        }
+    }
+    fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
+        let (a, b) = *self.current.last().unwrap();
+        for i in 1..=16 {
+            let t = i as f64 / 16.;
+            let s = 1. - t;
+            self.current.push((
+                s * s * s * a
+                    + 3. * s * s * t * x1 as f64
+                    + 3. * s * t * t * x2 as f64
+                    + t * t * t * x as f64,
+                s * s * s * b
+                    + 3. * s * s * t * y1 as f64
+                    + 3. * s * t * t * y2 as f64
+                    + t * t * t * y as f64,
+            ));
+        }
+    }
+    fn close(&mut self) {
+        self.paths.push(std::mem::take(&mut self.current));
+    }
+}
+impl Outline {
+    fn contains(&self, x: f64, y: f64) -> bool {
+        let mut winding = 0;
+        for path in &self.paths {
+            for (i, &(a, b)) in path.iter().enumerate() {
+                let (c, d) = path[(i + 1) % path.len()];
+                let side = (c - a) * (y - b) - (x - a) * (d - b);
+                if b <= y && d > y && side > 0. {
+                    winding += 1
+                }
+                if b > y && d <= y && side < 0. {
+                    winding -= 1
+                }
+            }
+        }
+        winding != 0
+    }
+}
+fn ink_intersects(a: &Ink, b: &Ink, faces: &[ttf_parser::Face]) -> bool {
+    let mut aa = Outline::default();
+    let mut bb = Outline::default();
+    faces[a.font].outline_glyph(a.glyph, &mut aa);
+    faces[b.font].outline_glyph(b.glyph, &mut bb);
+    let x0 = a.r[0].max(b.r[0]);
+    let y0 = a.r[1].max(b.r[1]);
+    let w = a.r[2].min(b.r[2]) - x0;
+    let h = a.r[3].min(b.r[3]) - y0;
+    let nx = (w / 0.2).ceil().clamp(3., 60.) as usize;
+    let ny = (h / 0.2).ceil().clamp(3., 60.) as usize;
+    for i in 0..nx {
+        for j in 0..ny {
+            let x = x0 + (i as f64 + 0.5) * w / nx as f64;
+            let y = y0 + (j as f64 + 0.5) * h / ny as f64;
+            if aa.contains((x - a.x) / a.unit / a.scale, (a.base - y) / a.unit)
+                && bb.contains((x - b.x) / b.unit / b.scale, (b.base - y) / b.unit)
+            {
+                return true;
+            }
+        }
+    }
+    false
 }
 pub fn inspect(pages: &[Page], fonts: &Fonts, bounds: &[Bounds]) -> Audit {
     let faces: Vec<_> = fonts
@@ -35,6 +130,10 @@ pub fn inspect(pages: &[Page], fonts: &Fonts, bounds: &[Bounds]) -> Audit {
         .collect();
     let mut audit = Audit {
         background_images_exempted: bounds.iter().filter(|b| b.kind == "watermark").count(),
+        intentional_overlays_exempted: bounds
+            .iter()
+            .filter(|b| b.kind == "intentional-overlay")
+            .count(),
         ..Default::default()
     };
     for (pi, page) in pages.iter().enumerate() {
@@ -65,6 +164,11 @@ pub fn inspect(pages: &[Page], fonts: &Fonts, bounds: &[Bounds]) -> Audit {
                                 ],
                                 base: *y,
                                 text: c,
+                                font: *font,
+                                glyph: g,
+                                x,
+                                unit,
+                                scale: *scale,
                             });
                         }
                         x += face.glyph_hor_advance(g).unwrap_or(0) as f64 * unit * scale;
@@ -99,9 +203,21 @@ pub fn inspect(pages: &[Page], fonts: &Fonts, bounds: &[Bounds]) -> Audit {
                             let substantial_same_line = (g.base - b.base).abs() <= 2.
                                 && overlap_x > (x1 - x0).min(b.r[2] - b.r[0]) * 0.45
                                 && overlap_y > (y1 - y0).min(b.r[3] - b.r[1]) * 0.5;
+                            let intentional = bounds.iter().any(|o| {
+                                o.page == pi + 1
+                                    && o.kind == "intentional-overlay"
+                                    && x0 >= o.x - 1.
+                                    && x1 <= o.x + o.w + 1.
+                                    && y0 >= o.y - 1.
+                                    && y1 <= o.y + o.h + 1.
+                                    && b.r[0] >= o.x - 1.
+                                    && b.r[2] <= o.x + o.w + 1.
+                            });
                             if overlap_x > 0.6
                                 && overlap_y > 0.6
                                 && ((g.base - b.base).abs() > 2. || substantial_same_line)
+                                && !intentional
+                                && ink_intersects(g, b, &faces)
                             {
                                 audit.text_overlaps.push(finding(b.text.to_string()));
                             }

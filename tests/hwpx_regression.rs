@@ -24,6 +24,19 @@ fn supplied_math_document_has_complete_object_coverage_and_repaired_box() {
     assert_eq!(engine.report.pages, 9);
     assert_eq!(engine.report.equations, 249);
     assert_eq!(engine.report.pictures, 22);
+    let audit = hwp_engine::qa::inspect(&engine.pages, &engine.fonts, &engine.report.bounds);
+    assert!(
+        audit.border_crossings.is_empty(),
+        "{:?}",
+        audit.border_crossings
+    );
+    assert!(audit.text_overlaps.is_empty());
+    assert!(audit.outside_page.is_empty());
+    assert!(audit.foreground_image_overlaps.is_empty());
+    // PAPER-relative page borders use offsets from the physical page, not text margins.
+    assert!(engine.pages[0].ops.iter().any(|op| matches!(op,
+        hwp_engine::pdf::Op::Line{x,y,x2,y2,..}
+        if (*x-14.17).abs()<0.02 && (*y-14.17).abs()<0.02 && *x2>*x && (*y2-*y).abs()<0.01)));
     assert!(
         engine
             .report

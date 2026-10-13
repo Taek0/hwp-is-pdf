@@ -1,8 +1,11 @@
 //! 본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
-pub mod hwp;
+pub mod chart;
+mod decoration;
 pub mod distribution;
+pub mod hwp;
 pub mod layout;
 pub mod math;
+mod math_extra;
 pub mod model;
 pub mod pdf;
 pub mod qa;

@@ -1,4 +1,4 @@
-//! Small, explicit HWP equation-script subset. Unsupported commands are reported.
+//! HWP equation-script subset. Unrecognized text is preserved literally.
 use crate::pdf::{Fonts, Op};
 use anyhow::Result;
 #[derive(Default)]
@@ -8,7 +8,7 @@ pub struct MathBox {
     pub ascent: f64,
     pub descent: f64,
 }
-fn group(s: &str) -> (&str, &str) {
+pub(crate) fn group(s: &str) -> (&str, &str) {
     let s = s.trim_start();
     if !s.starts_with('{') {
         let end = s.find(char::is_whitespace).unwrap_or(s.len());
@@ -41,8 +41,21 @@ fn top_over(s: &str) -> Option<usize> {
     }
     None
 }
-fn moved(op: Op, dx: f64, dy: f64) -> Op {
+pub(crate) fn moved(op: Op, dx: f64, dy: f64) -> Op {
     match op {
+        Op::Path {
+            points,
+            closed,
+            width,
+            color,
+            fill,
+        } => Op::Path {
+            points: points.into_iter().map(|(x, y)| (x + dx, y + dy)).collect(),
+            closed,
+            width,
+            color,
+            fill,
+        },
         Op::Text {
             x,
             y,
@@ -79,6 +92,16 @@ fn moved(op: Op, dx: f64, dy: f64) -> Op {
     }
 }
 pub fn layout(script: &str, size: f64, fonts: &mut Fonts) -> Result<MathBox> {
+    anyhow::ensure!(script.len() <= 1_048_576, "Equation script exceeds 1 MiB");
+    layout_inner(script, size, fonts, 0)
+}
+pub(crate) fn layout_inner(
+    script: &str,
+    size: f64,
+    fonts: &mut Fonts,
+    depth: usize,
+) -> Result<MathBox> {
+    anyhow::ensure!(depth < 64, "Equation nesting exceeds 64 levels");
     let s = script.trim();
     let font = fonts.get("times.ttf")?;
     let mut result = MathBox {
@@ -94,8 +117,8 @@ pub fn layout(script: &str, size: f64, fonts: &mut Fonts) -> Result<MathBox> {
             left
         };
         let (den, rest) = group(&s[i + 4..]);
-        let n = layout(num, size * 0.85, fonts)?;
-        let d = layout(den, size * 0.85, fonts)?;
+        let n = layout_inner(num, size * 0.85, fonts, depth + 1)?;
+        let d = layout_inner(den, size * 0.85, fonts, depth + 1)?;
         let width = n.width.max(d.width) + size * 0.3;
         let nr = -(size * 0.3 + n.descent);
         let dr = size * 0.15 + d.ascent;
@@ -120,7 +143,7 @@ pub fn layout(script: &str, size: f64, fonts: &mut Fonts) -> Result<MathBox> {
         result.ascent = n.ascent - nr;
         result.descent = dr + d.descent;
         result.width = width;
-        let tail = layout(rest, size, fonts)?;
+        let tail = layout_inner(rest, size, fonts, depth + 1)?;
         result.ops.extend(
             tail.ops
                 .into_iter()
@@ -133,11 +156,21 @@ pub fn layout(script: &str, size: f64, fonts: &mut Fonts) -> Result<MathBox> {
     let mut bar = false;
     while p < s.len() {
         let tail = &s[p..];
+        if let Some((b, used)) = crate::math_extra::parse(tail, size, fonts, depth + 1)? {
+            result
+                .ops
+                .extend(b.ops.into_iter().map(|o| moved(o, result.width, 0.)));
+            result.width += b.width;
+            result.ascent = result.ascent.max(b.ascent);
+            result.descent = result.descent.max(b.descent);
+            p += used;
+            continue;
+        }
         if tail.starts_with('^') || tail.starts_with('_') {
             let up = tail.starts_with('^');
             let (g, rest) = group(&tail[1..]);
             let take = tail.len() - 1 - rest.len();
-            let child = layout(g, size * 0.65, fonts)?;
+            let child = layout_inner(g, size * 0.65, fonts, depth + 1)?;
             let dy = if up { -size * 0.55 } else { size * 0.28 };
             result
                 .ops
@@ -158,6 +191,25 @@ pub fn layout(script: &str, size: f64, fonts: &mut Fonts) -> Result<MathBox> {
             ("DEG", "°"),
             ("pi", "π"),
             ("bar", ""),
+            ("sum", "∑"),
+            ("SUM", "∑"),
+            ("prod", "∏"),
+            ("PROD", "∏"),
+            ("oint", "∮"),
+            ("int", "∫"),
+            ("INT", "∫"),
+            ("inf", "∞"),
+            ("alpha", "α"),
+            ("beta", "β"),
+            ("gamma", "γ"),
+            ("theta", "θ"),
+            ("lambda", "λ"),
+            ("omega", "ω"),
+            ("times", "×"),
+            ("cdot", "·"),
+            ("leq", "≤"),
+            ("geq", "≥"),
+            ("neq", "≠"),
         ] {
             if tail.starts_with(key) {
                 if key == "bar" {
@@ -241,6 +293,22 @@ pub fn place(b: MathBox, x: f64, baseline: f64, w: f64, h: f64) -> Vec<Op> {
     b.ops
         .into_iter()
         .map(|op| match op {
+            Op::Path {
+                points,
+                closed,
+                width,
+                color,
+                fill,
+            } => Op::Path {
+                points: points
+                    .into_iter()
+                    .map(|(xx, yy)| (x + xx * sx, baseline + yy * sy))
+                    .collect(),
+                closed,
+                width,
+                color,
+                fill,
+            },
             Op::Text {
                 x: xx,
                 y,
