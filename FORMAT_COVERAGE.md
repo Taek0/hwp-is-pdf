@@ -376,3 +376,35 @@ counts are preserved. Generated fixtures are derived from our existing controlle
 mixed-table fixture, not Hancom reference exports.
 Generator: `examples/mixed_reflow_fixture.rs`; tests: `tests/reflow_mixed.rs`.
 Local report: `output/reflow-mixed/SUMMARY.html`.
+
+## List-paragraph reflow (2026-10-14)
+
+Numbered/bulleted paragraphs are now accepted in supported reflow sections. Label
+resolution is shared by the planner and renderer, so planning/repeated measurement
+and page continuation do not increment a label twice. Decimal ^level templates,
+definition/level start values, hierarchical child-counter reset, literal character
+bullets, label font metrics/scaling, HWPUNIT/percent text offsets and HWPX bullet
+paraHead properties are handled. Body lines use a common hanging position derived
+from paragraph margins/indent and the measured label width. Large label ink also
+contributes to first-line height. Default cached rendering retains prior behavior.
+
+Scope: decimal templates and character bullets; other numbering formats, explicit
+restart controls, label alignment/width adjustment, image bullets and exact Hancom
+auto-indent rules need further coverage. Missing definitions, image-only/empty
+bullets and list items starting with block objects explicitly fail in reflow.
+The prior mixed-content constraints (multicolumn tables, float wrapping, equations,
+endnotes and mid-section column changes) remain.
+
+Validation adds hierarchy 98.1/98.2/99.1, 99-to-100 width changes, page-spanning
+bullets, hanging positions, large labels, nested HWPX bullet properties, missing
+definitions and source-character preservation. Public footnote-01.hwp now reflows
+successfully (8 pages versus 6 using its saved layout), including its source text
+and all four geometry QA classes. Different pagination is not a Hancom-fidelity
+claim. Generated list fixture: 5 pages, zero geometry findings. See
+examples/list_reflow_fixture.rs and tests/reflow_lists.rs. Local validation report:
+output/reflow-lists/SUMMARY.html.
+
+All 71 Rust tests and all-target Clippy pass. All 43 prior documents / 210 pages
+retain source hashes, page/object counts and pixel-identical default output,
+with zero geometry findings. Earlier increment sections above are historical;
+this list increment supersedes their numbered/bulleted-paragraph restriction.
