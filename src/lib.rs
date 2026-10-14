@@ -8,6 +8,7 @@ pub mod layout;
 pub mod math;
 mod math_extra;
 pub mod model;
+mod pagination;
 pub mod pdf;
 pub mod qa;
 

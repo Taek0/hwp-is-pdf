@@ -1,7 +1,64 @@
 //! Hancom character underline styles (format table 25/30).
 use crate::pdf::Op;
+/// HWPX names are not HWP binary enum integers (notably DASH/DOT).
+pub fn style(node: &crate::model::Node) -> Option<usize> {
+    if !node.a("shape").is_empty() {
+        return match node.a("shape") {
+            "SOLID" => Some(0),
+            "DASH" => Some(1),
+            "DOT" => Some(2),
+            "DASH_DOT" => Some(3),
+            "DASH_DOT_DOT" => Some(4),
+            "LONG_DASH" => Some(5),
+            "CIRCLE" => Some(6),
+            "DOUBLE_SLIM" => Some(7),
+            "SLIM_THICK" => Some(8),
+            "THICK_SLIM" => Some(9),
+            "SLIM_THICK_SLIM" => Some(10),
+            "WAVE" => Some(11),
+            "DOUBLEWAVE" => Some(12),
+            _ => None,
+        };
+    }
+    let s = node.a("style").parse::<usize>().ok()?;
+    (s <= 12).then_some(s)
+}
 pub fn underline(x: f64, end: f64, y: f64, style: usize, color: [f64; 3]) -> Vec<Op> {
     let mut out = Vec::new();
+    if style == 11 || style == 12 {
+        for offset in if style == 12 {
+            &[0., 2.4][..]
+        } else {
+            &[0.][..]
+        } {
+            let mut segments = Vec::new();
+            let mut at = x;
+            let mut direction = -1.;
+            while at < end {
+                let next = (at + 2.).min(end);
+                let amplitude = (next - at) * 0.55 * direction;
+                segments.push([
+                    at + (next - at) / 3.,
+                    y + offset + amplitude,
+                    next - (next - at) / 3.,
+                    y + offset + amplitude,
+                    next,
+                    y + offset,
+                ]);
+                at = next;
+                direction = -direction;
+            }
+            out.push(Op::Bezier {
+                start: (x, y + offset),
+                segments,
+                closed: false,
+                width: 0.45,
+                color,
+                fill: None,
+            });
+        }
+        return out;
+    }
     let mut stroke = |a, b, yy, width| {
         out.push(Op::Path {
             points: vec![(a, yy), (b, yy)],

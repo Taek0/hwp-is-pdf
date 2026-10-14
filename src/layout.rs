@@ -54,10 +54,14 @@ fn flowing_lines(list: &Node) -> Vec<(&Node, usize, f64)> {
     let mut shift = 0.;
     let mut last = None;
     let mut end = 0.;
+    let mut previous_text = false;
     for p in list.children_named("p") {
+        let has_text = !text(p).trim().is_empty();
         for (i, l) in lines(p).iter().enumerate() {
             let y = l.n("vertpos") / 100.;
-            if last.is_some_and(|last| y < last) {
+            if last
+                .is_some_and(|last| y < last || (i == 0 && y == last && has_text && previous_text))
+            {
                 shift = end - y;
             }
             let actual = y + shift;
@@ -65,6 +69,7 @@ fn flowing_lines(list: &Node) -> Vec<(&Node, usize, f64)> {
             end = actual + (l.n("vertsize") + l.n("spacing")) / 100.;
             last = Some(y);
         }
+        previous_text = has_text;
     }
     out
 }
@@ -80,7 +85,15 @@ fn effective_height(n: &Node) -> f64 {
                 })
             })
             .unwrap_or(0.);
-        declared.max(val(n.child("curSz"), "height")).max(text)
+        let current = if n
+            .child("rotationInfo")
+            .is_some_and(|r| r.n("angle").rem_euclid(360.).abs() > 0.001)
+        {
+            declared
+        } else {
+            val(n.child("curSz"), "height")
+        };
+        declared.max(current).max(text)
     } else {
         declared
     }
@@ -181,7 +194,19 @@ struct Glyph {
     descent: f64,
     ink_left: f64,
     ink_right: f64,
+    shift: f64,
+    shear: f64,
+    raw_ascent: f64,
+    raw_descent: f64,
 }
+type ContinuedNoteRows = BTreeMap<
+    i64,
+    (
+        f64,
+        f64,
+        std::collections::VecDeque<(Node, usize, f64, String)>,
+    ),
+>;
 #[derive(Serialize)]
 pub struct Bounds {
     pub page: usize,
@@ -202,6 +227,20 @@ pub struct Report {
     pub warnings: BTreeSet<String>,
     pub bounds: Vec<Bounds>,
 }
+struct TableHeaderPaint {
+    y: f64,
+    height: f64,
+    end: f64,
+    ops: Vec<Op>,
+}
+struct PlannedTableNote {
+    node: Node,
+    x: f64,
+    width: f64,
+    y: f64,
+    top: f64,
+    op_index: usize,
+}
 pub struct Engine<'a> {
     pub doc: &'a Document,
     pub fonts: Fonts,
@@ -218,12 +257,23 @@ pub struct Engine<'a> {
     current: Page,
     notes: Vec<Node>,
     footnotes: Vec<(Node, f64, f64)>,
+    continued_notes: ContinuedNoteRows,
+    draining_notes: bool,
+    capture_table_headers: bool,
+    table_headers: Vec<TableHeaderPaint>,
+    table_note_anchors: Vec<PlannedTableNote>,
+    split_caption_handled: bool,
     depth: usize,
     glyph_cache: BTreeMap<(char, String), Glyph>,
     active_section: usize,
     page_base: i64,
     numbering: BTreeMap<(String, usize), usize>,
     labels: BTreeMap<(usize, String), String>,
+    note_rendering: bool,
+    active_columns: usize,
+    active_gap: f64,
+    last_table_end: f64,
+    flow_floor: Option<(usize, f64, bool)>,
 }
 impl<'a> Engine<'a> {
     pub fn new(doc: &'a Document, fonts: &Path) -> Self {
@@ -243,16 +293,280 @@ impl<'a> Engine<'a> {
             current: Page::default(),
             notes: Vec::new(),
             footnotes: Vec::new(),
+            continued_notes: BTreeMap::new(),
+            draining_notes: false,
+            capture_table_headers: false,
+            table_headers: Vec::new(),
+            table_note_anchors: Vec::new(),
+            split_caption_handled: false,
             depth: 0,
             glyph_cache: BTreeMap::new(),
             active_section: 0,
             page_base: 1,
             numbering: BTreeMap::new(),
             labels: BTreeMap::new(),
+            note_rendering: false,
+            active_columns: 1,
+            active_gap: 0.,
+            last_table_end: 0.,
+            flow_floor: None,
         }
     }
+    fn note_spec(&self, end: bool) -> Option<&Node> {
+        self.doc.sections[self.active_section]
+            .find("secPr")
+            .and_then(|s| s.child(if end { "endNotePr" } else { "footNotePr" }))
+    }
+    fn note_gap(&self, end: bool, key: &str, default: f64) -> f64 {
+        self.note_spec(end)
+            .and_then(|s| s.child("noteSpacing"))
+            .map(|s| s.n(key) / 100.)
+            .unwrap_or(default)
+    }
+    fn note_label(&self, n: &Node, end: bool) -> String {
+        let number = if n.a("number").is_empty() {
+            n.find("autoNum").map(|a| a.u("num")).unwrap_or(1)
+        } else {
+            n.u("number")
+        };
+        let format = self.note_spec(end).and_then(|s| s.child("autoNumFormat"));
+        format!(
+            "{}{}{}",
+            format.map(|f| f.a("prefixChar")).unwrap_or(""),
+            number,
+            format.map(|f| f.a("suffixChar")).unwrap_or(")")
+        )
+    }
+    fn auto_label(&self, n: &Node) -> String {
+        let number = if n.a("numType") == "PAGE" {
+            (self.pages.len() as i64 + self.page_base).max(1) as usize
+        } else {
+            n.u("num")
+        };
+        let f = n.child("autoNumFormat");
+        if matches!(n.a("numType"), "FOOTNOTE" | "ENDNOTE") {
+            format!(
+                "{}{}{}",
+                f.map(|f| f.a("prefixChar")).unwrap_or(""),
+                number,
+                f.map(|f| f.a("suffixChar")).unwrap_or(")")
+            )
+        } else {
+            number.to_string()
+        }
+    }
+    fn footnote_area(&self, x: f64) -> (f64, f64) {
+        let count = self.active_columns.max(1);
+        let width = (self.pw - self.left - self.right - self.active_gap * (count - 1) as f64)
+            / count as f64;
+        let placement = self
+            .note_spec(false)
+            .and_then(|s| s.child("placement"))
+            .map(|p| p.a("place"))
+            .unwrap_or("EACH_COLUMN");
+        if placement == "MERGED_COLUMN" {
+            return (self.left, self.pw - self.left - self.right);
+        }
+        let col = if placement == "RIGHT_MOST_COLUMN" {
+            count - 1
+        } else {
+            ((x - self.left) / (width + self.active_gap))
+                .floor()
+                .max(0.) as usize
+        }
+        .min(count - 1);
+        (self.left + col as f64 * (width + self.active_gap), width)
+    }
+    fn footnote_reservation(&self, extra: &[&Node], x: f64) -> f64 {
+        let (nx, _) = self.footnote_area(x);
+        let mut count = 0;
+        let mut h = 0.;
+        let pending = self.continued_notes.get(&((nx * 100.).round() as i64));
+        if let Some((_, _, rows)) = pending {
+            h += rows.iter().map(|r| r.2).sum::<f64>();
+            count += 1;
+        }
+        for (n, xx, _) in &self.footnotes {
+            if (nx - xx).abs() < 0.1
+                && let Some(l) = n.child("subList")
+            {
+                h += content_height(l);
+                count += 1;
+            }
+        }
+        for n in extra {
+            if let Some(l) = n.child("subList") {
+                h += content_height(l);
+                count += 1;
+            }
+        }
+        if count == 0 {
+            return 0.;
+        }
+        let full = h
+            + self.note_gap(false, "betweenNotes", 4.) * (count - 1) as f64
+            + self.note_gap(false, "aboveLine", 6.)
+            + self.note_gap(false, "belowLine", 4.)
+            + 1.;
+        let body = self.ph - self.top - self.bottom;
+        if pending.is_some() {
+            full.min(body * 0.5)
+        } else if full > body - 48. {
+            body * 0.5
+        } else {
+            full
+        }
+    }
+    fn note_separator(&mut self, end: bool, x: f64, y: f64, width: f64) {
+        let line = self.note_spec(end).and_then(|s| s.child("noteLine"));
+        if line.is_some_and(|l| l.a("type") == "NONE" || l.n("length") == 0.) {
+            return;
+        }
+        let length = line.map(|l| l.n("length")).unwrap_or(-1.);
+        let length = if length < 0. {
+            width / 3.
+        } else {
+            (length / 100.).min(width)
+        };
+        let thickness = line
+            .map(|l| {
+                if l.a("width").ends_with("mm") {
+                    l.a("width")
+                        .trim_end_matches("mm")
+                        .trim()
+                        .parse::<f64>()
+                        .unwrap_or(0.12)
+                        * 72.
+                        / 25.4
+                } else {
+                    [
+                        0.1, 0.12, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 1., 1.5, 2., 3., 4.,
+                        5.,
+                    ][l.u("widthIndex").min(15)]
+                        * 72.
+                        / 25.4
+                }
+            })
+            .unwrap_or(0.34);
+        let c = color(line.map(|l| l.a("color")).unwrap_or("#000000"));
+        self.current.ops.push(Op::Line {
+            x,
+            y,
+            x2: x + length,
+            y2: y,
+            width: thickness,
+            color: c,
+        });
+    }
+    fn next_note_column(&mut self, col: &mut usize, y: &mut f64, gap: f64) -> Result<()> {
+        *col += 1;
+        if *col >= self.active_columns.max(1) {
+            self.finish()?;
+            *col = 0;
+            let section = &self.doc.sections[self.active_section];
+            self.decorations(section, false, self.active_columns, gap)?;
+        }
+        *y = self.top;
+        Ok(())
+    }
+    fn render_endnotes(
+        &mut self,
+        start: (f64, usize, f64, f64),
+        section_only: Option<usize>,
+    ) -> Result<()> {
+        let (notes, pending): (Vec<_>, Vec<_>) = std::mem::take(&mut self.notes)
+            .into_iter()
+            .partition(|n| section_only.is_none_or(|s| n.u("sourceSection") == s));
+        self.notes = pending;
+        if notes.is_empty() {
+            return Ok(());
+        }
+        let (mut y, mut col, width, gap) = start;
+        let above = self.note_gap(true, "aboveLine", 0.);
+        let below = self.note_gap(true, "belowLine", 0.);
+        let between = self.note_gap(true, "betweenNotes", 8.);
+        let mut separator = true;
+        self.note_rendering = true;
+        for n in notes {
+            if let Some(list) = n.child("subList") {
+                let h = content_height(list);
+                if y + h + if separator { above + below + 1. } else { 0. } > self.ph - self.bottom
+                    && y > self.top + 0.1
+                {
+                    self.next_note_column(&mut col, &mut y, gap)?;
+                    self.note_rendering = true;
+                    separator = true;
+                }
+                if separator {
+                    self.note_separator(
+                        true,
+                        self.left + col as f64 * (width + gap),
+                        y + above,
+                        width,
+                    );
+                    y += above + below + 1.;
+                    separator = false;
+                }
+                let x = self.left + col as f64 * (width + gap);
+                if y + h <= self.ph - self.bottom {
+                    self.report.bounds.push(Bounds {
+                        page: self.pages.len() + 1,
+                        kind: "endnote".into(),
+                        id: n.a("number").into(),
+                        x,
+                        y,
+                        w: width,
+                        h,
+                    });
+                    self.local(list, x, y, width)?;
+                    y += h + between;
+                } else {
+                    let mut previous = 0.;
+                    self.depth += 1;
+                    for (p, i, yy) in flowing_lines(list) {
+                        let line = lines(p)[i];
+                        let height = line.n("vertsize") / 100.;
+                        y += (yy - previous).max(0.);
+                        if y + height > self.ph - self.bottom {
+                            self.next_note_column(&mut col, &mut y, gap)?;
+                            self.note_rendering = true;
+                            self.note_separator(
+                                true,
+                                self.left + col as f64 * (width + gap),
+                                y + above,
+                                width,
+                            );
+                            y += above + below + 1.;
+                        }
+                        self.line(
+                            p,
+                            i,
+                            self.left + col as f64 * (width + gap),
+                            y - line.n("vertpos") / 100.,
+                            width,
+                        )?;
+                        y += height;
+                        previous = yy + height;
+                    }
+                    self.depth -= 1;
+                    y += between;
+                }
+            }
+        }
+        self.note_rendering = false;
+        self.report.warnings.insert("Endnotes follow saved lines with configured spacing and column count; exact Hancom pagination remains unverified".into());
+        Ok(())
+    }
     fn glyph(&mut self, c: char, style: &str) -> Result<Glyph> {
-        let key = (c, style.to_string());
+        self.glyph_with_font(c, style, None)
+    }
+    fn glyph_with_font(
+        &mut self,
+        c: char,
+        style: &str,
+        override_font: Option<&str>,
+    ) -> Result<Glyph> {
+        let key = (c, format!("{style}\0{}", override_font.unwrap_or("")));
         if let Some(g) = self.glyph_cache.get(&key) {
             return Ok(g.clone());
         }
@@ -268,11 +582,26 @@ impl<'a> Engine<'a> {
             .map(String::as_str)
             .unwrap_or("unknown");
         let bold = ch.child("bold").is_some();
+        let italic = ch.child("italic").is_some();
         let serif = name.contains("명조") || name.contains("바탕") || name.contains("Times");
-        let file = if latin && serif {
-            if bold { "timesbd.ttf" } else { "times.ttf" }
+        let file = if name.eq_ignore_ascii_case("Wingdings") {
+            "wingding.ttf"
+        } else if name.eq_ignore_ascii_case("Symbol") {
+            "symbol.ttf"
+        } else if latin && serif {
+            match (bold, italic) {
+                (true, true) => "timesbi.ttf",
+                (false, true) => "timesi.ttf",
+                (true, false) => "timesbd.ttf",
+                _ => "times.ttf",
+            }
         } else if latin {
-            if bold { "arialbd.ttf" } else { "arial.ttf" }
+            match (bold, italic) {
+                (true, true) => "arialbi.ttf",
+                (false, true) => "ariali.ttf",
+                (true, false) => "arialbd.ttf",
+                _ => "arial.ttf",
+            }
         } else if serif {
             "batang.ttc"
         } else if bold {
@@ -280,6 +609,7 @@ impl<'a> Engine<'a> {
         } else {
             "malgun.ttf"
         };
+        let file = override_font.unwrap_or(file);
         self.report
             .warnings
             .insert(format!("Font substitution: {name} -> {file}"));
@@ -301,8 +631,32 @@ impl<'a> Engine<'a> {
                     .insert(format!("Missing glyph U+{:04X}", c as u32));
             }
         }
-        let size =
+        let nominal_size =
             ch.n("height") / 100. * ch.child("relSz").map(|n| n.n(lang) / 100.).unwrap_or(1.);
+        let superscript = ch.child("supscript").is_some();
+        let subscript = ch.child("subscript").is_some();
+        let script_scale = if superscript || subscript { 0.65 } else { 1. };
+        let size = nominal_size * script_scale;
+        let offset_lang = match c as u32 {
+            0x3040..=0x30ff | 0x31f0..=0x31ff => "japanese",
+            0x3400..=0x9fff | 0xf900..=0xfaff | 0x20000..=0x323af => "hanja",
+            0x1100..=0x11ff | 0x3130..=0x318f | 0xa960..=0xa97f | 0xac00..=0xd7ff => "hangul",
+            0..=0x024f => "latin",
+            _ => "other",
+        };
+        let offset = ch.child("offset").map(|n| n.n(offset_lang)).unwrap_or(0.);
+        let shift = nominal_size
+            * (offset / 100.
+                + if superscript {
+                    -0.35
+                } else if subscript {
+                    0.15
+                } else {
+                    0.
+                });
+        if superscript || subscript {
+            self.report.warnings.insert("Superscript/subscript use 65% size and nominal-font baseline shifts; exact Hancom metrics unverified".into());
+        }
         let scale = ch.child("ratio").map(|n| n.n(lang) / 100.).unwrap_or(1.);
         let spacing = ch
             .child("spacing")
@@ -310,9 +664,15 @@ impl<'a> Engine<'a> {
             .unwrap_or(0.);
         let width = self.fonts.width(font, &c.to_string(), size) * scale + spacing;
         let face = ttf_parser::Face::parse(&self.fonts.list[font].bytes, 0).unwrap();
-        let bb = face
-            .glyph_index(c)
-            .and_then(|id| face.glyph_bounding_box(id));
+        let shear = if italic && !face.is_italic() {
+            12f64.to_radians().tan()
+        } else {
+            0.
+        };
+        if shear != 0. {
+            self.report.warnings.insert("Italic without native italic face uses 12-degree synthetic slant; exact Hancom angle unverified".into());
+        }
+        let bb = crate::pdf::glyph_id(&face, c).and_then(|id| face.glyph_bounding_box(id));
         let unit = size / face.units_per_em() as f64;
         let glyph = Glyph {
             font,
@@ -320,10 +680,18 @@ impl<'a> Engine<'a> {
             scale,
             width,
             color: color(ch.a("textColor")),
-            ascent: bb.map(|b| b.y_max as f64 * unit).unwrap_or(0.),
-            descent: bb.map(|b| (-b.y_min as f64 * unit).max(0.)).unwrap_or(0.),
-            ink_left: bb.map(|b| b.x_min as f64 * unit * scale).unwrap_or(0.),
-            ink_right: bb.map(|b| b.x_max as f64 * unit * scale).unwrap_or(0.),
+            ascent: (bb.map(|b| b.y_max as f64 * unit).unwrap_or(0.) - shift).max(0.),
+            descent: (bb.map(|b| -b.y_min as f64 * unit).unwrap_or(0.) + shift).max(0.),
+            ink_left: bb
+                .map(|b| (b.x_min as f64 * scale + shear * b.y_min as f64) * unit)
+                .unwrap_or(0.),
+            ink_right: bb
+                .map(|b| (b.x_max as f64 * scale + shear * b.y_max as f64) * unit)
+                .unwrap_or(0.),
+            shift,
+            shear,
+            raw_ascent: bb.map(|b| b.y_max as f64 * unit).unwrap_or(0.),
+            raw_descent: bb.map(|b| (-b.y_min as f64 * unit).max(0.)).unwrap_or(0.),
         };
         self.glyph_cache.insert(key, glyph.clone());
         Ok(glyph)
@@ -417,7 +785,7 @@ impl<'a> Engine<'a> {
             .into_iter()
             .filter(|i| i.pos >= start && i.pos < end)
             .collect();
-        let line_y = oy + seg.n("vertpos") / 100.;
+        let mut line_y = oy + seg.n("vertpos") / 100.;
         let mut base = line_y + seg.n("baseline") / 100.;
         let mut x = ox + seg.n("horzpos") / 100.;
         let mut avail = if seg.n("horzsize") > 0. {
@@ -499,7 +867,18 @@ impl<'a> Engine<'a> {
                 } else {
                     fallback
                 };
-                let g = self.glyph(label.chars().next().unwrap_or('1'), style)?;
+                let first = label.chars().next().unwrap_or('1');
+                let legacy_symbol = bullet
+                    && !self.doc.chars.contains_key(head.a("charPrIDRef"))
+                    && ('\u{f020}'..='\u{f0ff}').contains(&first)
+                    && self.fonts.root.join("wingding.ttf").exists();
+                if legacy_symbol {
+                    self.report.warnings.insert(
+                        "Unassigned legacy symbol bullet font: using Wingdings cmap".into(),
+                    );
+                }
+                let g =
+                    self.glyph_with_font(first, style, legacy_symbol.then_some("wingding.ttf"))?;
                 let nw = self.fonts.width(g.font, &label, g.size);
                 let offset = if head.a("textOffsetType") == "PERCENT" {
                     g.size * head.n("textOffset") / 100.
@@ -546,6 +925,19 @@ impl<'a> Engine<'a> {
                     let width = self.fonts.width(g.font, n.a("main"), g.size);
                     (Some(g), width)
                 }
+                ItemKind::Control(n)
+                    if n.name == "footNote" || (n.name == "endNote" && number_draw.is_none()) =>
+                {
+                    let g = self.glyph('1', &i.style)?;
+                    let label = self.note_label(n, n.name == "endNote");
+                    let w = self.fonts.width(g.font, &label, g.size * 0.6);
+                    (Some(g), w)
+                }
+                ItemKind::Control(n) if n.name == "autoNum" => {
+                    let g = self.glyph('1', &i.style)?;
+                    let w = self.fonts.width(g.font, &self.auto_label(n), g.size) * g.scale;
+                    (Some(g), w)
+                }
                 ItemKind::Control(_) => (None, 0.),
             };
             gs.push(g);
@@ -563,7 +955,7 @@ impl<'a> Engine<'a> {
         }
         let mut total: f64 = widths.iter().sum();
         if self.doc.header.a("binaryHwp") == "1" {
-            base = base.max(line_y + gs.iter().flatten().map(|g| g.ascent).fold(0., f64::max));
+            base = base.max(line_y + gs.iter().flatten().map(|g| g.raw_ascent).fold(0., f64::max));
         }
         if total > avail && !its.iter().any(|i| matches!(i.kind, ItemKind::Tab(_))) {
             let fixed: f64 = widths
@@ -617,20 +1009,48 @@ impl<'a> Engine<'a> {
         }
         let origin = x;
         let mut caption_cursor = line_y;
-        let mut underlines: Vec<(String, f64, f64, f64, f64)> = Vec::new();
+        let mut underlines: Vec<(String, f64, f64, f64, f64, f64)> = Vec::new();
+        let mut strikes: Vec<(String, f64, f64, f64, f64)> = Vec::new();
         for (idx, it) in its.iter().enumerate() {
             match &it.kind {
                 ItemKind::Char(c) => {
                     let g = gs[idx].as_ref().unwrap();
+                    if self
+                        .doc
+                        .chars
+                        .get(&it.style)
+                        .and_then(|s| s.child("strikeout"))
+                        .and_then(crate::decoration::style)
+                        .is_some()
+                    {
+                        let end = x + widths[idx] + gap;
+                        if let Some(span) = strikes.last_mut().filter(|s| {
+                            s.0 == it.style
+                                && (s.2 - x).abs() < 0.01
+                                && (s.4 - g.shift).abs() < 0.01
+                        }) {
+                            span.2 = end;
+                        } else {
+                            strikes.push((it.style.clone(), x, end, g.size, g.shift));
+                        }
+                    }
+                    if g.shear != 0. {
+                        self.current.ops.push(Op::TransformBegin {
+                            matrix: [1., 0., -g.shear, 1., g.shear * (base + g.shift), 0.],
+                        });
+                    }
                     self.current.ops.push(Op::Text {
                         x,
-                        y: base,
+                        y: base + g.shift,
                         text: c.to_string(),
                         font: g.font,
                         size: g.size,
                         scale: g.scale,
                         color: g.color,
                     });
+                    if g.shear != 0. {
+                        self.current.ops.push(Op::TransformEnd);
+                    }
                     if self
                         .doc
                         .chars
@@ -640,14 +1060,22 @@ impl<'a> Engine<'a> {
                         .is_some()
                     {
                         let end = x + widths[idx] + gap;
-                        if let Some(span) = underlines
-                            .last_mut()
-                            .filter(|s| s.0 == it.style && (s.2 - x).abs() < 0.01)
-                        {
+                        if let Some(span) = underlines.last_mut().filter(|s| {
+                            s.0 == it.style
+                                && (s.2 - x).abs() < 0.01
+                                && (s.5 - g.shift).abs() < 0.01
+                        }) {
                             span.2 = end;
-                            span.4 = span.4.max(g.descent);
+                            span.4 = span.4.max(g.raw_descent);
                         } else {
-                            underlines.push((it.style.clone(), x, end, g.size, g.descent));
+                            underlines.push((
+                                it.style.clone(),
+                                x,
+                                end,
+                                g.size,
+                                g.raw_descent,
+                                g.shift,
+                            ));
                         }
                     }
                     x += widths[idx]
@@ -664,6 +1092,7 @@ impl<'a> Engine<'a> {
                 }
                 ItemKind::Object(n) => {
                     let pos = n.child("pos");
+                    let object_start_page = self.pages.len();
                     let block = n.a("textWrap") == "TOP_AND_BOTTOM"
                         && pos.is_some_and(|p| {
                             p.a("treatAsChar") != "1" && p.a("vertRelTo") == "PARA"
@@ -694,6 +1123,25 @@ impl<'a> Engine<'a> {
                         object_y -= effective_height(n) + margin(n, "outMargin")[3];
                     }
                     self.object(n, ox, object_y, base, x, width)?;
+                    if n.name == "tbl"
+                        && self.pages.len() > object_start_page
+                        && its[idx + 1..]
+                            .iter()
+                            .any(|i| matches!(i.kind,ItemKind::Char(c) if !c.is_whitespace()))
+                    {
+                        line_y = self.last_table_end;
+                        let reserve = self.footnote_reservation(&[], ox);
+                        if line_y + seg.n("vertsize") / 100. > self.ph - self.bottom - reserve {
+                            self.finish()?;
+                            let s = &self.doc.sections[self.active_section];
+                            self.decorations(s, false, self.active_columns, self.active_gap)?;
+                            line_y = self.top;
+                        }
+                        base = line_y + seg.n("baseline") / 100.;
+                        x = ox + seg.n("horzpos") / 100.;
+                        self.flow_floor =
+                            Some((self.pages.len(), line_y + seg.n("vertsize") / 100., true));
+                    }
                     x += widths[idx];
                 }
                 ItemKind::Control(n) => match n.name.as_str() {
@@ -791,57 +1239,98 @@ impl<'a> Engine<'a> {
                         });
                         x += w;
                     }
-                    "footNote" => {
-                        let g = self.glyph('1', &it.style)?;
-                        self.current.ops.push(Op::Text {
-                            x,
-                            y: base - g.size * 0.35,
-                            text: format!("{})", n.a("number")),
-                            font: g.font,
-                            size: g.size * 0.6,
-                            scale: 1.,
-                            color: g.color,
-                        });
-                        x += g.size * 0.6;
-                        self.footnotes.push((n.clone(), ox, width));
+                    "footNote" | "endNote" => {
+                        let end = n.name == "endNote";
+                        let mut note_top = base;
+                        if !end || number_draw.is_none() {
+                            let g = gs[idx].as_ref().unwrap();
+                            note_top = base - g.size * 1.2;
+                            self.current.ops.push(Op::Text {
+                                x,
+                                y: base - g.size * 0.35,
+                                text: self.note_label(n, end),
+                                font: g.font,
+                                size: g.size * 0.6,
+                                scale: 1.,
+                                color: g.color,
+                            });
+                            x += widths[idx];
+                        }
+                        if !self.note_rendering {
+                            if end {
+                                let mut note = n.clone();
+                                note.attrs.insert(
+                                    "sourceSection".into(),
+                                    self.active_section.to_string(),
+                                );
+                                self.notes.push(note);
+                            } else {
+                                let (nx, nw) = self.footnote_area(ox);
+                                if self.capture_table_headers {
+                                    self.table_note_anchors.push(PlannedTableNote {
+                                        node: n.clone(),
+                                        x: nx,
+                                        width: nw,
+                                        y: base,
+                                        top: note_top,
+                                        op_index: self.current.ops.len() - 1,
+                                    });
+                                } else {
+                                    self.footnotes.push((n.clone(), nx, nw));
+                                }
+                            }
+                        }
                     }
                     "autoNum" => {
-                        let num = if n.a("numType") == "PAGE" {
-                            (self.pages.len() as i64 + self.page_base).max(1) as usize
-                        } else {
-                            n.u("num")
-                        };
-                        let g = self.glyph('1', &it.style)?;
+                        let num = self.auto_label(n);
+                        let g = gs[idx].as_ref().unwrap();
                         self.current.ops.push(Op::Text {
                             x,
                             y: base,
-                            text: num.to_string(),
+                            text: num,
                             font: g.font,
                             size: g.size,
                             scale: g.scale,
                             color: g.color,
                         });
-                        x += self.fonts.width(g.font, &num.to_string(), g.size);
-                    }
-                    "endNote" if self.depth == 0 => {
-                        self.notes.push(n.clone());
+                        x += widths[idx];
                     }
                     _ => {}
                 },
             }
         }
-        for (style, x1, x2, size, descent) in underlines {
+        for (style, x1, x2, size, descent, shift) in underlines {
             let def = self.doc.chars[&style].child("underline").unwrap();
+            let Some(line_style) = crate::decoration::style(def) else {
+                if def.a("shape") != "NONE" {
+                    self.report.warnings.insert(format!(
+                        "Unsupported underline shape: {} {}",
+                        def.a("shape"),
+                        def.a("style")
+                    ));
+                }
+                continue;
+            };
             let y = if def.a("type") == "TOP" {
-                base - size
+                base + shift - size
             } else {
-                base + descent + 0.9
+                base + shift + descent + 0.9
             };
             self.current.ops.extend(crate::decoration::underline(
                 x1,
                 x2,
                 y,
-                def.u("style"),
+                line_style,
+                color(def.a("color")),
+            ));
+        }
+        for (style, x1, x2, size, shift) in strikes {
+            let def = self.doc.chars[&style].child("strikeout").unwrap();
+            self.current.ops.extend(crate::decoration::underline(
+                x1,
+                x2,
+                base + shift - size * 0.3,
+                crate::decoration::style(def).unwrap(),
                 color(def.a("color")),
             ));
         }
@@ -872,35 +1361,51 @@ impl<'a> Engine<'a> {
         if self.depth > 64 {
             bail!("Excessive nested layout")
         }
-        for (p, i, flow_y) in flowing_lines(list) {
+        for (p, i, flow_y, _) in self.measured_flow(list)? {
             self.line(p, i, x, y + flow_y - lines(p)[i].n("vertpos") / 100., w)?;
         }
         self.depth -= 1;
         Ok(())
     }
     fn measured_height(&mut self, list: &Node) -> Result<f64> {
-        let mut height = content_height(list);
-        for p in list.children_named("p") {
-            let ls = lines(p);
-            let items = Self::items(p);
-            for (i, l) in ls.iter().enumerate() {
-                let end = ls.get(i + 1).map(|n| n.u("textpos")).unwrap_or(usize::MAX);
-                let mut ascent = l.n("baseline") / 100.;
-                let mut descent = 0f64;
-                for it in items
-                    .iter()
-                    .filter(|it| it.pos >= l.u("textpos") && it.pos < end)
-                {
-                    if let ItemKind::Char(c) = it.kind {
-                        let g = self.glyph(c, &it.style)?;
-                        ascent = ascent.max(g.ascent);
-                        descent = descent.max(g.descent);
-                    }
-                }
-                height = height.max(l.n("vertpos") / 100. + ascent + descent);
-            }
+        Ok(self
+            .measured_flow(list)?
+            .iter()
+            .map(|(_, _, y, h)| y + h)
+            .fold(0f64, f64::max))
+    }
+    fn measured_flow<'b>(&mut self, list: &'b Node) -> Result<Vec<(&'b Node, usize, f64, f64)>> {
+        if self.doc.header.a("binaryHwp") != "1" {
+            return Ok(flowing_lines(list)
+                .into_iter()
+                .map(|(p, i, y)| (p, i, y, lines(p)[i].n("vertsize") / 100.))
+                .collect());
         }
-        Ok(height)
+        let mut out = Vec::new();
+        let mut bottom = 0f64;
+        for (p, i, y) in flowing_lines(list) {
+            let ls = lines(p);
+            let l = ls[i];
+            let items = Self::items(p);
+            let end = ls.get(i + 1).map(|n| n.u("textpos")).unwrap_or(usize::MAX);
+            let mut ascent = l.n("baseline") / 100.;
+            let mut descent = 0f64;
+            for it in items
+                .iter()
+                .filter(|it| it.pos >= l.u("textpos") && it.pos < end)
+            {
+                if let ItemKind::Char(c) = it.kind {
+                    let g = self.glyph(c, &it.style)?;
+                    ascent = ascent.max(g.ascent);
+                    descent = descent.max(g.descent);
+                }
+            }
+            let h = (ascent + descent).max(l.n("vertsize") / 100.);
+            let actual = y.max(bottom);
+            out.push((p, i, actual, h));
+            bottom = actual + h;
+        }
+        Ok(out)
     }
     fn object(
         &mut self,
@@ -913,11 +1418,11 @@ impl<'a> Engine<'a> {
     ) -> Result<()> {
         let pos = n.child("pos").context("Missing object position")?;
         let sz = n.child("sz").context("Missing object size")?;
-        let w = sz.n("width") / 100.;
+        let mut w = sz.n("width") / 100.;
         let h = sz.n("height") / 100.;
         let m = margin(n, "outMargin");
         let declared_h = h;
-        let h = effective_height(n);
+        let mut h = effective_height(n);
         let inline = pos.a("treatAsChar") == "1";
         let mut x;
 
@@ -983,6 +1488,39 @@ impl<'a> Engine<'a> {
                 .max(ox + e[0])
                 .min((ox + container - w - e[1]).max(ox + e[0]));
         }
+        let fit_start = self.report.bounds.len();
+        let fit = if self.depth == 0
+            && n.name != "tbl"
+            && n.child("caption").is_none()
+            && n.a("textWrap") != "BEHIND_TEXT"
+            && (inline || pos.a("vertRelTo") == "PARA")
+            && (h > self.ph - self.top - self.bottom || w > self.pw - self.left - self.right)
+        {
+            let target_y = y.max(self.top).min(self.ph - self.bottom - 1.);
+            let factor = ((self.ph - self.bottom - target_y) / h.max(0.1))
+                .min(container / w.max(0.1))
+                .min(1.);
+            let target_x = x.max(ox).min(ox + container - w * factor);
+            let matrix = [
+                factor,
+                0.,
+                0.,
+                factor,
+                target_x - factor * x,
+                target_y - factor * y,
+            ];
+            self.current.ops.push(Op::TransformBegin { matrix });
+            self.flow_floor = Some((self.pages.len(), target_y + h * factor, false));
+            self.report.warnings.insert(format!(
+                "Oversized {} {} fitted proportionally to printable area at {:.1}%",
+                n.name,
+                n.a("id"),
+                factor * 100.
+            ));
+            Some(matrix)
+        } else {
+            None
+        };
         self.report.bounds.push(Bounds {
             page: self.pages.len() + 1,
             kind: if n.a("textWrap") == "BEHIND_TEXT" && n.name == "pic" {
@@ -998,6 +1536,26 @@ impl<'a> Engine<'a> {
         });
         let behind = n.a("textWrap") == "BEHIND_TEXT";
         let paint_start = self.current.ops.len();
+        let bound_start = self.report.bounds.len();
+        let angle = n.child("rotationInfo").map(|r| r.n("angle")).unwrap_or(0.);
+        let flip = n.child("flip");
+        let flip_x = flip.is_some_and(|f| f.a("horizontal") == "1");
+        let flip_y = flip.is_some_and(|f| f.a("vertical") == "1");
+        let transform = if angle.rem_euclid(360.).abs() > 0.001 || flip_x || flip_y {
+            if let Some(size) = n
+                .child("curSz")
+                .filter(|s| s.n("width") > 0. && s.n("height") > 0.)
+            {
+                w = size.n("width") / 100.;
+                h = size.n("height") / 100.;
+            }
+            let m = crate::graphics::rotation(x, y, w, h, angle, flip_x, flip_y);
+            self.current.ops.push(Op::TransformBegin { matrix: m });
+            Some(m)
+        } else {
+            None
+        };
+        let mut captions_handled = false;
         match n.name.as_str() {
             "chart" => {
                 let (ops, warning) = crate::chart::draw(n, x, y, w, h, &mut self.fonts)?;
@@ -1016,12 +1574,34 @@ impl<'a> Engine<'a> {
                 }
             }
             "polygon" | "curve" | "arc" => {
-                let sx = w / (n.n("originalWidth") / 100.).max(0.01);
-                let sy = h / (n.n("originalHeight") / 100.).max(0.01);
+                let ow = if n.n("originalWidth") > 0. {
+                    n.n("originalWidth")
+                } else {
+                    n.child("orgSz").map(|s| s.n("width")).unwrap_or(w * 100.)
+                };
+                let oh = if n.n("originalHeight") > 0. {
+                    n.n("originalHeight")
+                } else {
+                    n.child("orgSz").map(|s| s.n("height")).unwrap_or(h * 100.)
+                };
+                let sx = w / (ow / 100.).max(0.01);
+                let sy = h / (oh / 100.).max(0.01);
                 let mut points: Vec<_> = n
-                    .children_named("point")
+                    .children
+                    .iter()
+                    .filter(|p| p.name == "point" || p.name == "pt")
                     .map(|p| (x + p.n("x") / 100. * sx, y + p.n("y") / 100. * sy))
                     .collect();
+                let mut kinds: Vec<_> = n.children_named("segment").map(|s| s.u("type")).collect();
+                if points.is_empty() && n.name == "curve" {
+                    for seg in n.children_named("seg") {
+                        if points.is_empty() {
+                            points.push((x + seg.n("x1") / 100. * sx, y + seg.n("y1") / 100. * sy));
+                        }
+                        points.push((x + seg.n("x2") / 100. * sx, y + seg.n("y2") / 100. * sy));
+                        kinds.push(usize::from(seg.a("type") == "CURVE"));
+                    }
+                }
                 if n.name == "arc" {
                     let c = n.child("center").context("arc center")?;
                     let a = n.child("axis1").context("arc axis")?;
@@ -1042,18 +1622,28 @@ impl<'a> Engine<'a> {
                         ));
                     }
                 }
-                if n.name == "curve" {
-                    self.report.warnings.insert("Curve knots currently connected by line segments; cubic interpolation pending".into());
-                }
                 let line = n.child("lineShape");
                 let fill = n.find("winBrush").map(|f| color(f.a("faceColor")));
-                self.current.ops.push(Op::Path {
-                    points,
-                    closed: n.name == "polygon",
-                    width: val(line, "width").max(0.1),
-                    color: color(line.map(|s| s.a("color")).unwrap_or("#000000")),
-                    fill,
-                });
+                if n.name == "curve" && !points.is_empty() {
+                    let segments = crate::graphics::curve(&points, &kinds);
+                    self.current.ops.push(Op::Bezier {
+                        start: points[0],
+                        segments,
+                        closed: points.first() == points.last(),
+                        width: val(line, "width").max(0.1),
+                        color: color(line.map(|s| s.a("color")).unwrap_or("#000000")),
+                        fill,
+                    });
+                    self.report.warnings.insert("Curve knots rendered as cardinal spline (tension 0.5); exact Hancom interpolation unverified".into());
+                } else {
+                    self.current.ops.push(Op::Path {
+                        points,
+                        closed: n.name == "polygon",
+                        width: val(line, "width").max(0.1),
+                        color: color(line.map(|s| s.a("color")).unwrap_or("#000000")),
+                        fill,
+                    });
+                }
             }
             "equation" => {
                 let script = n.child("script").map(text).unwrap_or_default();
@@ -1067,14 +1657,91 @@ impl<'a> Engine<'a> {
                 let img = n.child("img").context("Missing image reference")?;
                 let id = img.a("binaryItemIDRef").to_string();
                 if self.doc.binaries.contains_key(&id) {
-                    self.current.ops.push(Op::Image { x, y, w, h, id });
+                    let crop = n
+                        .child("imgClip")
+                        .filter(|c| c.n("right") > c.n("left") && c.n("bottom") > c.n("top"));
+                    let source = if let Some(c) = crop {
+                        let dim = n.child("imgDim");
+                        let (dw, dh) =
+                            if dim.is_some_and(|d| d.n("dimwidth") > 0. && d.n("dimheight") > 0.) {
+                                (dim.unwrap().n("dimwidth"), dim.unwrap().n("dimheight"))
+                            } else {
+                                let image = image::load_from_memory(&self.doc.binaries[&id])?;
+                                (image.width() as f64 * 75., image.height() as f64 * 75.)
+                            };
+                        let mut s = [
+                            c.n("left") / dw,
+                            c.n("top") / dh,
+                            c.n("right") / dw,
+                            c.n("bottom") / dh,
+                        ];
+                        // Old records quantize the 96-DPI dimensions; only absorb
+                        // small overshoot in inferred full-image edges, never crop loss.
+                        if dim.is_none_or(|d| d.n("dimwidth") <= 0. || d.n("dimheight") <= 0.) {
+                            for i in [2, 3] {
+                                if s[i] > 1. && s[i] < 1.01 {
+                                    s[i] = 1.;
+                                }
+                            }
+                        }
+                        Some(s)
+                    } else {
+                        None
+                    };
+                    if let Some(s) = source.filter(|s| {
+                        s[0].abs() > 0.000001
+                            || s[1].abs() > 0.000001
+                            || (s[2] - 1.).abs() > 0.000001
+                            || (s[3] - 1.).abs() > 0.000001
+                    }) {
+                        if n.child("imgDim")
+                            .is_none_or(|d| d.n("dimwidth") <= 0. || d.n("dimheight") <= 0.)
+                        {
+                            self.report.warnings.insert("Legacy picture crop uses 96-DPI pixel-to-HWPUNIT fallback (imgDim absent)".into());
+                        }
+                        self.current.ops.push(Op::ImageClip {
+                            x,
+                            y,
+                            w,
+                            h,
+                            id,
+                            source: s,
+                        });
+                    } else {
+                        self.current.ops.push(Op::Image { x, y, w, h, id });
+                    }
                     self.report.pictures += 1
                 } else {
                     bail!("Missing binary {id}")
                 }
             }
             "tbl" => {
+                let previous_page = self.pages.len();
+                if self.depth == 0 {
+                    self.split_caption_handled = false;
+                }
                 self.table(n, x, y, w, h)?;
+                captions_handled = self.depth == 0 && self.split_caption_handled;
+                if self.pages.len() > previous_page && n.child("caption").is_some() {
+                    y = self.top;
+                    h = self.last_table_end - self.top;
+                }
+                if self.depth == 0
+                    && pos.a("vertRelTo") == "PARA"
+                    && pos.a("vertAlign") != "BOTTOM"
+                    && (self.pages.len() > previous_page || self.last_table_end > y + h + 0.5)
+                {
+                    self.flow_floor = Some((
+                        self.pages.len(),
+                        self.last_table_end
+                            + if captions_handled {
+                                0.
+                            } else {
+                                caption_extent(n)[3]
+                            },
+                        self.pages.len() > previous_page,
+                    ));
+                }
                 self.report.tables += 1;
             }
             "line" => {
@@ -1134,7 +1801,20 @@ impl<'a> Engine<'a> {
             }
             _ => {}
         }
+        if let Some(m) = transform {
+            self.current.ops.push(Op::TransformEnd);
+            for b in &mut self.report.bounds[bound_start..] {
+                let r = crate::graphics::rect(m, [b.x, b.y, b.x + b.w, b.y + b.h]);
+                b.x = r[0];
+                b.y = r[1];
+                b.w = r[2] - r[0];
+                b.h = r[3] - r[1];
+            }
+        }
         for caption in n.children_named("caption") {
+            if captions_handled {
+                continue;
+            }
             if let Some(list) = caption.child("subList") {
                 let gap = caption.n("gap") / 100.;
                 let ch = content_height(list);
@@ -1157,6 +1837,16 @@ impl<'a> Engine<'a> {
                     _ => (x - (cw - w) / 2., y + h + gap),
                 };
                 self.local(list, cx, cy, cw)?;
+            }
+        }
+        if let Some(matrix) = fit {
+            self.current.ops.push(Op::TransformEnd);
+            for b in &mut self.report.bounds[fit_start..] {
+                let r = crate::graphics::rect(matrix, [b.x, b.y, b.x + b.w, b.y + b.h]);
+                b.x = r[0];
+                b.y = r[1];
+                b.w = r[2] - r[0];
+                b.h = r[3] - r[1];
             }
         }
         if behind {
@@ -1222,6 +1912,623 @@ impl<'a> Engine<'a> {
                 }
             }
         }
+    }
+    fn table_slices(
+        &mut self,
+        n: &Node,
+        cells: &[&Node],
+        cw: &[f64],
+        rh: &[f64],
+        x: f64,
+        mut top: f64,
+    ) -> Result<()> {
+        let total = rh.iter().sum::<f64>();
+        let mut contents = Vec::new();
+        for c in cells {
+            let a = c.child("cellAddr").unwrap();
+            let s = c.child("cellSpan").unwrap();
+            let row = a.u("rowAddr");
+            let col = a.u("colAddr");
+            let cy = rh[..row].iter().sum::<f64>();
+            let ch = rh[row..row + s.u("rowSpan")].iter().sum::<f64>();
+            let cx = x + cw[..col].iter().sum::<f64>();
+            let ww = cw[col..col + s.u("colSpan")].iter().sum::<f64>();
+            let m = if c.a("hasMargin") == "1" {
+                margin(c, "cellMargin")
+            } else {
+                margin(n, "inMargin")
+            };
+            let mut flow = Vec::new();
+            if let Some(l) = c.child("subList") {
+                let (min, max) = floating_extent(l);
+                let spare = (ch - m[2] - m[3] - (max - min)).max(0.);
+                let shift = match l.a("vertAlign") {
+                    "CENTER" => spare / 2.,
+                    "BOTTOM" => spare,
+                    _ => 0.,
+                };
+                for (p, i, yy) in flowing_lines(l) {
+                    flow.push((p, i, cy + m[2] + shift - min + yy));
+                }
+            }
+            contents.push((*c, cx, cy, ww, ch, m, flow));
+        }
+        let mut start = 0.;
+        while start < total - 0.01 {
+            if start > 0. && n.a("repeatHeader") == "1" {
+                let header_cells: Vec<Node> = cells
+                    .iter()
+                    .filter(|c| c.child("cellAddr").unwrap().u("rowAddr") == 0)
+                    .map(|c| (*c).clone())
+                    .collect();
+                if !header_cells.is_empty()
+                    && header_cells.iter().all(|c| {
+                        c.child("cellSpan").unwrap().u("rowSpan") == 1
+                            && c.find("footNote").is_none()
+                    })
+                    && rh[0] < (self.ph - self.top - self.bottom) / 3.
+                {
+                    let mut header = n.clone();
+                    header.attrs.insert("rowCnt".into(), "1".into());
+                    header.attrs.insert("repeatHeader".into(), "0".into());
+                    header.attrs.insert("pageBreak".into(), "NONE".into());
+                    header.children.retain(|c| c.name != "tr");
+                    header.children.push(Node {
+                        name: "tr".into(),
+                        children: header_cells,
+                        ..Default::default()
+                    });
+                    self.depth += 1;
+                    self.table(&header, x, top, cw.iter().sum(), rh[0])?;
+                    self.depth -= 1;
+                    top += rh[0];
+                }
+            }
+            let mut cut = (start + self.ph - self.bottom - top).min(total);
+            for _ in 0..64 {
+                let mut notes = Vec::new();
+                for (_, _, _, _, _, _, flow) in &contents {
+                    for (p, i, yy) in flow {
+                        if *yy >= start - 0.01 && *yy < cut {
+                            let ls = lines(p);
+                            let end = ls.get(i + 1).map(|l| l.u("textpos")).unwrap_or(usize::MAX);
+                            for it in Self::items(p) {
+                                if it.pos >= ls[*i].u("textpos")
+                                    && it.pos < end
+                                    && let ItemKind::Control(n) = it.kind
+                                    && n.name == "footNote"
+                                {
+                                    notes.push(n);
+                                }
+                            }
+                        }
+                    }
+                }
+                let refs: Vec<_> = notes.iter().collect();
+                let reserve = self.footnote_reservation(&refs, x);
+                let mut next = (start + self.ph - self.bottom - top - reserve).min(cut);
+                for (_, _, _, _, _, _, flow) in &contents {
+                    for (p, i, yy) in flow {
+                        let end = yy + lines(p)[*i].n("vertsize") / 100. + 0.5;
+                        if *yy < next && end > next {
+                            next = next.min(*yy);
+                        }
+                    }
+                }
+                if (next - cut).abs() < 0.01 {
+                    break;
+                }
+                cut = next;
+            }
+            if cut <= start + 0.1 {
+                if top > self.top + 0.1 {
+                    self.finish()?;
+                    let sec = &self.doc.sections[self.active_section];
+                    self.decorations(sec, false, self.active_columns, self.active_gap)?;
+                    top = self.top;
+                    continue;
+                }
+                bail!("Table line with footnotes exceeds a full page");
+            }
+            for (c, cx, cy, ww, ch, m, flow) in &contents {
+                let a = cy.max(start);
+                let b = (cy + ch).min(cut);
+                if b <= a {
+                    continue;
+                }
+                self.border(c.a("borderFillIDRef"), *cx, top + a - start, *ww, b - a);
+                self.depth += 1;
+                for (p, i, yy) in flow {
+                    if *yy >= start - 0.01 && *yy < cut - 0.01 {
+                        self.line(
+                            p,
+                            *i,
+                            cx + m[0],
+                            top + yy - start - lines(p)[*i].n("vertpos") / 100.,
+                            ww - m[0] - m[1],
+                        )?;
+                    }
+                }
+                self.depth -= 1;
+            }
+            self.last_table_end = top + cut - start;
+            start = cut;
+            if start < total - 0.01 {
+                self.finish()?;
+                let sec = &self.doc.sections[self.active_section];
+                self.decorations(sec, false, self.active_columns, self.active_gap)?;
+                top = self.top;
+            }
+        }
+        self.report.warnings.insert("Oversized table row split at shared text-line boundaries; merged cell borders continued".into());
+        Ok(())
+    }
+    /// Paginate a nested text-table's measured vector structure at safe row/ink
+    /// boundaries. Only rules and fills are clipped; glyphs are never clipped.
+    fn split_nested_vectors(
+        &mut self,
+        n: &Node,
+        x: f64,
+        mut top: f64,
+        w: f64,
+        total: f64,
+    ) -> Result<bool> {
+        let captions: Vec<_> = n.children_named("caption").collect();
+        let mut all_captions = Vec::new();
+        n.all("caption", &mut all_captions);
+        if all_captions.len() != captions.len()
+            || captions
+                .iter()
+                .any(|c| !matches!(c.a("side"), "TOP" | "BOTTOM"))
+        {
+            return Ok(false);
+        }
+        let caption_height = |side: &str| {
+            captions
+                .iter()
+                .filter(|c| c.a("side") == side)
+                .map(|c| c.child("subList").map(content_height).unwrap_or(0.) + c.n("gap") / 100.)
+                .sum::<f64>()
+        };
+        let above = caption_height("TOP");
+        let below = caption_height("BOTTOM");
+        if above + below > (self.ph - self.top - self.bottom) * 0.5 {
+            return Ok(false);
+        }
+        if n.find("endNote").is_some()
+            || n.child("rotationInfo").is_some_and(|r| r.n("angle") != 0.)
+            || n.child("flip")
+                .is_some_and(|r| r.a("horizontal") == "1" || r.a("vertical") == "1")
+        {
+            return Ok(false);
+        }
+        let previous = std::mem::take(&mut self.current);
+        let mut table_nodes = Vec::new();
+        n.all("tbl", &mut table_nodes);
+        let requested_headers = table_nodes
+            .iter()
+            .filter(|t| t.a("repeatHeader") == "1")
+            .count();
+        let bound_start = self.report.bounds.len();
+        let counts = (
+            self.report.tables,
+            self.report.pictures,
+            self.report.equations,
+            self.report.charts,
+        );
+        self.capture_table_headers = true;
+        self.table_headers.clear();
+        self.table_note_anchors.clear();
+        self.depth += 1;
+        let rendered = self.table(n, x, 0., w, total);
+        self.depth -= 1;
+        self.capture_table_headers = false;
+        let mut headers = std::mem::take(&mut self.table_headers);
+        let mut planned_notes = std::mem::take(&mut self.table_note_anchors);
+        headers.sort_by(|a, b| a.y.total_cmp(&b.y));
+        let canvas = std::mem::replace(&mut self.current, previous);
+        let bounds = self.report.bounds.split_off(bound_start);
+        rendered?;
+        let atoms = crate::pagination::atoms(&canvas.ops, &self.fonts)?;
+        let supported = atoms.iter().all(|a| {
+            a.bottom - a.top
+                < self.ph
+                    - self.top
+                    - self.bottom
+                    - above
+                    - below
+                    - headers.iter().map(|h| h.height).sum::<f64>()
+        });
+        let mut owner = vec![None; canvas.ops.len()];
+        for (id, atom) in atoms.iter().enumerate() {
+            for slot in &mut owner[atom.start..atom.end] {
+                *slot = Some(id);
+            }
+        }
+        for note in &mut planned_notes {
+            if let Some(id) = owner[note.op_index] {
+                let atom = &atoms[id];
+                note.top = atom.top;
+                note.y = (atom.top + atom.bottom) / 2.;
+            }
+        }
+        if !supported
+            || headers.len() != requested_headers
+            || headers.iter().map(|h| h.height).sum::<f64>()
+                > self.ph - self.top - self.bottom - above - below - 24.
+        {
+            (
+                self.report.tables,
+                self.report.pictures,
+                self.report.equations,
+                self.report.charts,
+            ) = counts;
+            return Ok(false);
+        }
+        let mut ink = Vec::new();
+        ink.extend(atoms.iter().map(|a| (a.top - 0.6, a.bottom + 0.6)));
+        ink.extend(planned_notes.iter().map(|n| (n.top, n.y + 0.6)));
+        ink.extend(
+            bounds
+                .iter()
+                .filter(|b| {
+                    matches!(
+                        b.kind.as_str(),
+                        "pic" | "rect" | "group" | "polygon" | "curve" | "arc" | "equation"
+                    )
+                })
+                .map(|b| (b.y - 0.6, b.y + b.h + 0.6)),
+        );
+        let mut boundaries = Vec::new();
+        for (op_index, op) in canvas.ops.iter().enumerate() {
+            if owner[op_index].is_some() {
+                continue;
+            }
+            match op {
+                Op::Text {
+                    font,
+                    size,
+                    x,
+                    scale,
+                    y,
+                    text,
+                    ..
+                } => {
+                    let face = ttf_parser::Face::parse(&self.fonts.list[*font].bytes, 0).unwrap();
+                    let unit = size / face.units_per_em() as f64;
+                    let right = x + self.fonts.width(*font, text, *size) * scale;
+                    let decoration_bottom = canvas
+                        .ops
+                        .iter()
+                        .filter_map(|o| match o {
+                            Op::Path { points, .. }
+                                if points.len() == 2
+                                    && points[0].1 >= *y
+                                    && points[0].1 < y + size * 0.5 + 4.
+                                    && points[0].0.min(points[1].0) < right
+                                    && points[0].0.max(points[1].0) > *x =>
+                            {
+                                Some(points[0].1 + 0.6)
+                            }
+                            _ => None,
+                        })
+                        .fold(*y, f64::max);
+                    let decoration_top = canvas
+                        .ops
+                        .iter()
+                        .filter_map(|o| match o {
+                            Op::Path { points, .. }
+                                if points.len() == 2
+                                    && points[0].1 <= *y
+                                    && points[0].1 > y - size * 1.1
+                                    && points[0].0.min(points[1].0) < right
+                                    && points[0].0.max(points[1].0) > *x =>
+                            {
+                                Some(points[0].1 - 0.6)
+                            }
+                            _ => None,
+                        })
+                        .fold(*y, f64::min);
+                    for c in text.chars().filter(|c| !c.is_whitespace()) {
+                        if let Some(bb) = crate::pdf::glyph_id(&face, c)
+                            .and_then(|id| face.glyph_bounding_box(id))
+                        {
+                            ink.push((
+                                (y - bb.y_max as f64 * unit).min(decoration_top) - 0.6,
+                                (y - bb.y_min as f64 * unit).max(decoration_bottom) + 0.6,
+                            ));
+                        }
+                    }
+                }
+                Op::Line { y, y2, .. } if (y - y2).abs() < 0.001 => boundaries.push(*y),
+                _ => {}
+            }
+        }
+        let safe = |cut: f64| !ink.iter().any(|(a, b)| *a < cut && *b > cut);
+        let mut start = 0.;
+        let mut first = true;
+        top = top.max(self.top + above);
+        let first_min = headers.iter().map(|h| h.y + h.height).fold(0., f64::max) + 24.;
+        if top + first_min > self.ph - self.bottom {
+            self.finish()?;
+            let section = &self.doc.sections[self.active_section];
+            self.decorations(section, false, self.active_columns, self.active_gap)?;
+            top = self.top + above;
+        }
+        let mut caption_y = top - above;
+        for c in captions.iter().filter(|c| c.a("side") == "TOP") {
+            if let Some(list) = c.child("subList") {
+                let h = content_height(list);
+                self.local(list, x, caption_y, w)?;
+                self.report.bounds.push(Bounds {
+                    page: self.pages.len() + 1,
+                    kind: "caption".into(),
+                    id: n.a("id").into(),
+                    x,
+                    y: caption_y,
+                    w,
+                    h,
+                });
+                caption_y += h + c.n("gap") / 100.;
+            }
+        }
+        while start < total - 0.01 {
+            let mut header_height = 0.;
+            let mut prior_y = None;
+            let mut group_top = top;
+            let mut group_height = 0f64;
+            if !first {
+                for header in headers
+                    .iter()
+                    .filter(|h| start >= h.y + h.height - 0.01 && start < h.end - 0.01)
+                {
+                    if prior_y.is_some_and(|y: f64| (y - header.y).abs() > 0.01) {
+                        header_height += group_height;
+                        group_top = top + header_height;
+                        group_height = 0.;
+                    }
+                    prior_y = Some(header.y);
+                    group_height = group_height.max(header.height);
+                    self.current.ops.push(Op::TransformBegin {
+                        matrix: [1., 0., 0., 1., 0., group_top - header.y],
+                    });
+                    self.current.ops.extend(header.ops.clone());
+                    self.current.ops.push(Op::TransformEnd);
+                }
+                header_height += group_height;
+            }
+            top += header_height;
+            let mut capacity = self.ph - self.bottom - top - self.footnote_reservation(&[], x);
+            if start + capacity >= total {
+                capacity -= below;
+            }
+            let mut cut = (start + capacity).min(total);
+            for _ in 0..planned_notes.len() + 2 {
+                let incoming: Vec<_> = planned_notes
+                    .iter()
+                    .filter(|n| n.y >= start - 0.01 && n.y < cut)
+                    .map(|n| &n.node)
+                    .collect();
+                let reserve = self.footnote_reservation(&incoming, x);
+                let next = (start + self.ph
+                    - self.bottom
+                    - top
+                    - reserve
+                    - if start + capacity >= total { below } else { 0. })
+                .min(cut);
+                if (next - cut).abs() < 0.01 {
+                    break;
+                }
+                cut = next;
+            }
+            if cut < total - 0.01 {
+                if let Some(row) = boundaries
+                    .iter()
+                    .copied()
+                    .filter(|v| *v > start + capacity * 0.5 && *v <= cut && safe(*v))
+                    .max_by(f64::total_cmp)
+                {
+                    cut = row;
+                } else {
+                    for _ in 0..ink.len() + 1 {
+                        let next = ink
+                            .iter()
+                            .filter(|(a, b)| *a < cut && *b > cut)
+                            .map(|(a, _)| *a)
+                            .fold(cut, f64::min);
+                        if (next - cut).abs() < 0.001 {
+                            break;
+                        }
+                        cut = next;
+                    }
+                }
+            }
+            if below > 0.
+                && cut < total - 0.01
+                && !ink.iter().any(|(a, _)| *a >= cut)
+                && let Some(last) = ink.iter().map(|(a, _)| *a).max_by(f64::total_cmp)
+            {
+                cut = boundaries
+                    .iter()
+                    .copied()
+                    .filter(|b| *b > start + 0.1 && *b <= last && safe(*b))
+                    .max_by(f64::total_cmp)
+                    .unwrap_or(last);
+                for _ in 0..ink.len() + 1 {
+                    let next = ink
+                        .iter()
+                        .filter(|(a, b)| *a < cut && *b > cut)
+                        .map(|(a, _)| *a)
+                        .fold(cut, f64::min);
+                    if (next - cut).abs() < 0.001 {
+                        break;
+                    }
+                    cut = next;
+                }
+            }
+            if cut <= start + 0.1 {
+                anyhow::ensure!(
+                    top > self.top + header_height + 0.1,
+                    "Nested-table text line exceeds printable page"
+                );
+                self.finish()?;
+                let section = &self.doc.sections[self.active_section];
+                self.decorations(section, false, self.active_columns, self.active_gap)?;
+                top = self.top;
+                continue;
+            }
+            let shift = top - start;
+            for note in planned_notes
+                .iter()
+                .filter(|n| n.y >= start - 0.01 && n.y < cut - 0.01)
+            {
+                self.footnotes.push((note.node.clone(), note.x, note.width));
+            }
+            self.current.ops.push(Op::TransformBegin {
+                matrix: [1., 0., 0., 1., 0., shift],
+            });
+            for (op_index, op) in canvas.ops.iter().enumerate() {
+                if let Some(id) = owner[op_index] {
+                    let atom = &atoms[id];
+                    if op_index == atom.start
+                        && atom.bottom > start - 0.001
+                        && atom.top < cut - 0.001
+                    {
+                        self.current
+                            .ops
+                            .extend_from_slice(&canvas.ops[atom.start..atom.end]);
+                    }
+                    continue;
+                }
+                let clipped = match op {
+                    Op::Text { y, .. } => {
+                        if *y >= start && *y < cut {
+                            Some(op.clone())
+                        } else {
+                            None
+                        }
+                    }
+                    Op::Line {
+                        x,
+                        y,
+                        x2,
+                        y2,
+                        width,
+                        color,
+                    } => {
+                        if (y - y2).abs() < 0.001 {
+                            if *y >= start - 0.001 && *y <= cut + 0.001 {
+                                Some(op.clone())
+                            } else {
+                                None
+                            }
+                        } else {
+                            let a = y.min(*y2).max(start);
+                            let b = y.max(*y2).min(cut);
+                            (b > a).then_some(Op::Line {
+                                x: *x,
+                                y: a,
+                                x2: *x2,
+                                y2: b,
+                                width: *width,
+                                color: *color,
+                            })
+                        }
+                    }
+                    Op::Rect { x, y, w, h, fill } => {
+                        let a = y.max(start);
+                        let b = (y + h).min(cut);
+                        (b > a).then_some(Op::Rect {
+                            x: *x,
+                            y: a,
+                            w: *w,
+                            h: b - a,
+                            fill: *fill,
+                        })
+                    }
+                    Op::Path { points, .. } => {
+                        if points.first().is_some_and(|p| p.1 >= start && p.1 < cut) {
+                            Some(op.clone())
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                };
+                if let Some(op) = clipped {
+                    self.current.ops.push(op);
+                }
+            }
+            self.current.ops.push(Op::TransformEnd);
+            for b in &bounds {
+                let a = b.y.max(start);
+                let end = (b.y + b.h).min(cut);
+                if end > a {
+                    self.report.bounds.push(Bounds {
+                        page: self.pages.len() + 1,
+                        kind: b.kind.clone(),
+                        id: b.id.clone(),
+                        x: b.x,
+                        y: a + shift,
+                        w: b.w,
+                        h: end - a,
+                    });
+                }
+            }
+            if first {
+                if let Some(b) = self.report.bounds[..bound_start]
+                    .iter_mut()
+                    .rev()
+                    .find(|b| b.kind == "tbl" && b.id == n.a("id"))
+                {
+                    b.y = top;
+                    b.page = self.pages.len() + 1;
+                    b.h = cut - start;
+                }
+            } else {
+                self.report.bounds.push(Bounds {
+                    page: self.pages.len() + 1,
+                    kind: "tbl".into(),
+                    id: n.a("id").into(),
+                    x,
+                    y: top,
+                    w,
+                    h: cut - start,
+                });
+            }
+            self.last_table_end = top + cut - start;
+            start = cut;
+            first = false;
+            if start < total - 0.01 {
+                self.finish()?;
+                let section = &self.doc.sections[self.active_section];
+                self.decorations(section, false, self.active_columns, self.active_gap)?;
+                top = self.top;
+            }
+        }
+        let mut caption_y = self.last_table_end;
+        for c in captions.iter().filter(|c| c.a("side") == "BOTTOM") {
+            if let Some(list) = c.child("subList") {
+                caption_y += c.n("gap") / 100.;
+                let h = content_height(list);
+                self.local(list, x, caption_y, w)?;
+                self.report.bounds.push(Bounds {
+                    page: self.pages.len() + 1,
+                    kind: "caption".into(),
+                    id: n.a("id").into(),
+                    x,
+                    y: caption_y,
+                    w,
+                    h,
+                });
+                caption_y += h;
+            }
+        }
+        self.last_table_end = caption_y;
+        self.split_caption_handled = !captions.is_empty();
+        self.flow_floor = Some((self.pages.len(), self.last_table_end, true));
+        self.report.warnings.insert("Nested text table split at safe row/ink boundaries without scaling; border/fill fragments continued".into());
+        Ok(true)
     }
     fn table(&mut self, n: &Node, x: f64, y: f64, w: f64, h: f64) -> Result<()> {
         let rows = n.u("rowCnt");
@@ -1333,6 +2640,71 @@ impl<'a> Engine<'a> {
             *last += h - total;
         }
         let fixed_bottom = n.child("pos").is_some_and(|p| p.a("vertAlign") == "BOTTOM");
+        let nested = cells.iter().filter_map(|c| c.child("subList")).any(|l| {
+            l.children_named("p").any(|p| {
+                Self::items(p)
+                    .iter()
+                        .any(|i| matches!(&i.kind, ItemKind::Object(o) if effective_height(o) > self.ph-self.top-self.bottom))
+            })
+        });
+        if self.depth == 0 && nested && total > self.ph - self.top - self.bottom {
+            if self.split_nested_vectors(n, x, y, w, total)? {
+                return Ok(());
+            }
+            let target_y = y.max(self.top).min(self.ph - self.bottom - 1.);
+            let factor = ((self.ph - self.bottom - target_y) / total).min(1.);
+            let matrix = [
+                factor,
+                0.,
+                0.,
+                factor,
+                x * (1. - factor),
+                target_y - factor * y,
+            ];
+            let begin = self.report.bounds.len();
+            self.current.ops.push(Op::TransformBegin { matrix });
+            self.depth += 1;
+            self.table(n, x, y, w, total)?;
+            self.depth -= 1;
+            self.current.ops.push(Op::TransformEnd);
+            for b in &mut self.report.bounds[begin..] {
+                let r = crate::graphics::rect(matrix, [b.x, b.y, b.x + b.w, b.y + b.h]);
+                b.x = r[0];
+                b.y = r[1];
+                b.w = r[2] - r[0];
+                b.h = r[3] - r[1];
+            }
+            self.last_table_end = target_y + total * factor;
+            self.flow_floor = Some((self.pages.len(), self.last_table_end, false));
+            if let Some(b) = self.report.bounds[..begin]
+                .iter_mut()
+                .rev()
+                .find(|b| b.kind == "tbl" && b.id == n.a("id") && b.page == self.pages.len() + 1)
+            {
+                b.x = x;
+                b.y = target_y;
+                b.w = w * factor;
+                b.h = total * factor;
+            }
+            self.report.warnings.insert(format!("Oversized nested table {} fitted proportionally at {:.1}%; structural splitting remains limited",n.a("id"),factor*100.));
+            return Ok(());
+        }
+        if self.depth == 0
+            && !fixed_bottom
+            && cells.len() > 1
+            && rh.iter().any(|h| *h > self.ph - self.top - self.bottom)
+            && cells
+                .iter()
+                .filter_map(|c| c.child("subList"))
+                .flat_map(|l| l.children_named("p"))
+                .all(|p| {
+                    Self::items(p)
+                        .iter()
+                        .all(|i| !matches!(i.kind, ItemKind::Object(_)))
+                })
+        {
+            return self.table_slices(n, &cells, &cw, &rh, x, y);
+        }
         if self.depth == 0
             && !fixed_bottom
             && cells.len() == 1
@@ -1397,17 +2769,72 @@ impl<'a> Engine<'a> {
         let mut page_row = 0;
         let mut page_y = y;
         let mut previous_row = None;
+        let captured_header = if self.capture_table_headers
+            && n.a("repeatHeader") == "1"
+            && rows > 1
+            && rh[0] < (self.ph - self.top - self.bottom) / 3.
+            && header_cells.iter().all(|c| {
+                c.child("cellSpan").is_some_and(|s| s.u("rowSpan") == 1)
+                    && c.find("footNote").is_none()
+            }) {
+            let index = self.table_headers.len();
+            self.table_headers.push(TableHeaderPaint {
+                y,
+                height: rh[0],
+                end: y + rh.iter().sum::<f64>(),
+                ops: Vec::new(),
+            });
+            Some(index)
+        } else {
+            None
+        };
         for c in &cells {
             let a = c.child("cellAddr").unwrap();
             let s = c.child("cellSpan").unwrap();
             let col = a.u("colAddr");
             let row = a.u("rowAddr");
+            let mut band_end = if row == 0 && n.a("repeatHeader") == "1" && rows > 1 {
+                2
+            } else {
+                row + 1
+            };
+            loop {
+                let next = cells
+                    .iter()
+                    .filter(|c| {
+                        let r = c.child("cellAddr").unwrap().u("rowAddr");
+                        r >= row && r < band_end
+                    })
+                    .map(|c| {
+                        c.child("cellAddr").unwrap().u("rowAddr")
+                            + c.child("cellSpan").unwrap().u("rowSpan")
+                    })
+                    .max()
+                    .unwrap_or(band_end);
+                if next == band_end {
+                    break;
+                }
+                band_end = next;
+            }
+            let mut incoming_notes = Vec::new();
+            for c in cells.iter().filter(|c| {
+                let r = c.child("cellAddr").unwrap().u("rowAddr");
+                r >= row && r < band_end
+            }) {
+                c.all("footNote", &mut incoming_notes);
+            }
+            let reserve = self.footnote_reservation(&incoming_notes, x);
+            let band_height = rh[row..band_end].iter().sum::<f64>();
             if self.depth == 0
                 && !fixed_bottom
-                && (n.a("pageBreak") == "CELL" || total > self.ph - self.top - self.bottom)
+                && (n.a("pageBreak") == "CELL"
+                    || (n.a("pageBreak") == "TABLE" && (total > h + 0.5 || reserve > 0.))
+                    || total > self.ph - self.top - self.bottom)
                 && previous_row != Some(row)
-                && row > page_row
-                && page_y + rh[page_row..=row].iter().sum::<f64>() > self.ph - self.bottom
+                && (row > page_row || page_y > self.top + 0.1)
+                && band_height < self.ph - self.top - self.bottom
+                && page_y + rh[page_row..band_end].iter().sum::<f64>()
+                    > self.ph - self.bottom - reserve
             {
                 let merged_crossing = cells.iter().any(|cell| {
                     let a = cell.child("cellAddr").unwrap();
@@ -1454,6 +2881,7 @@ impl<'a> Engine<'a> {
             let yy = page_y + rh[page_row..row].iter().sum::<f64>();
             let ww = cw[col..col + s.u("colSpan")].iter().sum::<f64>();
             let hh = rh[row..row + s.u("rowSpan")].iter().sum::<f64>();
+            let cell_paint_start = self.current.ops.len();
             self.border(c.a("borderFillIDRef"), xx, yy, ww, hh);
             if let Some(list) = c.child("subList") {
                 let m = if c.a("hasMargin") == "1" {
@@ -1461,7 +2889,8 @@ impl<'a> Engine<'a> {
                 } else {
                     margin(n, "inMargin")
                 };
-                let (min, max) = floating_extent(list);
+                let (min, mut max) = floating_extent(list);
+                max = max.max(self.measured_height(list)?);
                 let spare = (hh - m[2] - m[3] - (max - min)).max(0.);
                 let shift = match list.a("vertAlign") {
                     "CENTER" => spare / 2.,
@@ -1470,33 +2899,81 @@ impl<'a> Engine<'a> {
                 };
                 self.local(list, xx + m[0], yy + m[2] + shift - min, ww - m[0] - m[1])?;
             }
+            if row == 0
+                && let Some(index) = captured_header
+            {
+                self.table_headers[index]
+                    .ops
+                    .extend_from_slice(&self.current.ops[cell_paint_start..]);
+            }
         }
         let _ = (w, h);
+        if self.depth == 0 {
+            self.last_table_end = page_y + rh[page_row..].iter().sum::<f64>();
+        }
         Ok(())
     }
     fn finish(&mut self) -> Result<()> {
+        let body = self.ph - self.top - self.bottom;
+        let has_long_group = self.footnotes.iter().any(|(_, x, _)| {
+            self.footnotes
+                .iter()
+                .filter(|(_, xx, _)| (xx - x).abs() < 0.1)
+                .map(|(n, _, _)| {
+                    n.child("subList").map(content_height).unwrap_or(0.)
+                        + self.note_gap(false, "betweenNotes", 4.)
+                })
+                .sum::<f64>()
+                - self.note_gap(false, "betweenNotes", 4.)
+                + self.note_gap(false, "aboveLine", 6.)
+                + self.note_gap(false, "belowLine", 4.)
+                + 1.
+                > body - 48.
+        });
+        if has_long_group || !self.continued_notes.is_empty() {
+            return self.finish_long_notes();
+        }
         let notes = std::mem::take(&mut self.footnotes);
         if !notes.is_empty() {
-            let height = notes
-                .iter()
-                .filter_map(|(n, _, _)| n.child("subList"))
-                .map(|l| content_height(l) + 4.)
-                .sum::<f64>();
-            let mut y = self.ph - self.bottom - height - 6.;
-            let x = notes[0].1;
-            self.current.ops.push(Op::Line {
-                x,
-                y: y - 4.,
-                x2: x + 120.,
-                y2: y - 4.,
-                width: 0.5,
-                color: [0.; 3],
-            });
-            for (n, x, w) in notes {
-                if let Some(list) = n.child("subList") {
-                    self.local(list, x, y, w)?;
-                    y += content_height(list) + 4.;
+            let mut groups: BTreeMap<i64, Vec<(Node, f64, f64)>> = BTreeMap::new();
+            for n in notes {
+                groups
+                    .entry((n.1 * 100.).round() as i64)
+                    .or_default()
+                    .push(n);
+            }
+            for notes in groups.into_values() {
+                let gap = self.note_gap(false, "betweenNotes", 4.);
+                let height = notes
+                    .iter()
+                    .filter_map(|(n, _, _)| n.child("subList"))
+                    .map(content_height)
+                    .sum::<f64>()
+                    + gap * notes.len().saturating_sub(1) as f64;
+                let mut y = self.ph - self.bottom - height;
+                self.note_separator(
+                    false,
+                    notes[0].1,
+                    y - self.note_gap(false, "belowLine", 4.),
+                    notes[0].2,
+                );
+                self.note_rendering = true;
+                for (n, x, w) in notes {
+                    if let Some(list) = n.child("subList") {
+                        self.report.bounds.push(Bounds {
+                            page: self.pages.len() + 1,
+                            kind: "footnote".into(),
+                            id: n.a("number").into(),
+                            x,
+                            y,
+                            w,
+                            h: content_height(list),
+                        });
+                        self.local(list, x, y, w)?;
+                        y += content_height(list) + gap;
+                    }
                 }
+                self.note_rendering = false;
             }
         }
 
@@ -1504,6 +2981,136 @@ impl<'a> Engine<'a> {
         self.current.height = self.ph;
         self.pages.push(std::mem::take(&mut self.current));
         Ok(())
+    }
+    /// Drain long notes onto dedicated continuation pages before resuming body flow.
+    /// Lines are indivisible; numbering is already present in their first line.
+    fn finish_long_notes(&mut self) -> Result<()> {
+        let mut groups = std::mem::take(&mut self.continued_notes);
+        for (note, x, w) in std::mem::take(&mut self.footnotes) {
+            if let Some(list) = note.child("subList") {
+                let flow = flowing_lines(list);
+                let entry = groups.entry((x * 100.).round() as i64).or_insert((
+                    x,
+                    w,
+                    std::collections::VecDeque::new(),
+                ));
+                for (idx, (p, line, y)) in flow.iter().enumerate() {
+                    let height = flow
+                        .get(idx + 1)
+                        .map(|next| next.2 - y)
+                        .unwrap_or_else(|| {
+                            (lines(p)[*line].n("vertsize") + lines(p)[*line].n("spacing")) / 100.
+                        })
+                        .max(lines(p)[*line].n("vertsize") / 100.)
+                        .max(0.1);
+                    entry
+                        .2
+                        .push_back(((*p).clone(), *line, height, note.a("number").into()));
+                }
+                if let Some(last) = entry.2.back_mut() {
+                    last.2 += self.note_gap(false, "betweenNotes", 4.);
+                }
+            }
+        }
+        let mut first = !self.draining_notes;
+        loop {
+            let overhead =
+                self.note_gap(false, "aboveLine", 6.) + self.note_gap(false, "belowLine", 4.) + 1.;
+            let capacity = (if first {
+                let text_bottom = self
+                    .current
+                    .ops
+                    .iter()
+                    .filter_map(|op| match op {
+                        Op::Text { y, size, .. }
+                            if *y >= self.top && *y < self.ph - self.bottom =>
+                        {
+                            Some(y + size * 0.35)
+                        }
+                        _ => None,
+                    })
+                    .fold(self.top, f64::max);
+                let object_bottom = self
+                    .report
+                    .bounds
+                    .iter()
+                    .filter(|b| b.page == self.pages.len() + 1 && b.kind != "watermark")
+                    .map(|b| b.y + b.h)
+                    .fold(self.top, f64::max);
+                // Body layout already reserved half a page. At finalization the
+                // unoccupied space above it can safely hold more complete lines.
+                (self.ph - self.bottom - text_bottom.max(object_bottom))
+                    .max((self.ph - self.top - self.bottom) * 0.5)
+            } else {
+                self.ph - self.top - self.bottom
+            }) - overhead;
+            anyhow::ensure!(capacity > 0., "No printable area for footnote continuation");
+            self.note_rendering = true;
+            for (x, w, rows) in groups.values_mut() {
+                let mut batch = Vec::new();
+                let mut height = 0.;
+                while let Some(row) = rows.front() {
+                    if height + row.2 > capacity + 0.01 {
+                        break;
+                    }
+                    let row = rows.pop_front().unwrap();
+                    height += row.2;
+                    batch.push(row);
+                }
+                if batch.is_empty() && !rows.is_empty() {
+                    anyhow::ensure!(first, "A single footnote line exceeds a printable page");
+                    continue;
+                }
+                if batch.is_empty() {
+                    continue;
+                }
+                let mut y = self.ph - self.bottom - height;
+                self.note_separator(false, *x, y - self.note_gap(false, "belowLine", 4.), *w);
+                for (p, line, h, id) in batch {
+                    self.report.bounds.push(Bounds {
+                        page: self.pages.len() + 1,
+                        kind: "footnote-fragment".into(),
+                        id,
+                        x: *x,
+                        y,
+                        w: *w,
+                        h,
+                    });
+                    self.depth += 1;
+                    self.line(&p, line, *x, y - lines(&p)[line].n("vertpos") / 100., *w)?;
+                    self.depth -= 1;
+                    y += h;
+                }
+            }
+            self.note_rendering = false;
+            self.current.width = self.pw;
+            self.current.height = self.ph;
+            self.pages.push(std::mem::take(&mut self.current));
+            groups.retain(|_, (_, _, rows)| !rows.is_empty());
+            if !self.draining_notes {
+                self.continued_notes = groups;
+                break;
+            }
+            if groups.values().all(|(_, _, r)| r.is_empty()) {
+                break;
+            }
+            let section = &self.doc.sections[self.active_section];
+            self.decorations(section, false, self.active_columns, self.active_gap)?;
+            first = false;
+        }
+        self.report.warnings.insert("Long footnotes share following body pages with a bounded note area; remaining section-end notes drain before the next section".into());
+        Ok(())
+    }
+    fn drain_note_tail(&mut self) -> Result<()> {
+        if self.continued_notes.is_empty() {
+            return Ok(());
+        }
+        let section = &self.doc.sections[self.active_section];
+        self.decorations(section, false, self.active_columns, self.active_gap)?;
+        self.draining_notes = true;
+        let result = self.finish_long_notes();
+        self.draining_notes = false;
+        result
     }
     fn decorations(&mut self, section: &Node, first: bool, cols: usize, gap: f64) -> Result<()> {
         let hiding = if first {
@@ -1688,10 +3295,27 @@ impl<'a> Engine<'a> {
             let mut cols = col.map(|c| c.u("colCount")).unwrap_or(1).max(1);
             let mut gap = val(col, "sameGap");
             let mut cw = (self.pw - self.left - self.right - gap * (cols - 1) as f64) / cols as f64;
+            self.active_columns = cols;
+            self.active_gap = gap;
             self.decorations(section, true, cols, gap)?;
             let mut col = 0;
             let mut last = None;
-            let mut flow_shift = 0.;
+            let mut flow_shift = 0f64;
+            let mut table_reflowed = false;
+            let fallback_flow = section
+                .children_named("p")
+                .filter(|p| !text(p).trim().is_empty())
+                .count()
+                > 1
+                && section
+                    .children_named("p")
+                    .flat_map(lines)
+                    .all(|l| l.n("vertpos") == 0.);
+            if fallback_flow {
+                self.report.warnings.insert(
+                    "Rebuilt paragraph flow: all cached paragraph origins were zero".into(),
+                );
+            }
             for p in section.children_named("p") {
                 let ls = lines(p);
                 if ls.is_empty() {
@@ -1711,15 +3335,21 @@ impl<'a> Engine<'a> {
                         cw = (self.pw - self.left - self.right - gap * (cols - 1) as f64)
                             / cols as f64;
                         col = 0;
+                        self.active_columns = cols;
+                        self.active_gap = gap;
                     }
                 }
                 for (i, l) in ls.iter().enumerate() {
                     let y = l.n("vertpos");
-                    if last.is_some_and(|last| y < last)
+                    let floor = self.flow_floor.take().filter(|f| f.0 == self.pages.len());
+                    let table_consumed_break =
+                        floor.is_some_and(|f| f.2) && p.a("pageBreak") != "1";
+                    if (last.is_some_and(|last| y < last) && !table_consumed_break)
                         || (last.is_some() && i == 0 && p.a("pageBreak") == "1")
                     {
                         col += 1;
                         flow_shift = 0.;
+                        table_reflowed = false;
                         if i == 0 && p.a("pageBreak") == "1" {
                             col = cols
                         }
@@ -1728,6 +3358,48 @@ impl<'a> Engine<'a> {
                             col = 0;
                             self.decorations(section, false, cols, gap)?;
                         }
+                    }
+                    if let Some((page, bottom, _)) = floor.filter(|f| f.0 == self.pages.len()) {
+                        let _ = page;
+                        flow_shift = flow_shift.max(bottom - self.top - y / 100.);
+                        table_reflowed = true;
+                    }
+                    let end = ls.get(i + 1).map(|l| l.u("textpos")).unwrap_or(usize::MAX);
+                    let its = Self::items(p);
+                    let incoming: Vec<_> = its
+                        .iter()
+                        .filter(|it| it.pos >= l.u("textpos") && it.pos < end)
+                        .filter_map(|it| match &it.kind {
+                            ItemKind::Control(n) if n.name == "footNote" => Some(n),
+                            _ => None,
+                        })
+                        .collect();
+                    let reserve =
+                        self.footnote_reservation(&incoming, self.left + col as f64 * (cw + gap));
+                    let visible = its
+                        .iter()
+                        .filter(|it| it.pos >= l.u("textpos") && it.pos < end)
+                        .any(|it| match &it.kind {
+                            ItemKind::Char(c) => !c.is_whitespace(),
+                            ItemKind::Object(_) => true,
+                            ItemKind::Control(n) => {
+                                matches!(n.name.as_str(), "footNote" | "endNote" | "autoNum")
+                            }
+                            _ => false,
+                        });
+                    if visible
+                        && (reserve > 0. || fallback_flow || table_reflowed)
+                        && self.top + flow_shift + (y + l.n("vertsize")) / 100.
+                            > self.ph - self.bottom - reserve
+                        && self.top + flow_shift + y / 100. > self.top + 0.1
+                    {
+                        col += 1;
+                        if col >= cols {
+                            self.finish()?;
+                            col = 0;
+                            self.decorations(section, false, cols, gap)?;
+                        }
+                        flow_shift = -y / 100.;
                     }
                     self.line(
                         p,
@@ -1769,35 +3441,28 @@ impl<'a> Engine<'a> {
                         gap,
                     );
                     last = Some(y);
+                    if fallback_flow {
+                        flow_shift += (l.n("vertsize") + l.n("spacing")) / 100.;
+                    }
                 }
+            }
+            if self
+                .note_spec(true)
+                .and_then(|n| n.child("placement"))
+                .is_some_and(|n| n.a("place") == "END_OF_SECTION")
+            {
+                self.render_endnotes(note_start, Some(section_index))?;
             }
             if section_index + 1 < self.doc.sections.len() {
                 self.finish()?;
+                self.drain_note_tail()?;
             }
         }
-        if !self.notes.is_empty() {
-            let notes = std::mem::take(&mut self.notes);
-            let (mut y, mut col, width, gap) = note_start;
-            for n in notes {
-                if let Some(list) = n.child("subList") {
-                    let h = content_height(list);
-                    if y + h > self.ph - self.bottom {
-                        col += 1;
-                        y = self.top;
-                        if col == 2 {
-                            self.finish()?;
-                            col = 0;
-                        }
-                    }
-                    self.local(list, self.left + col as f64 * (width + gap), y, width)?;
-                    y += h + 8.;
-                }
-            }
-            self.report.warnings.insert("Endnotes appended with independent column flow (not Hancom's exact note pagination)".into());
-        }
+        self.render_endnotes(note_start, None)?;
         if !self.current.ops.is_empty() {
             self.finish()?;
         }
+        self.drain_note_tail()?;
         self.report.pages = self.pages.len();
         self.report.warnings.insert("Saved-layout renderer: font substitutions can differ from Hancom; no general paragraph reflow".into());
         Ok(())
