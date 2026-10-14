@@ -26,6 +26,13 @@
 섞인 경우의 페이지 배치를 추가했습니다. 최신 결과는
 `output/mixed-tables/SUMMARY.html`이며 자세한 지원 조건은 `FORMAT_COVERAGE.md`에 있습니다.
 
+일반 텍스트 구역은 저장된 줄 배치가 없으면 자동으로 줄바꿈·페이지 나누기를
+계산합니다. 기존 캐시가 있으면 기본 변환은 이를 유지하며, `--reflow-text`로
+명시적으로 재계산할 수 있습니다. 문단 여백·들여쓰기·줄 간격·문단 보호·제목 묶음·
+외톨이줄 보호·고정 다단 흐름을 반영합니다. 표·그림·각주·번호 문단·RTL 및 구역 내
+단 변경이 포함된 강제 재배치는 아직 지원하지 않아 오류로 알립니다.
+최신 검증: `output/reflow/SUMMARY.html` (63개 테스트, 기존 43개 문서 210쪽 픽셀 동일).
+
 ## 실행
 
 Rust stable / edition 2024 환경에서:
@@ -33,6 +40,7 @@ Rust stable / edition 2024 환경에서:
 ```sh
 cargo run -- input.hwpx output.pdf /path/to/fonts
 cargo run -- input.hwp output.pdf /path/to/fonts
+cargo run -- input.hwpx output.pdf /path/to/fonts --reflow-text
 cargo test
 cargo clippy --all-targets -- -D warnings
 ```
@@ -50,6 +58,8 @@ Windows에서는 기본값 `C:/Windows/Fonts`, 현재 WSL 검증 환경에서는
 
 ```rust
 hwp_engine::convert(input_path, output_path, font_directory)?;
+// 일반 텍스트 구역의 저장된 줄 배치를 무시하고 다시 계산:
+hwp_engine::convert_with_reflow(input_path, output_path, font_directory, true)?;
 ```
 
 `run-cargo.sh`는 이 작업 공간의 격리된 WSL Rust 도구 체인을 사용하는 편의 스크립트입니다.
@@ -121,7 +131,7 @@ hwp_engine::convert(input_path, output_path, font_directory)?;
 ## 검증 범위와 남은 작업
 
 - 원본 전용 글꼴의 외형·메트릭을 완전히 재현하지 않습니다.
-- 저장된 줄 배치를 사용하는 방식입니다. 임의 문서에 대한 일반 재줄바꿈/재페이지 나누기는 미구현입니다.
+- 기본 변환은 저장된 줄 배치를 유지합니다. 일반 텍스트 재배치는 지원하며, 표·그림·각주 등이 섞인 문서 전체의 재배치는 아직 제한됩니다.
 - 글상자 높이 보정은 현재 단 안에서 뒤 문단을 이동합니다. 보정으로 페이지를 넘는 경우의
   일반 재페이지 나누기까지 검증한 것은 아닙니다.
 - 미주는 독립 흐름으로 배치하므로 한컴의 미주 페이지 배치와 다를 수 있습니다.

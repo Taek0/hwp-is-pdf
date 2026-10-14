@@ -23,7 +23,7 @@ and nonvisual PDF behavior. They are remaining work, not a promise of full suppo
 |---|---|---|
 | P1: visible text/style loss | Missing PUA glyphs; text shading/outline/shadow/emphasis; exact script/slant metrics and special-control typography | Source-driven fixtures; intended glyphs/decorations appear and unrelated text is unchanged |
 | P1: overflowing content | Shared body/continued-footnote pagination; structural splitting of oversized nested tables/objects; merged-cell splitting | No missing note lines or objects, continuation and numbering correct, all old documents preserved |
-| P2: general layout | Paragraphs without saved line caches currently fail; font-driven reflow, line/paragraph keep rules, widow/orphan control, multicolumn balancing and complex section transitions | Independent line breaking/page composition against reference PDFs |
+| P2: general layout | Reflow of mixed object/note/list paragraphs, multicolumn balancing and complex section transitions; exact shaping/line breaking | Independent line breaking/page composition against reference PDFs |
 | P2: equations | Remaining grammar/operators, column-oriented matrices, complex accents and exact metrics | Formula semantics preserved; no literal unknown commands; reference image comparisons |
 | P2: graphics | WMF/EMF, general affine/shear, text art, general OLE presentations, exact curve interpolation/effects | Vector/preview coverage with explicit unsupported diagnostics |
 | P3: chart fidelity | OOXML charts, 3D and unsupported chart families, axes/legends/data labels | Preserve data and reproduce supported chart geometry; unsupported charts remain reported |
@@ -217,7 +217,7 @@ visual equivalence.
 |---|---|---|
 | Container/records | CFB, raw DEFLATE, CRC/size trailers, zero padding, bounded reads | Version/record variation coverage remains; old HWP is out of scope |
 | Distribution | Public-format XOR/key derivation/AES; two-page fixture | More distribution fixtures needed; password documents are out of scope |
-| Text/fonts | UTF-16 positions, fallback fonts, TTC embedding; negative tracking bounded before line fitting | Font selection primarily Hangul/Latin; private-use symbols incomplete; no general reflow |
+| Text/fonts | UTF-16 positions, fallback fonts, TTC embedding; plain-text reflow with keep/spacing rules | Font selection primarily Hangul/Latin; private-use symbols incomplete; mixed-content reflow limited |
 | Tables | Nested/merged cells, captions, inherited margins, merged row bands, oversized text-row slicing and repeated headers | Oversized nested objects and more merged-cell page-break combinations need coverage |
 | Header/footer/page | Binary head/foot, page numbers, new-number metadata, first-page hiding | General section/column transitions, alternate orientations and advanced number formats |
 | Overlay/ruby | Binary overlay and ruby controls | Other overlay borders approximate; typography differs |
@@ -301,3 +301,40 @@ note collection are tested. Existing 37 documents (135 pages) retain page/object
 counts and pass QA; 92 page rasters are identical and 43 change for text metrics,
 number labels and note formatting. 40 tests and Clippy pass. See
 samples/tables-notes/README.md and output/tables-notes-regression/SUMMARY.md.
+
+## Plain-paragraph reflow (2026-10-14)
+
+Default conversion preserves valid saved line caches. If a section has a top-level
+paragraph without a cache, its ordinary text paragraphs are reflowed using the
+selected font's glyph advances/ink extents. `--reflow-text`,
+`convert_with_reflow(..., true)` and `Engine::render_reflow_text()` explicitly
+recalculate cached plain-text sections as well. Source documents are not modified.
+
+Implemented: UTF-16-safe line boundaries, word-oriented Latin wrapping with a
+long-word fallback, CJK character/word modes and basic punctuation protection,
+explicit/empty line breaks, mixed character styles, HWPUNIT margins/indent,
+paragraph spacing and percent/fixed/minimum/between-line spacing. Page placement
+supports keepLines, keepWithNext, pageBreakBefore, two-line widow/orphan protection
+where space permits, and sequential fixed-column flow. HWP paragraph flags/margins
+and both legacy/current line-spacing fields are normalized into the shared model.
+
+Unsupported reflow content fails explicitly rather than disappearing: numbered/
+bulleted paragraphs, inline/floating objects, equations, notes, RTL and mid-section
+column changes. Table/textbox/header/footer reflow, tab-stop semantics (missing
+width falls back to 24pt), full shaping/hyphenation/CJK line-breaking rules and
+column balancing remain work. Fixed spacing is enlarged when necessary to contain
+glyph ink; exact Hancom layout equivalence is not claimed.
+
+References: [HWP 5.0 rev 1.3, paragraph shape tables 43–46](https://cdn.hancom.com/link/docs/한글문서파일형식_5.0_revision1.3.pdf)
+and [Hancom OWPML break-setting model](https://github.com/hancom-io/hwpx-owpml-model/blob/main/OWPML/Class/Head/breakSetting.cpp).
+
+Evidence: generated cacheless HWPX renders 7 pages, fixed two-column HWPX renders
+5 pages, and forced reflow of the equivalent cached HWPX produces the identical
+PDF bytes. Public `samples/web/paragraphs.hwp` also reflows successfully (1 page).
+Text preservation, font-size-dependent line/page counts, five page heights for
+heading/keep rules, UTF-16 offsets, hard breaks and unsupported-content rejection
+are tested. 63 tests and all-target Clippy pass. Existing 43 documents/210 pages
+remain pixel-identical in default mode, with unchanged source hashes/page/object
+counts and zero geometry findings. New example QA also has zero findings.
+Fixtures: `samples/reflow/`, generator: `examples/reflow_fixture.rs`.
+Results: `output/reflow/SUMMARY.html`. Generated examples are not Hancom-reference exports.
