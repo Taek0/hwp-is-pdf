@@ -1,0 +1,12 @@
+[
+  {
+    "file": "lists-bullet.hwp",
+    "url": "https://raw.githubusercontent.com/mete0r/pyhwp/master/tests/hwp5_tests/fixtures/lists-bullet.hwp",
+    "sha256": "83E86B26DC3A153EED41613EE3701CA12735491B904F79B82EDC27D5A2D98CCE"
+  },
+  {
+    "file": "facename2.hwp",
+    "url": "https://raw.githubusercontent.com/mete0r/pyhwp/master/tests/hwp5_tests/fixtures/facename2.hwp",
+    "sha256": "DB2B26451A936BFF133AB57F59FE6A01E4BF62190B431E61AB0DCDD12D7E7165"
+  }
+]

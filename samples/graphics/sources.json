@@ -1,0 +1,22 @@
+[
+  {
+    "file": "pic-crop-01.hwp",
+    "url": "https://raw.githubusercontent.com/edwardkim/rhwp/main/samples/pic-crop-01.hwp",
+    "sha256": "3B5AFBE4CDB18FAA49452A9CBED770D5CAA27AED2F83B708E9AB8516C65EBF4C"
+  },
+  {
+    "file": "issue5595_rotated_picture_topbottom.hwpx",
+    "url": "https://raw.githubusercontent.com/edwardkim/rhwp/main/samples/issue5595_rotated_picture_topbottom.hwpx",
+    "sha256": "891298CF968D714CC0F5B0169644E16AC10B6718CCAAA527C06AA6194DAC8047"
+  },
+  {
+    "file": "rotated-picture.hwp",
+    "url": "https://raw.githubusercontent.com/edwardkim/rhwp/main/samples/ta-pic-001-r.hwp",
+    "sha256": "6398447D985DE6C498C0F8EC2D9805571822AF269B24629D13536B90BBA1C538"
+  },
+  {
+    "file": "shapes.hwpx",
+    "url": "https://raw.githubusercontent.com/edwardkim/rhwp/main/samples/hwpx/shape-001.hwpx",
+    "sha256": "2F20C8EB5CD89D47765A49F2FCF83D65719C7C9147124C14B391DA809E91AB6E"
+  }
+]
