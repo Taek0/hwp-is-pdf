@@ -230,7 +230,7 @@ fn section_properties(r: &Record) -> Result<Node> {
         .at("width", if landscape { height } else { width })
         .at("height", if landscape { width } else { height })
         .with(vec![margin]);
-    Ok(n("secPr")
+    let mut sec = n("secPr")
         .at("binaryHwp", 1)
         .at(
             "hideFirstHeader",
@@ -244,7 +244,71 @@ fn section_properties(r: &Record) -> Result<Node> {
             "hideFirstMasterPage",
             if u32(&r.data, 4)? & 4 != 0 { 1 } else { 0 },
         )
-        .with(vec![page]))
+        .with(vec![page]);
+    for (index, r) in r
+        .children
+        .iter()
+        .filter(|c| c.tag == 74)
+        .take(2)
+        .enumerate()
+    {
+        let d = &r.data;
+        let extra = usize::from(d.len() >= 28) * 2;
+        let flags = u32(d, 0)?;
+        let char_at = |off| -> Result<String> {
+            Ok(char::from_u32(u16(d, off)? as u32)
+                .filter(|c| *c != '\0')
+                .map(|c| c.to_string())
+                .unwrap_or_default())
+        };
+        sec.children.push(
+            n(if index == 0 {
+                "footNotePr"
+            } else {
+                "endNotePr"
+            })
+            .with(vec![
+                n("autoNumFormat")
+                    .at("typeCode", flags & 255)
+                    .at("prefixChar", char_at(6)?)
+                    .at("suffixChar", char_at(8)?),
+                n("noteLine")
+                    .at("length", i16::from_le_bytes(bytes(d, 12, 2)?.try_into()?))
+                    .at(
+                        "type",
+                        if bytes(d, 20 + extra, 1)?[0] == 0 {
+                            "NONE"
+                        } else {
+                            "SOLID"
+                        },
+                    )
+                    .at("widthIndex", bytes(d, 21 + extra, 1)?[0])
+                    .at("color", rgb(u32(d, 22 + extra)?)),
+                n("noteSpacing")
+                    .at("aboveLine", u16(d, 14 + extra)?)
+                    .at("belowLine", u16(d, 16 + extra)?)
+                    .at("betweenNotes", u16(d, 18 + extra)?),
+                n("placement")
+                    .at(
+                        "place",
+                        if index == 0 {
+                            [
+                                "EACH_COLUMN",
+                                "MERGED_COLUMN",
+                                "RIGHT_MOST_COLUMN",
+                                "EACH_COLUMN",
+                            ][((flags >> 8) & 3) as usize]
+                        } else if flags & 256 != 0 {
+                            "END_OF_SECTION"
+                        } else {
+                            "END_OF_DOCUMENT"
+                        },
+                    )
+                    .at("beneathText", (flags >> 13) & 1),
+            ]),
+        );
+    }
+    Ok(sec)
 }
 fn common(r: &Record, name: &str) -> Result<Node> {
     let d = &r.data;
@@ -319,6 +383,7 @@ fn control(r: &Record) -> Result<Node> {
             } else {
                 "endNote"
             });
+            node = node.at("id", format!("hwp-{:x}", r.offset));
             for (h, ps) in groups(&r.children) {
                 node.children.push(list(h, &ps)?);
             }
@@ -440,13 +505,35 @@ fn control(r: &Record) -> Result<Node> {
             n("autoNum")
                 .at(
                     "numType",
-                    if u32(d, 4)? & 15 == 0 {
-                        "PAGE"
-                    } else {
-                        "OTHER"
+                    match u32(d, 4)? & 15 {
+                        0 => "PAGE",
+                        1 => "FOOTNOTE",
+                        2 => "ENDNOTE",
+                        _ => "OTHER",
                     },
                 )
-                .at("num", u16(d, 8)?),
+                .at("num", u16(d, 8)?)
+                .with(if d.len() >= 16 {
+                    vec![
+                        n("autoNumFormat")
+                            .at(
+                                "prefixChar",
+                                char::from_u32(u16(d, 12)? as u32)
+                                    .filter(|c| *c != '\0')
+                                    .map(|c| c.to_string())
+                                    .unwrap_or_default(),
+                            )
+                            .at(
+                                "suffixChar",
+                                char::from_u32(u16(d, 14)? as u32)
+                                    .filter(|c| *c != '\0')
+                                    .map(|c| c.to_string())
+                                    .unwrap_or_default(),
+                            ),
+                    ]
+                } else {
+                    vec![]
+                }),
         ])),
         "tbl " => {
             let mut out = common(r, "tbl")?;
@@ -458,7 +545,11 @@ fn control(r: &Record) -> Result<Node> {
                 .at("colCnt", u16(td, 6)?)
                 .at(
                     "pageBreak",
-                    if u32(td, 0)? & 3 == 2 { "NONE" } else { "CELL" },
+                    match u32(td, 0)? & 3 {
+                        0 => "NONE",
+                        1 => "CELL",
+                        _ => "TABLE",
+                    },
                 )
                 .at("repeatHeader", (u32(td, 0)? >> 2) & 1)
                 .at("borderFillIDRef", u16(td, 18 + 2 * rows)?);
@@ -502,10 +593,26 @@ fn control(r: &Record) -> Result<Node> {
             let kind = comp.id();
             if kind == "$con" {
                 let mut group = common(r, "group")?;
+                group.children.push(
+                    n("curSz")
+                        .at("width", u32(cd, 28)?)
+                        .at("height", u32(cd, 32)?),
+                );
+                group.children.push(
+                    n("rotationInfo")
+                        .at("angle", u16(cd, 40)?)
+                        .at("centerX", i32(cd, 42)?)
+                        .at("centerY", i32(cd, 46)?),
+                );
+                group.children.push(
+                    n("flip")
+                        .at("horizontal", u32(cd, 36)? & 1)
+                        .at("vertical", (u32(cd, 36)? >> 1) & 1),
+                );
                 let ow = u32(cd, 20)?.max(1) as f64;
                 let oh = u32(cd, 24)?.max(1) as f64;
-                let sx = u32(&r.data, 16)? as f64 / ow;
-                let sy = u32(&r.data, 20)? as f64 / oh;
+                let sx = u32(cd, 28)? as f64 / ow;
+                let sy = u32(cd, 32)? as f64 / oh;
                 for child in comp.children.iter().filter(|c| c.tag == 76) {
                     let mut child = child.clone();
                     if child.data.get(..4) != child.data.get(4..8) {
@@ -557,6 +664,42 @@ fn control(r: &Record) -> Result<Node> {
             out = out
                 .at("originalWidth", u32(cd, 20)?)
                 .at("originalHeight", u32(cd, 24)?);
+            out.children.push(
+                n("curSz")
+                    .at(
+                        "width",
+                        if name == "line" {
+                            i32(cd, 28)?.unsigned_abs()
+                        } else {
+                            u32(cd, 28)?
+                        },
+                    )
+                    .at(
+                        "height",
+                        if name == "line" {
+                            i32(cd, 32)?.unsigned_abs()
+                        } else {
+                            u32(cd, 32)?
+                        },
+                    ),
+            );
+            out.children.push(
+                n("rotationInfo")
+                    .at("angle", u16(cd, 40)?)
+                    .at("centerX", i32(cd, 42)?)
+                    .at("centerY", i32(cd, 46)?),
+            );
+            out.children.push(
+                n("flip")
+                    .at(
+                        "horizontal",
+                        (u32(cd, 36)? & 1) ^ u32::from(name == "line" && i32(cd, 28)? < 0),
+                    )
+                    .at(
+                        "vertical",
+                        ((u32(cd, 36)? >> 1) & 1) ^ u32::from(name == "line" && i32(cd, 32)? < 0),
+                    ),
+            );
             if matches!(name, "polygon" | "curve") {
                 let shape = comp
                     .first(if name == "polygon" { 82 } else { 83 })
@@ -571,6 +714,12 @@ fn control(r: &Record) -> Result<Node> {
                             .at("x", i32(sd, 4 + i * 8)?)
                             .at("y", i32(sd, 8 + i * 8)?),
                     );
+                }
+                if name == "curve" {
+                    for &kind in bytes(sd, 4 + count * 8, count.saturating_sub(1))? {
+                        ensure!(kind <= 1, "Unknown curve segment type {kind}");
+                        out.children.push(n("segment").at("type", kind));
+                    }
                 }
             }
             if name == "arc" {
@@ -588,6 +737,20 @@ fn control(r: &Record) -> Result<Node> {
             if name == "pic" {
                 let pic = comp.first(85).context("Missing picture record")?;
                 let pd = &pic.data;
+                out.children.push(
+                    n("imgClip")
+                        .at("left", i32(pd, 44)?)
+                        .at("top", i32(pd, 48)?)
+                        .at("right", i32(pd, 52)?)
+                        .at("bottom", i32(pd, 56)?),
+                );
+                if pd.len() >= 90 && u32(pd, 78)? == 0 {
+                    out.children.push(
+                        n("imgDim")
+                            .at("dimwidth", u32(pd, 82)?)
+                            .at("dimheight", u32(pd, 86)?),
+                    );
+                }
                 out.children.push(
                     n("img")
                         .at("binaryItemIDRef", format!("image{}", u16(pd, 71)?))
@@ -974,7 +1137,33 @@ pub fn open(path: &Path) -> Result<Document> {
                     ch.children.push(n("bold"));
                 }
                 let props = u32(d, 46)?;
-                if (props >> 2) & 3 != 0 {
+                if props & 1 != 0 {
+                    ch.children.push(n("italic"));
+                }
+                if props & (1 << 15) != 0 {
+                    ch.children.push(n("supscript"));
+                }
+                if props & (1 << 16) != 0 {
+                    ch.children.push(n("subscript"));
+                }
+                // Shape 15 is a frequent dormant/default strike value. Only
+                // explicit supported line shapes can produce a strike stroke.
+                let strike_style = (props >> 26) & 15;
+                if (props >> 18) & 7 != 0 && strike_style <= 12 {
+                    ch.children
+                        .push(n("strikeout").at("style", strike_style).at(
+                            "color",
+                            rgb(if d.len() >= 72 {
+                                u32(d, 68)?
+                            } else {
+                                u32(d, 52)?
+                            }),
+                        ));
+                }
+                // Only 1 (bottom) and 3 (top) denote visible underlines.
+                // Reserved value 2 occurs in real documents with style 15;
+                // treating every nonzero value as bottom underlines all text.
+                if matches!((props >> 2) & 3, 1 | 3) {
                     ch.children.push(
                         n("underline")
                             .at(
