@@ -285,6 +285,7 @@ pub struct Engine<'a> {
     active_columns: usize,
     active_gap: f64,
     last_table_end: f64,
+    reflow_table_column: Option<usize>,
     flow_floor: Option<(usize, f64, bool)>,
 }
 impl<'a> Engine<'a> {
@@ -321,6 +322,7 @@ impl<'a> Engine<'a> {
             active_columns: 1,
             active_gap: 0.,
             last_table_end: 0.,
+            reflow_table_column: None,
             flow_floor: None,
         }
     }
@@ -2119,16 +2121,38 @@ impl<'a> Engine<'a> {
         self.report.warnings.insert("Oversized table row split at shared text-line boundaries; merged cell borders continued".into());
         Ok(())
     }
-    /// Paginate a nested text-table's measured vector structure at safe row/ink
-    /// boundaries. Only rules and fills are clipped; glyphs are never clipped.
+    /// Reflow consumes columns before advancing a page; saved layouts keep
+    /// their original page-only splitting behavior.
+    fn advance_table_fragment(&mut self, x: &mut f64) -> Result<()> {
+        if let Some(col) = self.reflow_table_column {
+            let width = (self.pw
+                - self.left
+                - self.right
+                - self.active_gap * (self.active_columns - 1) as f64)
+                / self.active_columns as f64;
+            let next = (col + 1) % self.active_columns;
+            *x += (next as f64 - col as f64) * (width + self.active_gap);
+            self.reflow_table_column = Some(next);
+            if next != 0 {
+                return Ok(());
+            }
+        }
+        self.finish()?;
+        let section = &self.doc.sections[self.active_section];
+        self.decorations(section, false, self.active_columns, self.active_gap)?;
+        Ok(())
+    }
+    /// Paginate measured vectors at safe row/ink boundaries. Only rules and
+    /// fills are clipped; glyphs and transformed objects remain indivisible.
     fn split_nested_vectors(
         &mut self,
         n: &Node,
-        x: f64,
+        mut x: f64,
         mut top: f64,
         w: f64,
         total: f64,
     ) -> Result<bool> {
+        let canvas_x = x;
         let captions: Vec<_> = n.children_named("caption").collect();
         let mut all_captions = Vec::new();
         n.all("caption", &mut all_captions);
@@ -2306,9 +2330,7 @@ impl<'a> Engine<'a> {
         top = top.max(self.top + above);
         let first_min = headers.iter().map(|h| h.y + h.height).fold(0., f64::max) + 24.;
         if top + first_min > self.ph - self.bottom {
-            self.finish()?;
-            let section = &self.doc.sections[self.active_section];
-            self.decorations(section, false, self.active_columns, self.active_gap)?;
+            self.advance_table_fragment(&mut x)?;
             top = self.top + above;
         }
         let mut caption_y = top - above;
@@ -2346,7 +2368,7 @@ impl<'a> Engine<'a> {
                     prior_y = Some(header.y);
                     group_height = group_height.max(header.height);
                     self.current.ops.push(Op::TransformBegin {
-                        matrix: [1., 0., 0., 1., 0., group_top - header.y],
+                        matrix: [1., 0., 0., 1., x - canvas_x, group_top - header.y],
                     });
                     self.current.ops.extend(header.ops.clone());
                     self.current.ops.push(Op::TransformEnd);
@@ -2427,9 +2449,7 @@ impl<'a> Engine<'a> {
                     top > self.top + header_height + 0.1,
                     "Nested-table text line exceeds printable page"
                 );
-                self.finish()?;
-                let section = &self.doc.sections[self.active_section];
-                self.decorations(section, false, self.active_columns, self.active_gap)?;
+                self.advance_table_fragment(&mut x)?;
                 top = self.top;
                 continue;
             }
@@ -2438,10 +2458,15 @@ impl<'a> Engine<'a> {
                 .iter()
                 .filter(|n| n.y >= start - 0.01 && n.y < cut - 0.01)
             {
-                self.footnotes.push((note.node.clone(), note.x, note.width));
+                let (nx, nw) = if self.reflow_table_column.is_some() {
+                    self.footnote_area(x)
+                } else {
+                    (note.x, note.width)
+                };
+                self.footnotes.push((note.node.clone(), nx, nw));
             }
             self.current.ops.push(Op::TransformBegin {
-                matrix: [1., 0., 0., 1., 0., shift],
+                matrix: [1., 0., 0., 1., x - canvas_x, shift],
             });
             for (op_index, op) in canvas.ops.iter().enumerate() {
                 if let Some(id) = owner[op_index] {
@@ -2524,7 +2549,7 @@ impl<'a> Engine<'a> {
                         page: self.pages.len() + 1,
                         kind: b.kind.clone(),
                         id: b.id.clone(),
-                        x: b.x,
+                        x: b.x + x - canvas_x,
                         y: a + shift,
                         w: b.w,
                         h: end - a,
@@ -2537,6 +2562,7 @@ impl<'a> Engine<'a> {
                     .rev()
                     .find(|b| b.kind == "tbl" && b.id == n.a("id"))
                 {
+                    b.x = x;
                     b.y = top;
                     b.page = self.pages.len() + 1;
                     b.h = cut - start;
@@ -2556,9 +2582,7 @@ impl<'a> Engine<'a> {
             start = cut;
             first = false;
             if start < total - 0.01 {
-                self.finish()?;
-                let section = &self.doc.sections[self.active_section];
-                self.decorations(section, false, self.active_columns, self.active_gap)?;
+                self.advance_table_fragment(&mut x)?;
                 top = self.top;
             }
         }
@@ -2694,6 +2718,13 @@ impl<'a> Engine<'a> {
             && let Some(last) = rh.last_mut()
         {
             *last += h - total;
+        }
+        if self.depth == 0 && self.reflow_table_column.is_some() {
+            anyhow::ensure!(
+                self.split_nested_vectors(n, x, y, w, total)?,
+                "This table structure cannot yet be split across reflow columns"
+            );
+            return Ok(());
         }
         let fixed_bottom = n.child("pos").is_some_and(|p| p.a("vertAlign") == "BOTTOM");
         let nested = cells.iter().filter_map(|c| c.child("subList")).any(|l| {
@@ -3918,10 +3949,7 @@ impl<'a> Engine<'a> {
                             }
                         })
                         .context("Missing reflow block")?;
-                    anyhow::ensure!(
-                        cols == 1 || object.name != "tbl",
-                        "Table reflow across multiple columns is not yet supported"
-                    );
+
                     let ox = self.left + col as f64 * (width + gap);
                     let reserve = self.footnote_reservation(&[], ox);
                     if ls[at].height <= body
@@ -3934,7 +3962,21 @@ impl<'a> Engine<'a> {
                     let cap = caption_extent(object);
                     let old_page = self.pages.len();
                     let bounds_start = self.report.bounds.len();
-                    self.object(object, ox, y + cap[2], y + cap[2], ox, width)?;
+                    if cols > 1 && object.name == "tbl" {
+                        let placement = self
+                            .note_spec(false)
+                            .and_then(|s| s.child("placement"))
+                            .map(|p| p.a("place"))
+                            .unwrap_or("EACH_COLUMN");
+                        anyhow::ensure!(
+                            placement == "EACH_COLUMN",
+                            "Mixed-column reflow requires per-column footnote placement"
+                        );
+                        self.reflow_table_column = Some(col);
+                    }
+                    let rendered = self.object(object, ox, y + cap[2], y + cap[2], ox, width);
+                    let final_column = self.reflow_table_column.take();
+                    rendered?;
                     if object.name == "tbl" {
                         y = self.last_table_end
                             + if self.split_caption_handled {
@@ -3950,7 +3992,9 @@ impl<'a> Engine<'a> {
                             .fold(y + ls[at].height - cap[3], f64::max)
                             + cap[3];
                     }
-                    if self.pages.len() != old_page {
+                    if let Some(final_column) = final_column {
+                        col = final_column;
+                    } else if self.pages.len() != old_page {
                         col = 0;
                     }
                     self.flow_floor = None;
