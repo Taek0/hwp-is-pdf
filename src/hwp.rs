@@ -1196,6 +1196,63 @@ pub fn open(path: &Path) -> Result<Document> {
                     id.clone(),
                     n("paraPr").at("id", id).with(vec![
                         n("align").at("horizontal", align),
+                        n("margin").with(
+                            [
+                                ("left", 4),
+                                ("right", 8),
+                                ("intent", 12),
+                                ("prev", 16),
+                                ("next", 20),
+                            ]
+                            .into_iter()
+                            .map(|(key, off)| {
+                                Ok(n(key).at("value", i32(d, off)?).at("unit", "HWPUNIT"))
+                            })
+                            .collect::<Result<Vec<_>>>()?,
+                        ),
+                        n("lineSpacing")
+                            .at(
+                                "type",
+                                match if d.len() >= 54 {
+                                    u32(d, 46)? & 31
+                                } else {
+                                    u32(d, 0)? & 3
+                                } {
+                                    1 => "FIXED",
+                                    2 => "BETWEEN_LINES",
+                                    3 => "AT_LEAST",
+                                    _ => "PERCENT",
+                                },
+                            )
+                            .at(
+                                "value",
+                                if d.len() >= 54 {
+                                    u32(d, 50)?
+                                } else {
+                                    u32(d, 24)?
+                                },
+                            ),
+                        n("breakSetting")
+                            .at("widowOrphan", (u32(d, 0)? >> 16) & 1)
+                            .at("keepWithNext", (u32(d, 0)? >> 17) & 1)
+                            .at("keepLines", (u32(d, 0)? >> 18) & 1)
+                            .at("pageBreakBefore", (u32(d, 0)? >> 19) & 1)
+                            .at(
+                                "breakLatinWord",
+                                if (u32(d, 0)? >> 5) & 3 == 2 {
+                                    "BREAK_WORD"
+                                } else {
+                                    "KEEP_WORD"
+                                },
+                            )
+                            .at(
+                                "breakNonLatinWord",
+                                if u32(d, 0)? & 128 != 0 {
+                                    "BREAK_WORD"
+                                } else {
+                                    "KEEP_WORD"
+                                },
+                            ),
                         n("heading")
                             .at(
                                 "type",
