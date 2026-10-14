@@ -55,7 +55,7 @@ fn main() -> Result<()> {
                 p += 4;
             }
             let d = &b[p..p + len];
-            if [71, 72, 77, 81, 82, 83, 87, 88].contains(&tag) {
+            if [71, 72, 74, 77, 81, 82, 83, 87, 88].contains(&tag) {
                 println!(
                     "{:x} {} {} len={} data={:02x?}",
                     p - 4,
