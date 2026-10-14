@@ -8,6 +8,7 @@ pub(crate) struct Unit {
     pub ascent: f64,
     pub descent: f64,
     pub em: f64,
+    pub block: bool,
 }
 pub(crate) struct Line {
     pub pos: usize,
@@ -16,6 +17,7 @@ pub(crate) struct Line {
     pub left: f64,
     pub width: f64,
     pub hard: bool,
+    pub block: bool,
 }
 #[derive(Default)]
 pub(crate) struct Settings {
@@ -96,7 +98,20 @@ pub(crate) fn wrap(units: &[Unit], width: f64, s: &Settings) -> anyhow::Result<V
         let mut used = 0.;
         let mut last_break: Option<usize> = None;
         let mut hard = false;
+        let mut block = false;
         while end < units.len() {
+            if units[end].block {
+                if end > begin
+                    && units[begin..end]
+                        .iter()
+                        .any(|u| u.width > 0. || u.ch.is_some())
+                {
+                    break;
+                }
+                end += 1;
+                block = true;
+                break;
+            }
             if units[end].ch == Some('\n') {
                 end += 1;
                 hard = true;
@@ -138,7 +153,11 @@ pub(crate) fn wrap(units: &[Unit], width: f64, s: &Settings) -> anyhow::Result<V
             "BETWEEN_LINES" => ink + s.value / 100.,
             _ => em * s.value / 100.,
         };
-        let height = requested.max(ink + 1.);
+        let height = if block {
+            ascent + descent
+        } else {
+            requested.max(ink + 1.)
+        };
         out.push(Line {
             pos: units
                 .get(begin)
@@ -149,6 +168,7 @@ pub(crate) fn wrap(units: &[Unit], width: f64, s: &Settings) -> anyhow::Result<V
             left,
             width: available,
             hard,
+            block,
         });
         begin = end;
         if begin >= units.len() {
@@ -160,6 +180,7 @@ pub(crate) fn wrap(units: &[Unit], width: f64, s: &Settings) -> anyhow::Result<V
                     left: s.left,
                     width: width - s.left - s.right,
                     hard: false,
+                    block: false,
                 });
             }
             break;
@@ -181,6 +202,7 @@ mod tests {
                     ascent: 8.,
                     descent: 2.,
                     em: 10.,
+                    block: false,
                 };
                 pos += c.len_utf16();
                 u
@@ -193,6 +215,27 @@ mod tests {
             value: 160.,
             ..Default::default()
         }
+    }
+    #[test]
+    fn block_objects_are_separate_lines_without_font_leading() {
+        let mut input = units("AZ");
+        input[1].pos = 9;
+        input.insert(
+            1,
+            Unit {
+                pos: 1,
+                ascent: 200.,
+                block: true,
+                ..Default::default()
+            },
+        );
+        let lines = wrap(&input, 80., &config()).unwrap();
+        assert_eq!(
+            lines.iter().map(|l| l.pos).collect::<Vec<_>>(),
+            vec![0, 1, 9]
+        );
+        assert!(lines[1].block);
+        assert_eq!(lines[1].height, 200.);
     }
     #[test]
     fn word_boundaries_preserve_all_offsets() {

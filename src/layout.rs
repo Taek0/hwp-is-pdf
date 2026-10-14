@@ -13,6 +13,18 @@ use std::{
 fn val(n: Option<&Node>, key: &str) -> f64 {
     n.map(|n| n.n(key)).unwrap_or(0.) / 100.
 }
+fn node_mut<'a>(n: &'a mut Node, name: &str) -> &'a mut Node {
+    let index = if let Some(i) = n.children.iter().position(|c| c.name == name) {
+        i
+    } else {
+        n.children.push(Node {
+            name: name.into(),
+            ..Default::default()
+        });
+        n.children.len() - 1
+    };
+    &mut n.children[index]
+}
 fn color(s: &str) -> [f64; 3] {
     let v = u32::from_str_radix(s.trim_start_matches('#'), 16).unwrap_or(0);
     [
@@ -1376,7 +1388,9 @@ impl<'a> Engine<'a> {
             .fold(0f64, f64::max))
     }
     fn measured_flow<'b>(&mut self, list: &'b Node) -> Result<Vec<(&'b Node, usize, f64, f64)>> {
-        if self.doc.header.a("binaryHwp") != "1" {
+        if self.doc.header.a("binaryHwp") != "1"
+            || list.children_named("p").all(|p| p.a("reflowed") == "1")
+        {
             return Ok(flowing_lines(list)
                 .into_iter()
                 .map(|(p, i, y)| (p, i, y, lines(p)[i].n("vertsize") / 100.))
@@ -3289,6 +3303,471 @@ impl<'a> Engine<'a> {
         *y = self.top;
         Ok(())
     }
+    fn reflow_list(&mut self, list: &mut Node, width: f64, nesting: usize) -> Result<f64> {
+        let mut y = 0.;
+        for child in &mut list.children {
+            if child.name != "p" {
+                continue;
+            }
+            let (mut p, ls, s) = self.reflow_paragraph(child, width, nesting)?;
+            y += s.before;
+            for seg in &mut node_mut(&mut p, "linesegarray").children {
+                seg.attrs
+                    .insert("vertpos".into(), (seg.n("vertpos") + y * 100.).to_string());
+            }
+            y += ls.iter().map(|l| l.height).sum::<f64>() + s.after;
+            *child = p;
+        }
+        Ok(y)
+    }
+    fn reflow_table_contents(&mut self, n: &mut Node, width: f64, nesting: usize) -> Result<()> {
+        let rows = n.u("rowCnt");
+        let cols = n.u("colCnt");
+        anyhow::ensure!(
+            rows > 0 && cols > 0 && rows <= 1000 && cols <= 1000,
+            "Invalid reflow table dimensions"
+        );
+        let mut cw = vec![0f64; cols];
+        for cell in n.children_named("tr").flat_map(|r| r.children_named("tc")) {
+            let a = cell.child("cellAddr").context("cellAddr")?;
+            let span = cell.child("cellSpan").context("cellSpan")?;
+            anyhow::ensure!(
+                a.u("colAddr") + span.u("colSpan") <= cols
+                    && a.u("rowAddr") + span.u("rowSpan") <= rows
+                    && span.u("colSpan") > 0
+                    && span.u("rowSpan") > 0,
+                "Cell outside table"
+            );
+            if span.u("colSpan") == 1 {
+                cw[a.u("colAddr")] = cw[a.u("colAddr")].max(val(cell.child("cellSz"), "width"));
+            }
+        }
+        for cell in n.children_named("tr").flat_map(|r| r.children_named("tc")) {
+            let col = cell.child("cellAddr").unwrap().u("colAddr");
+            let count = cell.child("cellSpan").unwrap().u("colSpan");
+            let missing = (col..col + count)
+                .filter(|i| cw[*i] == 0.)
+                .collect::<Vec<_>>();
+            if !missing.is_empty() {
+                let each = (val(cell.child("cellSz"), "width")
+                    - cw[col..col + count].iter().sum::<f64>())
+                .max(0.)
+                    / missing.len() as f64;
+                for i in missing {
+                    cw[i] = each;
+                }
+            }
+        }
+        for c in &mut cw {
+            if *c <= 0. {
+                *c = width / cols as f64;
+            }
+        }
+        let ratio = (width / cw.iter().sum::<f64>()).min(1.);
+        for c in &mut cw {
+            *c *= ratio;
+        }
+        let m_default = margin(n, "inMargin");
+        let mut rh = vec![0f64; rows];
+        let mut needs = Vec::new();
+        for row in n.children.iter_mut().filter(|r| r.name == "tr") {
+            for cell in row.children.iter_mut().filter(|c| c.name == "tc") {
+                let a = cell.child("cellAddr").unwrap();
+                let col = a.u("colAddr");
+                let row = a.u("rowAddr");
+                let span = cell.child("cellSpan").unwrap();
+                let cs = span.u("colSpan");
+                let rs = span.u("rowSpan");
+                let w = cw[col..col + cs].iter().sum::<f64>();
+                let m = if cell.a("hasMargin") == "1" {
+                    margin(cell, "cellMargin")
+                } else {
+                    m_default
+                };
+                let minimum = val(cell.child("cellSz"), "height");
+                let height =
+                    if let Some(list) = cell.children.iter_mut().find(|n| n.name == "subList") {
+                        self.reflow_list(list, w - m[0] - m[1], nesting + 1)? + m[2] + m[3]
+                    } else {
+                        0.
+                    };
+                let h = minimum.max(height);
+                if rs == 1 {
+                    rh[row] = rh[row].max(h);
+                }
+                needs.push((row, rs, h));
+                node_mut(cell, "cellSz")
+                    .attrs
+                    .insert("width".into(), (w * 100.).to_string());
+            }
+        }
+        for (row, span, h) in needs {
+            let extra = (h - rh[row..row + span].iter().sum::<f64>()).max(0.);
+            rh[row + span - 1] += extra;
+        }
+        for row in n.children.iter_mut().filter(|r| r.name == "tr") {
+            for cell in row.children.iter_mut().filter(|c| c.name == "tc") {
+                let r = cell.child("cellAddr").unwrap().u("rowAddr");
+                let span = cell.child("cellSpan").unwrap().u("rowSpan");
+                node_mut(cell, "cellSz").attrs.insert(
+                    "height".into(),
+                    (rh[r..r + span].iter().sum::<f64>() * 100.).to_string(),
+                );
+            }
+        }
+        let sz = node_mut(n, "sz");
+        sz.attrs
+            .insert("width".into(), (cw.iter().sum::<f64>() * 100.).to_string());
+        sz.attrs
+            .insert("height".into(), (rh.iter().sum::<f64>() * 100.).to_string());
+        Ok(())
+    }
+    fn reflow_children(&mut self, p: &mut Node, width: f64, nesting: usize) -> Result<()> {
+        anyhow::ensure!(nesting < 64, "Excessive nested reflow");
+        for run in p.children.iter_mut().filter(|r| r.name == "run") {
+            for n in &mut run.children {
+                match n.name.as_str() {
+                    "tbl" | "pic" | "rect" => {
+                        anyhow::ensure!(
+                            n.a("textWrap") != "BEHIND_TEXT",
+                            "Reflow of page-background objects is not supported"
+                        );
+                        let block = n.name == "tbl"
+                            || n.child("pos").is_none_or(|p| p.a("treatAsChar") != "1");
+                        if n.name == "tbl" {
+                            self.reflow_table_contents(n, width, nesting)?;
+                        } else {
+                            let old_w = val(n.child("sz"), "width");
+                            let ratio = (width / old_w.max(0.1)).min(1.);
+                            for key in ["sz", "curSz"] {
+                                if let Some(sz) = n.children.iter_mut().find(|s| s.name == key) {
+                                    for dimension in ["width", "height"] {
+                                        let value = sz.n(dimension) * ratio;
+                                        sz.attrs.insert(dimension.into(), value.to_string());
+                                    }
+                                }
+                            }
+                            if n.name == "rect" {
+                                let angle =
+                                    n.child("rotationInfo").map(|r| r.n("angle")).unwrap_or(0.);
+                                let native_w = if angle != 0. {
+                                    val(n.child("curSz"), "width")
+                                } else {
+                                    val(n.child("sz"), "width")
+                                };
+                                let native_h = if angle != 0. {
+                                    val(n.child("curSz"), "height")
+                                } else {
+                                    val(n.child("sz"), "height")
+                                };
+                                let mut height = native_h;
+                                if let Some(draw) =
+                                    n.children.iter_mut().find(|n| n.name == "drawText")
+                                {
+                                    let m = margin(draw, "textMargin");
+                                    if let Some(list) =
+                                        draw.children.iter_mut().find(|n| n.name == "subList")
+                                    {
+                                        height = height.max(
+                                            self.reflow_list(
+                                                list,
+                                                native_w - m[0] - m[1],
+                                                nesting + 1,
+                                            )? + m[2]
+                                                + m[3],
+                                        );
+                                    }
+                                }
+                                if angle != 0. {
+                                    let rad = angle.to_radians();
+                                    node_mut(n, "curSz")
+                                        .attrs
+                                        .insert("height".into(), (height * 100.).to_string());
+                                    let sz = node_mut(n, "sz");
+                                    sz.attrs.insert(
+                                        "width".into(),
+                                        ((native_w * rad.cos().abs() + height * rad.sin().abs())
+                                            * 100.)
+                                            .to_string(),
+                                    );
+                                    sz.attrs.insert(
+                                        "height".into(),
+                                        ((native_w * rad.sin().abs() + height * rad.cos().abs())
+                                            * 100.)
+                                            .to_string(),
+                                    );
+                                } else {
+                                    node_mut(n, "sz")
+                                        .attrs
+                                        .insert("height".into(), (height * 100.).to_string());
+                                }
+                            }
+                        }
+                        if block {
+                            n.attrs.insert("textWrap".into(), "TOP_AND_BOTTOM".into());
+                            let pos = node_mut(n, "pos");
+                            for (k, v) in [
+                                ("treatAsChar", "0"),
+                                ("horzRelTo", "PARA"),
+                                ("vertRelTo", "PARA"),
+                                ("horzAlign", "LEFT"),
+                                ("vertAlign", "TOP"),
+                                ("horzOffset", "0"),
+                                ("vertOffset", "0"),
+                            ] {
+                                pos.attrs.insert(k.into(), v.into());
+                            }
+                        }
+                        let w = val(n.child("sz"), "width");
+                        for caption in n.children.iter_mut().filter(|c| c.name == "caption") {
+                            anyhow::ensure!(
+                                matches!(caption.a("side"), "TOP" | "BOTTOM")
+                                    && caption.find("footNote").is_none(),
+                                "Reflow supports plain top/bottom captions only"
+                            );
+                            if let Some(list) =
+                                caption.children.iter_mut().find(|n| n.name == "subList")
+                            {
+                                self.reflow_list(list, w, nesting + 1)?;
+                            }
+                        }
+                    }
+                    "ctrl" => {
+                        for control in &mut n.children {
+                            if control.name == "footNote" {
+                                let (_, w) = self.footnote_area(self.left);
+                                if let Some(list) =
+                                    control.children.iter_mut().find(|n| n.name == "subList")
+                                {
+                                    self.reflow_list(list, w, nesting + 1)?;
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Ok(())
+    }
+    fn reflow_paragraph(
+        &mut self,
+        source: &Node,
+        width: f64,
+        nesting: usize,
+    ) -> Result<(Node, Vec<crate::reflow::Line>, crate::reflow::Settings)> {
+        anyhow::ensure!(nesting < 64, "Excessive nested reflow");
+        let style = self.doc.paras.get(source.a("paraPrIDRef"));
+        anyhow::ensure!(
+            style
+                .and_then(|s| s.child("heading"))
+                .is_none_or(|h| !matches!(h.a("type"), "NUMBER" | "BULLET")),
+            "Plain-text reflow does not yet support numbered/bulleted paragraph {}",
+            source.a("id")
+        );
+        anyhow::ensure!(
+            style.is_none_or(|s| s.a("textDir") != "RTL"),
+            "RTL paragraph reflow is not supported"
+        );
+        let settings = crate::reflow::settings(style);
+        let mut p = source.clone();
+        p.attrs.insert("reflowed".into(), "1".into());
+        self.reflow_children(&mut p, width, nesting + 1)?;
+        fn normalize(n: &mut Node) {
+            if n.name == "lineBreak" {
+                n.name = "#text".into();
+                n.text = "\n".into();
+                n.children.clear();
+            }
+            if n.name == "tab" && n.n("width") <= 0. {
+                n.attrs.insert("width".into(), "2400".into());
+            }
+            for c in &mut n.children {
+                normalize(c)
+            }
+        }
+        normalize(&mut p);
+        let items = Self::items(&p);
+        let mut units = Vec::new();
+        let mut glyphs = Vec::new();
+        for item in &items {
+            let (unit, glyph) = match &item.kind {
+                ItemKind::Char(c) if *c == '\n' || *c == '\r' => {
+                    let g = self.glyph(' ', &item.style)?;
+                    (
+                        crate::reflow::Unit {
+                            pos: item.pos,
+                            ch: Some('\n'),
+                            ascent: g.ascent,
+                            descent: g.descent,
+                            em: g.size,
+                            block: false,
+                            ..Default::default()
+                        },
+                        None,
+                    )
+                }
+                ItemKind::Char(c) => {
+                    let g = self.glyph(*c, &item.style)?;
+                    (
+                        crate::reflow::Unit {
+                            pos: item.pos,
+                            ch: Some(*c),
+                            width: g.width.max(0.),
+                            ascent: g.ascent,
+                            descent: g.descent,
+                            em: g.size,
+                            block: false,
+                        },
+                        Some(g),
+                    )
+                }
+                ItemKind::Tab(w) => (
+                    crate::reflow::Unit {
+                        pos: item.pos,
+                        width: *w,
+                        ch: Some(' '),
+                        ..Default::default()
+                    },
+                    None,
+                ),
+                ItemKind::Object(n) if matches!(n.name.as_str(), "tbl" | "pic" | "rect") => {
+                    let block =
+                        n.name == "tbl" || n.child("pos").is_none_or(|p| p.a("treatAsChar") != "1");
+                    let m = margin(n, "outMargin");
+                    let cap = caption_extent(n);
+                    let h = effective_height(n) + m[2] + m[3] + cap[2] + cap[3];
+                    (
+                        crate::reflow::Unit {
+                            pos: item.pos,
+                            ch: Some(' '),
+                            width: if block {
+                                0.
+                            } else {
+                                val(n.child("sz"), "width") + m[0] + m[1]
+                            },
+                            ascent: if block { h } else { h * 0.85 },
+                            descent: if block { 0. } else { h * 0.15 },
+                            block,
+                            ..Default::default()
+                        },
+                        None,
+                    )
+                }
+                ItemKind::Control(n) if n.name == "footNote" => {
+                    let g = self.glyph('1', &item.style)?;
+                    let w = self
+                        .fonts
+                        .width(g.font, &self.note_label(n, false), g.size * 0.6)
+                        * g.scale;
+                    (
+                        crate::reflow::Unit {
+                            pos: item.pos,
+                            width: w,
+                            ascent: g.size,
+                            em: g.size,
+                            ..Default::default()
+                        },
+                        None,
+                    )
+                }
+                ItemKind::Control(n) if n.name == "autoNum" => {
+                    let g = self.glyph('1', &item.style)?;
+                    let w = self.fonts.width(g.font, &self.auto_label(n), g.size) * g.scale;
+                    (
+                        crate::reflow::Unit {
+                            pos: item.pos,
+                            width: w,
+                            ascent: g.ascent,
+                            descent: g.descent,
+                            em: g.size,
+                            ..Default::default()
+                        },
+                        None,
+                    )
+                }
+                ItemKind::Control(c)
+                    if matches!(
+                        c.name.as_str(),
+                        "colPr"
+                            | "pageNumPos"
+                            | "pageHiding"
+                            | "newNumber"
+                            | "header"
+                            | "footer"
+                            | "cachedField"
+                            | "bookmark"
+                    ) =>
+                {
+                    (
+                        crate::reflow::Unit {
+                            pos: item.pos,
+                            ..Default::default()
+                        },
+                        None,
+                    )
+                }
+                _ => bail!(
+                    "Plain-text reflow cannot lay out objects/notes/control in paragraph {}",
+                    p.a("id")
+                ),
+            };
+            units.push(unit);
+            glyphs.push(glyph);
+        }
+        for i in 0..units.len().saturating_sub(1) {
+            if let (Some(a), Some(b)) = (&glyphs[i], &glyphs[i + 1]) {
+                units[i].width = units[i].width.max(a.ink_right - b.ink_left + 0.02);
+            }
+        }
+        for i in 1..items.len() {
+            if matches!(&items[i].kind,ItemKind::Control(n) if n.name=="footNote") {
+                units[i - 1].ch = None;
+            }
+        }
+        let mut grouped: Vec<crate::reflow::Unit> = Vec::new();
+        for unit in units {
+            if let Some(last) = grouped.last_mut().filter(|last| last.pos == unit.pos) {
+                last.width += unit.width;
+                last.ascent = last.ascent.max(unit.ascent);
+                last.descent = last.descent.max(unit.descent);
+                last.em = last.em.max(unit.em);
+                last.ch = None;
+            } else {
+                grouped.push(unit);
+            }
+        }
+        let wrapped = crate::reflow::wrap(&grouped, width, &settings)?;
+        let mut segments = Node {
+            name: "linesegarray".into(),
+            ..Default::default()
+        };
+        let mut yy = 0.;
+        for l in &wrapped {
+            let mut n = Node {
+                name: "lineseg".into(),
+                ..Default::default()
+            };
+            for (key, value) in [
+                ("textpos", l.pos.to_string()),
+                ("vertpos", (yy * 100.).to_string()),
+                ("vertsize", (l.height * 100.).to_string()),
+                ("textheight", (l.height * 100.).to_string()),
+                ("baseline", (l.baseline * 100.).to_string()),
+                ("spacing", "0".into()),
+                ("horzpos", (l.left * 100.).to_string()),
+                ("horzsize", (l.width * 100.).to_string()),
+                ("hardBreak", usize::from(l.hard).to_string()),
+            ] {
+                n.attrs.insert(key.into(), value);
+            }
+            segments.children.push(n);
+            yy += l.height;
+        }
+        p.children.retain(|n| n.name != "linesegarray");
+        p.children.push(segments);
+        Ok((p, wrapped, settings))
+    }
     fn reflow_text_section(
         &mut self,
         section: &Node,
@@ -3298,165 +3777,31 @@ impl<'a> Engine<'a> {
     ) -> Result<(f64, usize, f64, f64)> {
         let mut plans = Vec::new();
         for source in section.children_named("p") {
-            let style = self.doc.paras.get(source.a("paraPrIDRef"));
-            anyhow::ensure!(
-                style
-                    .and_then(|s| s.child("heading"))
-                    .is_none_or(|h| !matches!(h.a("type"), "NUMBER" | "BULLET")),
-                "Plain-text reflow does not yet support numbered/bulleted paragraph {}",
-                source.a("id")
-            );
-            anyhow::ensure!(
-                style.is_none_or(|s| s.a("textDir") != "RTL"),
-                "RTL paragraph reflow is not supported"
-            );
             if let Some(c) = paragraph_columns(source) {
                 anyhow::ensure!(
                     c.u("colCount").max(1) == cols && (val(Some(c), "sameGap") - gap).abs() < 0.01,
                     "Reflow with mid-section column changes is not supported"
                 );
             }
-            let settings = crate::reflow::settings(style);
-            let mut p = source.clone();
-            p.attrs.insert("reflowed".into(), "1".into());
-            fn normalize(n: &mut Node) {
-                if n.name == "lineBreak" {
-                    n.name = "#text".into();
-                    n.text = "\n".into();
-                    n.children.clear();
-                }
-                if n.name == "tab" && n.n("width") <= 0. {
-                    n.attrs.insert("width".into(), "2400".into());
-                }
-                for c in &mut n.children {
-                    normalize(c)
-                }
-            }
-            normalize(&mut p);
-            let items = Self::items(&p);
-            let mut units = Vec::new();
-            let mut glyphs = Vec::new();
-            for item in &items {
-                let (unit, glyph) = match &item.kind {
-                    ItemKind::Char(c) if *c == '\n' || *c == '\r' => {
-                        let g = self.glyph(' ', &item.style)?;
-                        (
-                            crate::reflow::Unit {
-                                pos: item.pos,
-                                ch: Some('\n'),
-                                ascent: g.ascent,
-                                descent: g.descent,
-                                em: g.size,
-                                ..Default::default()
-                            },
-                            None,
-                        )
-                    }
-                    ItemKind::Char(c) => {
-                        let g = self.glyph(*c, &item.style)?;
-                        (
-                            crate::reflow::Unit {
-                                pos: item.pos,
-                                ch: Some(*c),
-                                width: g.width.max(0.),
-                                ascent: g.ascent,
-                                descent: g.descent,
-                                em: g.size,
-                            },
-                            Some(g),
-                        )
-                    }
-                    ItemKind::Tab(w) => (
-                        crate::reflow::Unit {
-                            pos: item.pos,
-                            width: *w,
-                            ch: Some(' '),
-                            ..Default::default()
-                        },
-                        None,
-                    ),
-                    ItemKind::Control(c)
-                        if matches!(
-                            c.name.as_str(),
-                            "colPr"
-                                | "pageNumPos"
-                                | "pageHiding"
-                                | "newNumber"
-                                | "header"
-                                | "footer"
-                                | "cachedField"
-                                | "bookmark"
-                        ) =>
-                    {
-                        (
-                            crate::reflow::Unit {
-                                pos: item.pos,
-                                ..Default::default()
-                            },
-                            None,
-                        )
-                    }
-                    _ => bail!(
-                        "Plain-text reflow cannot lay out objects/notes/control in paragraph {}",
-                        p.a("id")
-                    ),
-                };
-                units.push(unit);
-                glyphs.push(glyph);
-            }
-            for i in 0..units.len().saturating_sub(1) {
-                if let (Some(a), Some(b)) = (&glyphs[i], &glyphs[i + 1]) {
-                    units[i].width = units[i].width.max(a.ink_right - b.ink_left + 0.02);
-                }
-            }
-            let mut grouped: Vec<crate::reflow::Unit> = Vec::new();
-            for unit in units {
-                if let Some(last) = grouped.last_mut().filter(|last| last.pos == unit.pos) {
-                    last.width += unit.width;
-                    last.ascent = last.ascent.max(unit.ascent);
-                    last.descent = last.descent.max(unit.descent);
-                    last.em = last.em.max(unit.em);
-                    last.ch = None;
-                } else {
-                    grouped.push(unit);
-                }
-            }
-            let wrapped = crate::reflow::wrap(&grouped, width, &settings)?;
-            let mut segments = Node {
-                name: "linesegarray".into(),
-                ..Default::default()
-            };
-            let mut yy = 0.;
-            for l in &wrapped {
-                let mut n = Node {
-                    name: "lineseg".into(),
-                    ..Default::default()
-                };
-                for (key, value) in [
-                    ("textpos", l.pos.to_string()),
-                    ("vertpos", (yy * 100.).to_string()),
-                    ("vertsize", (l.height * 100.).to_string()),
-                    ("textheight", (l.height * 100.).to_string()),
-                    ("baseline", (l.baseline * 100.).to_string()),
-                    ("spacing", "0".into()),
-                    ("horzpos", (l.left * 100.).to_string()),
-                    ("horzsize", (l.width * 100.).to_string()),
-                    ("hardBreak", usize::from(l.hard).to_string()),
-                ] {
-                    n.attrs.insert(key.into(), value);
-                }
-                segments.children.push(n);
-                yy += l.height;
-            }
-            p.children.retain(|n| n.name != "linesegarray");
-            p.children.push(segments);
-            plans.push((p, wrapped, settings));
+            plans.push(self.reflow_paragraph(source, width, 0)?);
         }
         let mut col = 0;
         let mut y = self.top;
         let body = self.ph - self.top - self.bottom;
         self.flow_floor = None;
         for (pi, (p, ls, s)) in plans.iter().enumerate() {
+            let items = Self::items(p);
+            let notes_for = |index: usize| {
+                let end = ls.get(index + 1).map(|l| l.pos).unwrap_or(usize::MAX);
+                items
+                    .iter()
+                    .filter(|i| i.pos >= ls[index].pos && i.pos < end)
+                    .filter_map(|i| match &i.kind {
+                        ItemKind::Control(n) if n.name == "footNote" => Some(n),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+            };
             if (p.a("pageBreak") == "1" || s.page) && (y > self.top + 0.01 || col > 0) {
                 self.finish()?;
                 col = 0;
@@ -3497,11 +3842,68 @@ impl<'a> Engine<'a> {
             y += s.before;
             let mut at = 0;
             while at < ls.len() {
+                if ls[at].block {
+                    let end = ls.get(at + 1).map(|l| l.pos).unwrap_or(usize::MAX);
+                    let object = items
+                        .iter()
+                        .filter(|i| i.pos >= ls[at].pos && i.pos < end)
+                        .find_map(|i| {
+                            if let ItemKind::Object(n) = &i.kind {
+                                Some(n)
+                            } else {
+                                None
+                            }
+                        })
+                        .context("Missing reflow block")?;
+                    anyhow::ensure!(
+                        cols == 1 || object.name != "tbl",
+                        "Table reflow across multiple columns is not yet supported"
+                    );
+                    let ox = self.left + col as f64 * (width + gap);
+                    let reserve = self.footnote_reservation(&[], ox);
+                    if ls[at].height <= body
+                        && y + ls[at].height > self.ph - self.bottom - reserve
+                        && y > self.top + 0.01
+                    {
+                        self.reflow_advance(section, &mut col, &mut y, cols, gap)?;
+                    }
+                    let ox = self.left + col as f64 * (width + gap);
+                    let cap = caption_extent(object);
+                    let old_page = self.pages.len();
+                    let bounds_start = self.report.bounds.len();
+                    self.object(object, ox, y + cap[2], y + cap[2], ox, width)?;
+                    if object.name == "tbl" {
+                        y = self.last_table_end
+                            + if self.split_caption_handled {
+                                0.
+                            } else {
+                                cap[3]
+                            };
+                    } else {
+                        y = self.report.bounds[bounds_start..]
+                            .iter()
+                            .filter(|b| b.kind == object.name)
+                            .map(|b| b.y + b.h)
+                            .fold(y + ls[at].height - cap[3], f64::max)
+                            + cap[3];
+                    }
+                    if self.pages.len() != old_page {
+                        col = 0;
+                    }
+                    self.flow_floor = None;
+                    at += 1;
+                    continue;
+                }
                 let mut count = 0;
                 let mut used = 0.;
-                while at + count < ls.len()
-                    && y + used + ls[at + count].height <= self.ph - self.bottom + 0.001
-                {
+                let mut incoming = Vec::new();
+                while at + count < ls.len() && !ls[at + count].block {
+                    incoming.extend(notes_for(at + count));
+                    let reserve = self
+                        .footnote_reservation(&incoming, self.left + col as f64 * (width + gap));
+                    if y + used + ls[at + count].height > self.ph - self.bottom - reserve + 0.001 {
+                        break;
+                    }
                     used += ls[at + count].height;
                     count += 1;
                 }
@@ -3545,19 +3947,22 @@ impl<'a> Engine<'a> {
                     y += line.height;
                 }
                 at += count;
-                if at < ls.len() {
+                if at < ls.len() && !ls[at].block {
                     self.reflow_advance(section, &mut col, &mut y, cols, gap)?;
                 }
             }
             y += s.after;
         }
-        self.report.warnings.insert("Plain-text reflow uses font metrics, paragraph margins/spacing and keep rules; complex objects, notes and exact Hancom line breaking remain unsupported".into());
+        self.report.warnings.insert("Reflow uses font metrics and recursively lays out table cells and footnotes; floating objects become document-order blocks; advanced wrapping and exact Hancom line breaking remain limited".into());
         Ok((y, col, width, gap))
     }
     pub fn render(&mut self) -> Result<()> {
         self.render_mode(false)
     }
     pub fn render_reflow_text(&mut self) -> Result<()> {
+        self.render_mode(true)
+    }
+    pub fn render_reflow(&mut self) -> Result<()> {
         self.render_mode(true)
     }
     fn render_mode(&mut self, force_reflow: bool) -> Result<()> {

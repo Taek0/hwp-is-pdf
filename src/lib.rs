@@ -18,7 +18,7 @@ use std::path::Path;
 pub fn convert(input: &Path, output: &Path, font_dir: &Path) -> Result<layout::Report> {
     convert_with_reflow(input, output, font_dir, false)
 }
-/// Force plain-text section reflow, or automatically recover sections without line caches.
+/// Reflow supported mixed-content sections, or recover sections without line caches.
 pub fn convert_with_reflow(
     input: &Path,
     output: &Path,
@@ -29,7 +29,7 @@ pub fn convert_with_reflow(
     let document = model::Document::open(input)?;
     let mut engine = layout::Engine::new(&document, font_dir);
     if force {
-        engine.render_reflow_text()?;
+        engine.render_reflow()?;
     } else {
         engine.render()?;
     }
