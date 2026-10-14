@@ -119,12 +119,21 @@ fn explicit_reflow_ignores_stale_cached_lines() {
     );
 }
 #[test]
-fn complex_reflow_is_rejected_instead_of_dropping_objects() {
-    let d = Document::open(
+fn unsupported_reflow_is_rejected_instead_of_dropping_objects() {
+    let mut d = Document::open(
         &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("samples/overflow/nested-mixed.hwpx"),
     )
     .unwrap();
+    fn unsupported(n: &mut hwp_engine::model::Node) {
+        if n.name == "pic" {
+            n.name = "equation".into();
+        }
+        for c in &mut n.children {
+            unsupported(c)
+        }
+    }
+    unsupported(&mut d.sections[0]);
     let mut e = Engine::new(&d, fonts());
     let error = e.render_reflow_text().unwrap_err().to_string();
     assert!(error.contains("objects/notes/control"), "{error}");
