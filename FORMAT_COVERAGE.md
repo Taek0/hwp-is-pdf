@@ -338,3 +338,41 @@ remain pixel-identical in default mode, with unchanged source hashes/page/object
 counts and zero geometry findings. New example QA also has zero findings.
 Fixtures: `samples/reflow/`, generator: `examples/reflow_fixture.rs`.
 Results: `output/reflow/SUMMARY.html`. Generated examples are not Hancom-reference exports.
+
+## Mixed-content reflow (2026-10-14)
+
+This increment extends the preceding plain-paragraph scope. The preferred CLI
+flag is now `--reflow`; `--reflow-text` and `render_reflow_text()` remain aliases.
+`Engine::render_reflow()` handles supported mixed sections. Default cached
+conversion remains unchanged; automatic recovery is triggered by missing
+ top-level paragraph caches, not necessarily missing nested-only caches.
+
+Table cells recursively rewrap at their actual inner widths. Column widths can
+shrink to the container, row heights grow while preserving declared minima, and
+merged-cell height requirements propagate to rows. Existing table splitting,
+repeated headers, pictures, rotated rectangles and footnote continuation are
+reused. Body text resumes after the final table fragment and caption. Inline
+pictures retain inline placement; floating supported objects become blocks in
+document order. Footnotes rewrap at the note-area width and their space is reserved
+when selecting body lines. Plain top/bottom captions reflow too.
+
+Explicit limits: table reflow requires single-column body flow; text wrapping
+around floating objects, background objects, side/note-bearing captions, general
+shape/group reflow, numbered/bulleted paragraphs, equations, endnotes, RTL and
+mid-section column changes remain unsupported. Header/footer caches are not
+generally rebuilt. Exact Hancom pagination and full shaping remain unverified.
+
+Validation: 67 Rust tests and all-target Clippy pass. The generated mixed fixture
+renders four pages; cached forced reflow and cacheless automatic reflow produce
+identical PDF bytes. Tests vary page height and width and check text characters,
+row/note labels, picture counts, note-reference placement and four geometry QA
+classes. Public `samples/web/table.hwp` also reflows successfully. Forced reflow
+of `samples/tables-notes/footnote-01.hwp` explicitly fails on numbered paragraph
+`hwp-57e`; it is not counted as a successful reflow example.
+
+All 43 existing documents (210 pages) were reconverted in default mode with zero
+changed raster pages and zero geometry findings; source hashes and page/object
+counts are preserved. Generated fixtures are derived from our existing controlled
+mixed-table fixture, not Hancom reference exports.
+Generator: `examples/mixed_reflow_fixture.rs`; tests: `tests/reflow_mixed.rs`.
+Local report: `output/reflow-mixed/SUMMARY.html`.

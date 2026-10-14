@@ -26,13 +26,17 @@
 섞인 경우의 페이지 배치를 추가했습니다. 최신 결과는
 `output/mixed-tables/SUMMARY.html`이며 자세한 지원 조건은 `FORMAT_COVERAGE.md`에 있습니다.
 
-일반 텍스트 구역은 저장된 줄 배치가 없으면 자동으로 줄바꿈·페이지 나누기를
-계산합니다. 기존 캐시가 있으면 기본 변환은 이를 유지하며, `--reflow-text`로
-명시적으로 재계산할 수 있습니다. 문단 여백·들여쓰기·줄 간격·문단 보호·제목 묶음·
-외톨이줄 보호·고정 다단 흐름을 반영합니다. 표·그림·각주·번호 문단·RTL 및 구역 내
-단 변경이 포함된 강제 재배치는 아직 지원하지 않아 오류로 알립니다.
-최신 검증: `output/reflow/SUMMARY.html` (63개 테스트, 기존 43개 문서 210쪽 픽셀 동일).
+일반 문단과 표·그림·회전 사각형·각주가 섞인 구역의 줄바꿈과 페이지 나누기를
+계산합니다. 최상위 문단의 줄 배치가 없으면 자동으로 재배치하며, 기존 캐시는
+기본 변환에서 유지합니다. `--reflow`로 강제 재계산하며 `--reflow-text`도
+같은 동작을 합니다. 셀의 실제 폭에서 줄을 다시 나누고 각주 공간을 확보하며,
+표가 끝난 페이지에서 본문을 이어갑니다. 셀 높이는 원래 값을 최솟값으로 유지합니다.
 
+떠 있는 개체는 문서 순서의 블록으로 배치합니다. 개체 주위 본문 감싸기,
+다단 표 재배치, 번호·글머리표 문단, 수식·미주·RTL·구역 내 단 변경의 강제
+재배치는 아직 지원하지 않습니다. 세부 조건은 `FORMAT_COVERAGE.md`를 확인하세요.
+최신 검증: `output/reflow-mixed/SUMMARY.html` (67개 테스트, 기존 43개 문서
+210쪽 픽셀 동일). 혼합 예제의 캐시 유무에 따른 재배치 PDF도 동일합니다.
 ## 실행
 
 Rust stable / edition 2024 환경에서:
@@ -40,7 +44,7 @@ Rust stable / edition 2024 환경에서:
 ```sh
 cargo run -- input.hwpx output.pdf /path/to/fonts
 cargo run -- input.hwp output.pdf /path/to/fonts
-cargo run -- input.hwpx output.pdf /path/to/fonts --reflow-text
+cargo run -- input.hwpx output.pdf /path/to/fonts --reflow
 cargo test
 cargo clippy --all-targets -- -D warnings
 ```
@@ -58,7 +62,7 @@ Windows에서는 기본값 `C:/Windows/Fonts`, 현재 WSL 검증 환경에서는
 
 ```rust
 hwp_engine::convert(input_path, output_path, font_directory)?;
-// 일반 텍스트 구역의 저장된 줄 배치를 무시하고 다시 계산:
+// 지원되는 혼합 구역의 저장된 줄 배치를 무시하고 다시 계산:
 hwp_engine::convert_with_reflow(input_path, output_path, font_directory, true)?;
 ```
 
