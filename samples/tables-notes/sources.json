@@ -1,0 +1,38 @@
+[
+  {
+    "file": "endnote-01.hwp",
+    "url": "https://raw.githubusercontent.com/edwardkim/rhwp/main/samples/endnote-01.hwp",
+    "git_blob": "ba0a6aa76a423b1276b54b537c3276c628aa27f6",
+    "size": 32768
+  },
+  {
+    "file": "footnote-01.hwp",
+    "url": "https://raw.githubusercontent.com/edwardkim/rhwp/main/samples/footnote-01.hwp",
+    "git_blob": "f1a6482a0691ac39c93f5e365e06d0c694fccb6d",
+    "size": 32768
+  },
+  {
+    "file": "hwpers_test4_complex_table.hwp",
+    "url": "https://raw.githubusercontent.com/edwardkim/rhwp/main/samples/hwpers_test4_complex_table.hwp",
+    "git_blob": "befab4f56b4ba8fc94bfddb0f1c65169b14dceef",
+    "size": 6656
+  },
+  {
+    "file": "inner-table-01.hwp",
+    "url": "https://raw.githubusercontent.com/edwardkim/rhwp/main/samples/inner-table-01.hwp",
+    "git_blob": "788909deb2e5095fb04dc4eace51214364f14298",
+    "size": 32768
+  },
+  {
+    "file": "issue1937_rowbreak_footnote_overpagination.hwp",
+    "url": "https://raw.githubusercontent.com/edwardkim/rhwp/main/samples/issue1937_rowbreak_footnote_overpagination.hwp",
+    "git_blob": "3fcc039ced72064e273ec3348611b2cce6dc22f3",
+    "size": 147456
+  },
+  {
+    "file": "table-complex.hwp",
+    "url": "https://raw.githubusercontent.com/edwardkim/rhwp/main/samples/table-complex.hwp",
+    "git_blob": "7e182781aafa74c4704e9a3dc95ebfa6bd32ff6c",
+    "size": 24576
+  }
+]
