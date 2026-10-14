@@ -784,6 +784,7 @@ impl<'a> Engine<'a> {
         let its: Vec<_> = Self::items(p)
             .into_iter()
             .filter(|i| i.pos >= start && i.pos < end)
+            .filter(|i| p.a("reflowed") != "1" || !matches!(i.kind, ItemKind::Char('\n' | '\r')))
             .collect();
         let mut line_y = oy + seg.n("vertpos") / 100.;
         let mut base = line_y + seg.n("baseline") / 100.;
@@ -1001,7 +1002,7 @@ impl<'a> Engine<'a> {
         };
         if !its.iter().any(|i| matches!(i.kind, ItemKind::Tab(_)))
             && stretch > 0
-            && ((align == "JUSTIFY" && li + 1 < segs.len())
+            && ((align == "JUSTIFY" && li + 1 < segs.len() && seg.a("hardBreak") != "1")
                 || align == "DISTRIBUTE"
                 || total > avail)
         {
@@ -3271,7 +3272,296 @@ impl<'a> Engine<'a> {
         let _ = gap;
         Ok(())
     }
+    fn reflow_advance(
+        &mut self,
+        section: &Node,
+        col: &mut usize,
+        y: &mut f64,
+        cols: usize,
+        gap: f64,
+    ) -> Result<()> {
+        *col += 1;
+        if *col >= cols {
+            self.finish()?;
+            *col = 0;
+            self.decorations(section, false, cols, gap)?;
+        }
+        *y = self.top;
+        Ok(())
+    }
+    fn reflow_text_section(
+        &mut self,
+        section: &Node,
+        width: f64,
+        cols: usize,
+        gap: f64,
+    ) -> Result<(f64, usize, f64, f64)> {
+        let mut plans = Vec::new();
+        for source in section.children_named("p") {
+            let style = self.doc.paras.get(source.a("paraPrIDRef"));
+            anyhow::ensure!(
+                style
+                    .and_then(|s| s.child("heading"))
+                    .is_none_or(|h| !matches!(h.a("type"), "NUMBER" | "BULLET")),
+                "Plain-text reflow does not yet support numbered/bulleted paragraph {}",
+                source.a("id")
+            );
+            anyhow::ensure!(
+                style.is_none_or(|s| s.a("textDir") != "RTL"),
+                "RTL paragraph reflow is not supported"
+            );
+            if let Some(c) = paragraph_columns(source) {
+                anyhow::ensure!(
+                    c.u("colCount").max(1) == cols && (val(Some(c), "sameGap") - gap).abs() < 0.01,
+                    "Reflow with mid-section column changes is not supported"
+                );
+            }
+            let settings = crate::reflow::settings(style);
+            let mut p = source.clone();
+            p.attrs.insert("reflowed".into(), "1".into());
+            fn normalize(n: &mut Node) {
+                if n.name == "lineBreak" {
+                    n.name = "#text".into();
+                    n.text = "\n".into();
+                    n.children.clear();
+                }
+                if n.name == "tab" && n.n("width") <= 0. {
+                    n.attrs.insert("width".into(), "2400".into());
+                }
+                for c in &mut n.children {
+                    normalize(c)
+                }
+            }
+            normalize(&mut p);
+            let items = Self::items(&p);
+            let mut units = Vec::new();
+            let mut glyphs = Vec::new();
+            for item in &items {
+                let (unit, glyph) = match &item.kind {
+                    ItemKind::Char(c) if *c == '\n' || *c == '\r' => {
+                        let g = self.glyph(' ', &item.style)?;
+                        (
+                            crate::reflow::Unit {
+                                pos: item.pos,
+                                ch: Some('\n'),
+                                ascent: g.ascent,
+                                descent: g.descent,
+                                em: g.size,
+                                ..Default::default()
+                            },
+                            None,
+                        )
+                    }
+                    ItemKind::Char(c) => {
+                        let g = self.glyph(*c, &item.style)?;
+                        (
+                            crate::reflow::Unit {
+                                pos: item.pos,
+                                ch: Some(*c),
+                                width: g.width.max(0.),
+                                ascent: g.ascent,
+                                descent: g.descent,
+                                em: g.size,
+                            },
+                            Some(g),
+                        )
+                    }
+                    ItemKind::Tab(w) => (
+                        crate::reflow::Unit {
+                            pos: item.pos,
+                            width: *w,
+                            ch: Some(' '),
+                            ..Default::default()
+                        },
+                        None,
+                    ),
+                    ItemKind::Control(c)
+                        if matches!(
+                            c.name.as_str(),
+                            "colPr"
+                                | "pageNumPos"
+                                | "pageHiding"
+                                | "newNumber"
+                                | "header"
+                                | "footer"
+                                | "cachedField"
+                                | "bookmark"
+                        ) =>
+                    {
+                        (
+                            crate::reflow::Unit {
+                                pos: item.pos,
+                                ..Default::default()
+                            },
+                            None,
+                        )
+                    }
+                    _ => bail!(
+                        "Plain-text reflow cannot lay out objects/notes/control in paragraph {}",
+                        p.a("id")
+                    ),
+                };
+                units.push(unit);
+                glyphs.push(glyph);
+            }
+            for i in 0..units.len().saturating_sub(1) {
+                if let (Some(a), Some(b)) = (&glyphs[i], &glyphs[i + 1]) {
+                    units[i].width = units[i].width.max(a.ink_right - b.ink_left + 0.02);
+                }
+            }
+            let mut grouped: Vec<crate::reflow::Unit> = Vec::new();
+            for unit in units {
+                if let Some(last) = grouped.last_mut().filter(|last| last.pos == unit.pos) {
+                    last.width += unit.width;
+                    last.ascent = last.ascent.max(unit.ascent);
+                    last.descent = last.descent.max(unit.descent);
+                    last.em = last.em.max(unit.em);
+                    last.ch = None;
+                } else {
+                    grouped.push(unit);
+                }
+            }
+            let wrapped = crate::reflow::wrap(&grouped, width, &settings)?;
+            let mut segments = Node {
+                name: "linesegarray".into(),
+                ..Default::default()
+            };
+            let mut yy = 0.;
+            for l in &wrapped {
+                let mut n = Node {
+                    name: "lineseg".into(),
+                    ..Default::default()
+                };
+                for (key, value) in [
+                    ("textpos", l.pos.to_string()),
+                    ("vertpos", (yy * 100.).to_string()),
+                    ("vertsize", (l.height * 100.).to_string()),
+                    ("textheight", (l.height * 100.).to_string()),
+                    ("baseline", (l.baseline * 100.).to_string()),
+                    ("spacing", "0".into()),
+                    ("horzpos", (l.left * 100.).to_string()),
+                    ("horzsize", (l.width * 100.).to_string()),
+                    ("hardBreak", usize::from(l.hard).to_string()),
+                ] {
+                    n.attrs.insert(key.into(), value);
+                }
+                segments.children.push(n);
+                yy += l.height;
+            }
+            p.children.retain(|n| n.name != "linesegarray");
+            p.children.push(segments);
+            plans.push((p, wrapped, settings));
+        }
+        let mut col = 0;
+        let mut y = self.top;
+        let body = self.ph - self.top - self.bottom;
+        self.flow_floor = None;
+        for (pi, (p, ls, s)) in plans.iter().enumerate() {
+            if (p.a("pageBreak") == "1" || s.page) && (y > self.top + 0.01 || col > 0) {
+                self.finish()?;
+                col = 0;
+                y = self.top;
+                self.decorations(section, false, cols, gap)?;
+            }
+            let height = s.before + ls.iter().map(|l| l.height).sum::<f64>() + s.after;
+            let mut keep_height = height;
+            if s.next {
+                let mut j = pi + 1;
+                while let Some((next, nl, ns)) = plans.get(j) {
+                    if next.a("pageBreak") == "1" || ns.page {
+                        break;
+                    }
+                    let all = nl.iter().map(|l| l.height).sum::<f64>();
+                    keep_height += ns.before
+                        + if ns.next || (ns.keep && keep_height + ns.before + all <= body) {
+                            all + ns.after
+                        } else {
+                            nl.iter()
+                                .take(if ns.widow { 2 } else { 1 })
+                                .map(|l| l.height)
+                                .sum::<f64>()
+                        };
+                    if !ns.next {
+                        break;
+                    }
+                    j += 1;
+                }
+            }
+            if (s.keep || s.next)
+                && keep_height <= body
+                && y + keep_height > self.ph - self.bottom
+                && y > self.top + 0.01
+            {
+                self.reflow_advance(section, &mut col, &mut y, cols, gap)?;
+            }
+            y += s.before;
+            let mut at = 0;
+            while at < ls.len() {
+                let mut count = 0;
+                let mut used = 0.;
+                while at + count < ls.len()
+                    && y + used + ls[at + count].height <= self.ph - self.bottom + 0.001
+                {
+                    used += ls[at + count].height;
+                    count += 1;
+                }
+                if count == 0 {
+                    anyhow::ensure!(
+                        y > self.top + 0.01,
+                        "A reflowed line is taller than the printable page"
+                    );
+                    self.reflow_advance(section, &mut col, &mut y, cols, gap)?;
+                    continue;
+                }
+                if s.widow
+                    && at + count < ls.len()
+                    && ls[at].height + ls.get(at + 1).map(|l| l.height).unwrap_or(0.) <= body
+                {
+                    if count == 1 && y > self.top + 0.01 {
+                        self.reflow_advance(section, &mut col, &mut y, cols, gap)?;
+                        continue;
+                    }
+                    if ls.len() - at - count == 1 && count > 1 {
+                        count -= 1;
+                    }
+                }
+                for (i, line) in ls.iter().enumerate().skip(at).take(count) {
+                    self.line(
+                        p,
+                        i,
+                        self.left + col as f64 * (width + gap),
+                        y - lines(p)[i].n("vertpos") / 100.,
+                        width,
+                    )?;
+                    self.report.bounds.push(Bounds {
+                        page: self.pages.len() + 1,
+                        kind: "reflow-line".into(),
+                        id: p.a("id").into(),
+                        x: self.left + col as f64 * (width + gap) + line.left,
+                        y,
+                        w: line.width,
+                        h: line.height,
+                    });
+                    y += line.height;
+                }
+                at += count;
+                if at < ls.len() {
+                    self.reflow_advance(section, &mut col, &mut y, cols, gap)?;
+                }
+            }
+            y += s.after;
+        }
+        self.report.warnings.insert("Plain-text reflow uses font metrics, paragraph margins/spacing and keep rules; complex objects, notes and exact Hancom line breaking remain unsupported".into());
+        Ok((y, col, width, gap))
+    }
     pub fn render(&mut self) -> Result<()> {
+        self.render_mode(false)
+    }
+    pub fn render_reflow_text(&mut self) -> Result<()> {
+        self.render_mode(true)
+    }
+    fn render_mode(&mut self, force_reflow: bool) -> Result<()> {
+        let mut reflow_used = false;
         let mut note_start = (0., 0usize, 0., 0.);
         for (section_index, section) in self.doc.sections.iter().enumerate() {
             self.active_section = section_index;
@@ -3298,151 +3588,158 @@ impl<'a> Engine<'a> {
             self.active_columns = cols;
             self.active_gap = gap;
             self.decorations(section, true, cols, gap)?;
-            let mut col = 0;
-            let mut last = None;
-            let mut flow_shift = 0f64;
-            let mut table_reflowed = false;
-            let fallback_flow = section
-                .children_named("p")
-                .filter(|p| !text(p).trim().is_empty())
-                .count()
-                > 1
-                && section
+            if force_reflow || section.children_named("p").any(|p| lines(p).is_empty()) {
+                reflow_used = true;
+                note_start = self.reflow_text_section(section, cw, cols, gap)?;
+            } else {
+                let mut col = 0;
+                let mut last = None;
+                let mut flow_shift = 0f64;
+                let mut table_reflowed = false;
+                let fallback_flow = section
                     .children_named("p")
-                    .flat_map(lines)
-                    .all(|l| l.n("vertpos") == 0.);
-            if fallback_flow {
-                self.report.warnings.insert(
-                    "Rebuilt paragraph flow: all cached paragraph origins were zero".into(),
-                );
-            }
-            for p in section.children_named("p") {
-                let ls = lines(p);
-                if ls.is_empty() {
-                    bail!("Missing saved layout cache in paragraph {}", p.a("id"))
+                    .filter(|p| !text(p).trim().is_empty())
+                    .count()
+                    > 1
+                    && section
+                        .children_named("p")
+                        .flat_map(lines)
+                        .all(|l| l.n("vertpos") == 0.);
+                if fallback_flow {
+                    self.report.warnings.insert(
+                        "Rebuilt paragraph flow: all cached paragraph origins were zero".into(),
+                    );
                 }
-                if let Some(def) = paragraph_columns(p) {
-                    let next_count = def.u("colCount").max(1);
-                    let next_gap = val(Some(def), "sameGap");
-                    if next_count != cols || next_gap != gap {
-                        if last.is_some_and(|y| ls[0].n("vertpos") < y) || p.a("pageBreak") == "1" {
-                            self.finish()?;
-                            last = None;
-                            flow_shift = 0.;
-                        }
-                        cols = next_count;
-                        gap = next_gap;
-                        cw = (self.pw - self.left - self.right - gap * (cols - 1) as f64)
-                            / cols as f64;
-                        col = 0;
-                        self.active_columns = cols;
-                        self.active_gap = gap;
+                for p in section.children_named("p") {
+                    let ls = lines(p);
+                    if ls.is_empty() {
+                        bail!("Missing saved layout cache in paragraph {}", p.a("id"))
                     }
-                }
-                for (i, l) in ls.iter().enumerate() {
-                    let y = l.n("vertpos");
-                    let floor = self.flow_floor.take().filter(|f| f.0 == self.pages.len());
-                    let table_consumed_break =
-                        floor.is_some_and(|f| f.2) && p.a("pageBreak") != "1";
-                    if (last.is_some_and(|last| y < last) && !table_consumed_break)
-                        || (last.is_some() && i == 0 && p.a("pageBreak") == "1")
-                    {
-                        col += 1;
-                        flow_shift = 0.;
-                        table_reflowed = false;
-                        if i == 0 && p.a("pageBreak") == "1" {
-                            col = cols
-                        }
-                        if col >= cols {
-                            self.finish()?;
-                            col = 0;
-                            self.decorations(section, false, cols, gap)?;
-                        }
-                    }
-                    if let Some((page, bottom, _)) = floor.filter(|f| f.0 == self.pages.len()) {
-                        let _ = page;
-                        flow_shift = flow_shift.max(bottom - self.top - y / 100.);
-                        table_reflowed = true;
-                    }
-                    let end = ls.get(i + 1).map(|l| l.u("textpos")).unwrap_or(usize::MAX);
-                    let its = Self::items(p);
-                    let incoming: Vec<_> = its
-                        .iter()
-                        .filter(|it| it.pos >= l.u("textpos") && it.pos < end)
-                        .filter_map(|it| match &it.kind {
-                            ItemKind::Control(n) if n.name == "footNote" => Some(n),
-                            _ => None,
-                        })
-                        .collect();
-                    let reserve =
-                        self.footnote_reservation(&incoming, self.left + col as f64 * (cw + gap));
-                    let visible = its
-                        .iter()
-                        .filter(|it| it.pos >= l.u("textpos") && it.pos < end)
-                        .any(|it| match &it.kind {
-                            ItemKind::Char(c) => !c.is_whitespace(),
-                            ItemKind::Object(_) => true,
-                            ItemKind::Control(n) => {
-                                matches!(n.name.as_str(), "footNote" | "endNote" | "autoNum")
+                    if let Some(def) = paragraph_columns(p) {
+                        let next_count = def.u("colCount").max(1);
+                        let next_gap = val(Some(def), "sameGap");
+                        if next_count != cols || next_gap != gap {
+                            if last.is_some_and(|y| ls[0].n("vertpos") < y)
+                                || p.a("pageBreak") == "1"
+                            {
+                                self.finish()?;
+                                last = None;
+                                flow_shift = 0.;
                             }
-                            _ => false,
-                        });
-                    if visible
-                        && (reserve > 0. || fallback_flow || table_reflowed)
-                        && self.top + flow_shift + (y + l.n("vertsize")) / 100.
-                            > self.ph - self.bottom - reserve
-                        && self.top + flow_shift + y / 100. > self.top + 0.1
-                    {
-                        col += 1;
-                        if col >= cols {
-                            self.finish()?;
+                            cols = next_count;
+                            gap = next_gap;
+                            cw = (self.pw - self.left - self.right - gap * (cols - 1) as f64)
+                                / cols as f64;
                             col = 0;
-                            self.decorations(section, false, cols, gap)?;
+                            self.active_columns = cols;
+                            self.active_gap = gap;
                         }
-                        flow_shift = -y / 100.;
                     }
-                    self.line(
-                        p,
-                        i,
-                        self.left + col as f64 * (cw + gap),
-                        self.top + flow_shift,
-                        cw,
-                    )?;
-                    let end = ls.get(i + 1).map(|n| n.u("textpos")).unwrap_or(usize::MAX);
-                    let growth = Self::items(p)
-                        .iter()
-                        .filter(|it| it.pos >= l.u("textpos") && it.pos < end)
-                        .filter_map(|it| {
-                            if let ItemKind::Object(n) = &it.kind {
-                                if n.child("pos")
-                                    .map(|p| p.a("treatAsChar") == "1")
-                                    .unwrap_or(false)
-                                {
-                                    Some(
-                                        (effective_height(n) - val(n.child("sz"), "height"))
-                                            .max(0.),
-                                    )
+                    for (i, l) in ls.iter().enumerate() {
+                        let y = l.n("vertpos");
+                        let floor = self.flow_floor.take().filter(|f| f.0 == self.pages.len());
+                        let table_consumed_break =
+                            floor.is_some_and(|f| f.2) && p.a("pageBreak") != "1";
+                        if (last.is_some_and(|last| y < last) && !table_consumed_break)
+                            || (last.is_some() && i == 0 && p.a("pageBreak") == "1")
+                        {
+                            col += 1;
+                            flow_shift = 0.;
+                            table_reflowed = false;
+                            if i == 0 && p.a("pageBreak") == "1" {
+                                col = cols
+                            }
+                            if col >= cols {
+                                self.finish()?;
+                                col = 0;
+                                self.decorations(section, false, cols, gap)?;
+                            }
+                        }
+                        if let Some((page, bottom, _)) = floor.filter(|f| f.0 == self.pages.len()) {
+                            let _ = page;
+                            flow_shift = flow_shift.max(bottom - self.top - y / 100.);
+                            table_reflowed = true;
+                        }
+                        let end = ls.get(i + 1).map(|l| l.u("textpos")).unwrap_or(usize::MAX);
+                        let its = Self::items(p);
+                        let incoming: Vec<_> = its
+                            .iter()
+                            .filter(|it| it.pos >= l.u("textpos") && it.pos < end)
+                            .filter_map(|it| match &it.kind {
+                                ItemKind::Control(n) if n.name == "footNote" => Some(n),
+                                _ => None,
+                            })
+                            .collect();
+                        let reserve = self
+                            .footnote_reservation(&incoming, self.left + col as f64 * (cw + gap));
+                        let visible = its
+                            .iter()
+                            .filter(|it| it.pos >= l.u("textpos") && it.pos < end)
+                            .any(|it| match &it.kind {
+                                ItemKind::Char(c) => !c.is_whitespace(),
+                                ItemKind::Object(_) => true,
+                                ItemKind::Control(n) => {
+                                    matches!(n.name.as_str(), "footNote" | "endNote" | "autoNum")
+                                }
+                                _ => false,
+                            });
+                        if visible
+                            && (reserve > 0. || fallback_flow || table_reflowed)
+                            && self.top + flow_shift + (y + l.n("vertsize")) / 100.
+                                > self.ph - self.bottom - reserve
+                            && self.top + flow_shift + y / 100. > self.top + 0.1
+                        {
+                            col += 1;
+                            if col >= cols {
+                                self.finish()?;
+                                col = 0;
+                                self.decorations(section, false, cols, gap)?;
+                            }
+                            flow_shift = -y / 100.;
+                        }
+                        self.line(
+                            p,
+                            i,
+                            self.left + col as f64 * (cw + gap),
+                            self.top + flow_shift,
+                            cw,
+                        )?;
+                        let end = ls.get(i + 1).map(|n| n.u("textpos")).unwrap_or(usize::MAX);
+                        let growth = Self::items(p)
+                            .iter()
+                            .filter(|it| it.pos >= l.u("textpos") && it.pos < end)
+                            .filter_map(|it| {
+                                if let ItemKind::Object(n) = &it.kind {
+                                    if n.child("pos")
+                                        .map(|p| p.a("treatAsChar") == "1")
+                                        .unwrap_or(false)
+                                    {
+                                        Some(
+                                            (effective_height(n) - val(n.child("sz"), "height"))
+                                                .max(0.),
+                                        )
+                                    } else {
+                                        None
+                                    }
                                 } else {
                                     None
                                 }
-                            } else {
-                                None
-                            }
-                        })
-                        .fold(0., f64::max);
-                    if growth > 0.01 {
-                        self.report.warnings.insert(format!("Repaired stale inline shape height: paragraph {}, +{growth:.2}pt; subsequent lines shifted",p.a("id")));
-                        flow_shift += growth;
-                    }
-                    note_start = (
-                        self.top + flow_shift + (y + l.n("vertsize") + l.n("spacing")) / 100.,
-                        col,
-                        cw,
-                        gap,
-                    );
-                    last = Some(y);
-                    if fallback_flow {
-                        flow_shift += (l.n("vertsize") + l.n("spacing")) / 100.;
+                            })
+                            .fold(0., f64::max);
+                        if growth > 0.01 {
+                            self.report.warnings.insert(format!("Repaired stale inline shape height: paragraph {}, +{growth:.2}pt; subsequent lines shifted",p.a("id")));
+                            flow_shift += growth;
+                        }
+                        note_start = (
+                            self.top + flow_shift + (y + l.n("vertsize") + l.n("spacing")) / 100.,
+                            col,
+                            cw,
+                            gap,
+                        );
+                        last = Some(y);
+                        if fallback_flow {
+                            flow_shift += (l.n("vertsize") + l.n("spacing")) / 100.;
+                        }
                     }
                 }
             }
@@ -3459,12 +3756,14 @@ impl<'a> Engine<'a> {
             }
         }
         self.render_endnotes(note_start, None)?;
-        if !self.current.ops.is_empty() {
+        if !self.current.ops.is_empty() || (reflow_used && self.pages.is_empty()) {
             self.finish()?;
         }
         self.drain_note_tail()?;
         self.report.pages = self.pages.len();
-        self.report.warnings.insert("Saved-layout renderer: font substitutions can differ from Hancom; no general paragraph reflow".into());
+        if !reflow_used {
+            self.report.warnings.insert("Saved-layout renderer: font substitutions can differ from Hancom; no general paragraph reflow".into());
+        }
         Ok(())
     }
 }

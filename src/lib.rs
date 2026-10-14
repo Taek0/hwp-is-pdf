@@ -11,14 +11,28 @@ pub mod model;
 mod pagination;
 pub mod pdf;
 pub mod qa;
+mod reflow;
 
 use anyhow::Result;
 use std::path::Path;
 pub fn convert(input: &Path, output: &Path, font_dir: &Path) -> Result<layout::Report> {
+    convert_with_reflow(input, output, font_dir, false)
+}
+/// Force plain-text section reflow, or automatically recover sections without line caches.
+pub fn convert_with_reflow(
+    input: &Path,
+    output: &Path,
+    font_dir: &Path,
+    force: bool,
+) -> Result<layout::Report> {
     anyhow::ensure!(input != output, "Input and output must differ");
     let document = model::Document::open(input)?;
     let mut engine = layout::Engine::new(&document, font_dir);
-    engine.render()?;
+    if force {
+        engine.render_reflow_text()?;
+    } else {
+        engine.render()?;
+    }
     if let Some(p) = output.parent() {
         std::fs::create_dir_all(p)?;
     }
