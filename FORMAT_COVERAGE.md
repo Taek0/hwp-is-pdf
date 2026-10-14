@@ -23,7 +23,7 @@ and nonvisual PDF behavior. They are remaining work, not a promise of full suppo
 |---|---|---|
 | P1: visible text/style loss | Missing PUA glyphs; text shading/outline/shadow/emphasis; exact script/slant metrics and special-control typography | Source-driven fixtures; intended glyphs/decorations appear and unrelated text is unchanged |
 | P1: overflowing content | Shared body/continued-footnote pagination; structural splitting of oversized nested tables/objects; merged-cell splitting | No missing note lines or objects, continuation and numbering correct, all old documents preserved |
-| P2: general layout | Reflow of mixed object/note/list paragraphs, multicolumn balancing and complex section transitions; exact shaping/line breaking | Independent line breaking/page composition against reference PDFs |
+| P2: general layout | Advanced floating-object/shared-note reflow, unequal columns, multicolumn balancing and complex section transitions; exact shaping/line breaking | Independent line breaking/page composition against reference PDFs |
 | P2: equations | Remaining grammar/operators, column-oriented matrices, complex accents and exact metrics | Formula semantics preserved; no literal unknown commands; reference image comparisons |
 | P2: graphics | WMF/EMF, general affine/shear, text art, general OLE presentations, exact curve interpolation/effects | Vector/preview coverage with explicit unsupported diagnostics |
 | P3: chart fidelity | OOXML charts, 3D and unsupported chart families, axes/legends/data labels | Preserve data and reproduce supported chart geometry; unsupported charts remain reported |
@@ -408,3 +408,33 @@ All 71 Rust tests and all-target Clippy pass. All 43 prior documents / 210 pages
 retain source hashes, page/object counts and pixel-identical default output,
 with zero geometry findings. Earlier increment sections above are historical;
 this list increment supersedes their numbered/bulleted-paragraph restriction.
+
+## Mixed multicolumn reflow (2026-10-14)
+
+Supported mixed tables now consume sequential equal-width columns before moving
+to the next page. A scoped table-column cursor shares the measured-vector splitter
+with saved-layout pagination. Fragment vectors, repeated headers, bounds and note
+anchors move together horizontally; glyphs/pictures/rotated objects are not cut.
+Top/bottom captions and following body text resume at the final fragment's actual
+column and bottom. The default saved-layout path keeps page-only splitting.
+
+Per-column footnotes are supported. MERGED_COLUMN and RIGHT_MOST_COLUMN are
+explicitly rejected for this mixed table-reflow path: their shared reservation
+requires a broader page-level planner. Unequal column widths, column balancing,
+mid-section column changes and text wrapping around floating objects remain work.
+Tables rejected by the safe vector splitter (e.g. unsupported nested captions or
+atoms taller than the usable region) fail explicitly instead of being silently
+clipped. Existing supported atom/shape limitations remain.
+
+Generated two/three-column fixtures retain all 60 table rows, body text, pictures,
+rotated text, repeated headers, top/bottom captions and body/table notes. Tests
+also vary page height, verify note/reference page and column, and confirm body
+text resumes below the final table fragment. Both output examples have two pages;
+all four geometry QA classes have zero findings. Generated examples are not
+Hancom-reference exports. Generator: examples/column_reflow_fixture.rs;
+tests: tests/reflow_columns.rs; report: output/reflow-columns/SUMMARY.html.
+
+All 72 Rust tests and all-target Clippy pass. All 43 prior documents / 210 pages
+retain original hashes, page/object counts and pixel-identical default output;
+all four geometry QA classes are empty. This increment supersedes the earlier
+single-column-table restriction only within the supported conditions above.
