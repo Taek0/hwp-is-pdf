@@ -785,38 +785,9 @@ impl<'a> Engine<'a> {
         }
         items
     }
-    fn line(&mut self, p: &Node, li: usize, ox: f64, oy: f64, width: f64) -> Result<()> {
-        let segs = lines(p);
-        let seg = segs[li];
-        let start = seg.u("textpos");
-        let end = segs
-            .get(li + 1)
-            .map(|n| n.u("textpos"))
-            .unwrap_or(usize::MAX);
-        let its: Vec<_> = Self::items(p)
-            .into_iter()
-            .filter(|i| i.pos >= start && i.pos < end)
-            .filter(|i| p.a("reflowed") != "1" || !matches!(i.kind, ItemKind::Char('\n' | '\r')))
-            .collect();
-        let mut line_y = oy + seg.n("vertpos") / 100.;
-        let mut base = line_y + seg.n("baseline") / 100.;
-        let mut x = ox + seg.n("horzpos") / 100.;
-        let mut avail = if seg.n("horzsize") > 0. {
-            seg.n("horzsize") / 100.
-        } else {
-            width
-        };
-        if self.depth > 0 {
-            avail = avail.min((width - seg.n("horzpos") / 100.).max(0.));
-        }
+    fn paragraph_number(&mut self, p: &Node, reflow: bool) -> Result<Option<(String, Glyph, f64)>> {
         let style = self.doc.paras.get(p.a("paraPrIDRef"));
-        let align = style
-            .and_then(|n| n.child("align"))
-            .map(|n| n.a("horizontal"))
-            .unwrap_or("LEFT");
-        let mut number_draw = None;
-        if li == 0
-            && let Some(heading) = style.and_then(|s| s.child("heading"))
+        if let Some(heading) = style.and_then(|s| s.child("heading"))
             && matches!(heading.a("type"), "NUMBER" | "BULLET")
         {
             let bullet = heading.a("type") == "BULLET";
@@ -834,9 +805,21 @@ impl<'a> Engine<'a> {
                 })
             }
             .cloned();
-            if let Some(head) = head {
+            if let Some(mut head) = head {
+                // HWPX stores bullet layout attributes in a paraHead child;
+                // normalized HWP stores them on the bullet itself.
+                if reflow
+                    && bullet
+                    && let Some(properties) = head.child("paraHead").cloned()
+                {
+                    head.attrs.extend(properties.attrs);
+                }
                 let key = (self.active_section, p.a("id").to_string());
                 let label = if bullet {
+                    anyhow::ensure!(
+                        !reflow || !head.a("char").is_empty(),
+                        "Image-only or empty bullet reflow is not supported"
+                    );
                     head.a("char").to_string()
                 } else if let Some(label) = self.labels.get(&key) {
                     label.clone()
@@ -849,7 +832,11 @@ impl<'a> Engine<'a> {
                     let num = if let Some(n) = derived {
                         n
                     } else {
-                        let start = definition.map(|d| d.u("start")).unwrap_or(1).max(1);
+                        let start = if reflow && head.u("start") > 0 {
+                            head.u("start")
+                        } else {
+                            definition.map(|d| d.u("start")).unwrap_or(1).max(1)
+                        };
                         let n = self.numbering.entry(nk.clone()).or_insert(start - 1);
                         *n += 1;
                         *n
@@ -866,6 +853,10 @@ impl<'a> Engine<'a> {
                             };
                             fmt = fmt.replace(&format!("^{level}"), &v.to_string());
                         }
+                    }
+                    if reflow {
+                        self.numbering
+                            .retain(|(id, level), _| id != &nk.0 || *level <= nk.1);
                     }
                     self.labels.insert(key, fmt.clone());
                     fmt
@@ -898,10 +889,55 @@ impl<'a> Engine<'a> {
                 } else {
                     head.n("textOffset") / 100.
                 };
-                x += nw + offset;
-                avail -= nw + offset;
-                number_draw = Some((label, g));
+                let reserved = if reflow {
+                    nw * g.scale + offset.max(0.)
+                } else {
+                    nw + offset
+                };
+                return Ok(Some((label, g, reserved)));
             }
+        }
+        Ok(None)
+    }
+    fn line(&mut self, p: &Node, li: usize, ox: f64, oy: f64, width: f64) -> Result<()> {
+        let segs = lines(p);
+        let seg = segs[li];
+        let start = seg.u("textpos");
+        let end = segs
+            .get(li + 1)
+            .map(|n| n.u("textpos"))
+            .unwrap_or(usize::MAX);
+        let its: Vec<_> = Self::items(p)
+            .into_iter()
+            .filter(|i| i.pos >= start && i.pos < end)
+            .filter(|i| p.a("reflowed") != "1" || !matches!(i.kind, ItemKind::Char('\n' | '\r')))
+            .collect();
+        let mut line_y = oy + seg.n("vertpos") / 100.;
+        let mut base = line_y + seg.n("baseline") / 100.;
+        let mut x = ox + seg.n("horzpos") / 100.;
+        let mut avail = if seg.n("horzsize") > 0. {
+            seg.n("horzsize") / 100.
+        } else {
+            width
+        };
+        if self.depth > 0 {
+            avail = avail.min((width - seg.n("horzpos") / 100.).max(0.));
+        }
+        let style = self.doc.paras.get(p.a("paraPrIDRef"));
+        let align = style
+            .and_then(|n| n.child("align"))
+            .map(|n| n.a("horizontal"))
+            .unwrap_or("LEFT");
+        let number_draw = if li == 0 {
+            self.paragraph_number(p, p.a("reflowed") == "1")?
+        } else {
+            None
+        };
+        if p.a("reflowed") != "1"
+            && let Some((_, _, reserved)) = &number_draw
+        {
+            x += reserved;
+            avail -= reserved;
         }
         let mut widths = Vec::new();
         let mut gs = Vec::new();
@@ -1347,9 +1383,14 @@ impl<'a> Engine<'a> {
                 color(def.a("color")),
             ));
         }
-        if let Some((label, g)) = number_draw {
+        if let Some((label, g, _)) = number_draw {
             self.current.ops.push(Op::Text {
-                x: ox,
+                x: ox
+                    + if p.a("reflowed") == "1" {
+                        p.n("reflowNumberX")
+                    } else {
+                        0.
+                    },
                 y: base,
                 text: label,
                 font: g.font,
@@ -3559,18 +3600,26 @@ impl<'a> Engine<'a> {
         anyhow::ensure!(nesting < 64, "Excessive nested reflow");
         let style = self.doc.paras.get(source.a("paraPrIDRef"));
         anyhow::ensure!(
-            style
-                .and_then(|s| s.child("heading"))
-                .is_none_or(|h| !matches!(h.a("type"), "NUMBER" | "BULLET")),
-            "Plain-text reflow does not yet support numbered/bulleted paragraph {}",
-            source.a("id")
-        );
-        anyhow::ensure!(
             style.is_none_or(|s| s.a("textDir") != "RTL"),
             "RTL paragraph reflow is not supported"
         );
-        let settings = crate::reflow::settings(style);
+        let mut settings = crate::reflow::settings(style);
+        let numbered = style
+            .and_then(|s| s.child("heading"))
+            .is_some_and(|h| matches!(h.a("type"), "NUMBER" | "BULLET"));
         let mut p = source.clone();
+        let number = self.paragraph_number(source, true)?;
+        anyhow::ensure!(
+            !numbered || number.is_some(),
+            "Missing numbering/bullet definition for paragraph {}",
+            source.a("id")
+        );
+        if let Some((_, _, reserved)) = &number {
+            let anchor = (settings.left + settings.indent).max(0.);
+            p.attrs.insert("reflowNumberX".into(), anchor.to_string());
+            settings.left = settings.left.max(anchor + reserved);
+            settings.indent = 0.;
+        }
         p.attrs.insert("reflowed".into(), "1".into());
         self.reflow_children(&mut p, width, nesting + 1)?;
         fn normalize(n: &mut Node) {
@@ -3737,7 +3786,21 @@ impl<'a> Engine<'a> {
                 grouped.push(unit);
             }
         }
+        // The label is not part of the UTF-16 text stream, but its ink must fit
+        // the first line, including empty list items.
+        if let Some((_, g, _)) = &number {
+            if grouped.is_empty() {
+                grouped.push(crate::reflow::Unit::default());
+            }
+            grouped[0].ascent = grouped[0].ascent.max(g.ascent);
+            grouped[0].descent = grouped[0].descent.max(g.descent);
+            grouped[0].em = grouped[0].em.max(g.size);
+        }
         let wrapped = crate::reflow::wrap(&grouped, width, &settings)?;
+        anyhow::ensure!(
+            number.is_none() || !wrapped.first().is_some_and(|l| l.block),
+            "List labels on leading block objects are not yet supported"
+        );
         let mut segments = Node {
             name: "linesegarray".into(),
             ..Default::default()
