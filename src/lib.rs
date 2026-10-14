@@ -2,6 +2,7 @@
 pub mod chart;
 mod decoration;
 pub mod distribution;
+pub mod graphics;
 pub mod hwp;
 pub mod layout;
 pub mod math;

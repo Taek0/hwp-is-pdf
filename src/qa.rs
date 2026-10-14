@@ -32,6 +32,8 @@ struct Ink {
     x: f64,
     unit: f64,
     scale: f64,
+    local_base: f64,
+    inverse: crate::graphics::Matrix,
 }
 #[derive(Default)]
 struct Outline {
@@ -113,9 +115,15 @@ fn ink_intersects(a: &Ink, b: &Ink, faces: &[ttf_parser::Face]) -> bool {
         for j in 0..ny {
             let x = x0 + (i as f64 + 0.5) * w / nx as f64;
             let y = y0 + (j as f64 + 0.5) * h / ny as f64;
-            if aa.contains((x - a.x) / a.unit / a.scale, (a.base - y) / a.unit)
-                && bb.contains((x - b.x) / b.unit / b.scale, (b.base - y) / b.unit)
-            {
+            let ap = crate::graphics::point(a.inverse, x, y);
+            let bp = crate::graphics::point(b.inverse, x, y);
+            if aa.contains(
+                (ap.0 - a.x) / a.unit / a.scale,
+                (a.local_base - ap.1) / a.unit,
+            ) && bb.contains(
+                (bp.0 - b.x) / b.unit / b.scale,
+                (b.local_base - bp.1) / b.unit,
+            ) {
                 return true;
             }
         }
@@ -138,7 +146,34 @@ pub fn inspect(pages: &[Page], fonts: &Fonts, bounds: &[Bounds]) -> Audit {
     };
     for (pi, page) in pages.iter().enumerate() {
         let mut glyphs = Vec::new();
+        let mut transform = crate::graphics::IDENTITY;
+        let mut stack = Vec::new();
+        let mut rules = Vec::new();
         for op in &page.ops {
+            match op {
+                Op::TransformBegin { matrix } => {
+                    stack.push(transform);
+                    transform = crate::graphics::compose(transform, *matrix);
+                    continue;
+                }
+                Op::TransformEnd => {
+                    transform = stack.pop().unwrap_or(crate::graphics::IDENTITY);
+                    continue;
+                }
+                Op::Line {
+                    x,
+                    y,
+                    x2,
+                    y2,
+                    width,
+                    ..
+                } => {
+                    let a = crate::graphics::point(transform, *x, *y);
+                    let b = crate::graphics::point(transform, *x2, *y2);
+                    rules.push((a.0, a.1, b.0, b.1, *width));
+                }
+                _ => {}
+            }
             if let Op::Text {
                 x,
                 y,
@@ -153,16 +188,21 @@ pub fn inspect(pages: &[Page], fonts: &Fonts, bounds: &[Bounds]) -> Audit {
                 let unit = *size / face.units_per_em() as f64;
                 let mut x = *x;
                 for c in text.chars() {
-                    if let Some(g) = face.glyph_index(c) {
+                    if let Some(g) = crate::pdf::glyph_id(face, c) {
                         if let Some(bb) = face.glyph_bounding_box(g) {
                             glyphs.push(Ink {
-                                r: [
-                                    x + bb.x_min as f64 * unit * scale,
-                                    *y - bb.y_max as f64 * unit,
-                                    x + bb.x_max as f64 * unit * scale,
-                                    *y - bb.y_min as f64 * unit,
-                                ],
-                                base: *y,
+                                r: crate::graphics::rect(
+                                    transform,
+                                    [
+                                        x + bb.x_min as f64 * unit * scale,
+                                        *y - bb.y_max as f64 * unit,
+                                        x + bb.x_max as f64 * unit * scale,
+                                        *y - bb.y_min as f64 * unit,
+                                    ],
+                                ),
+                                base: crate::graphics::point(transform, x, *y).1,
+                                local_base: *y,
+                                inverse: crate::graphics::inverse(transform),
                                 text: c,
                                 font: *font,
                                 glyph: g,
@@ -226,35 +266,25 @@ pub fn inspect(pages: &[Page], fonts: &Fonts, bounds: &[Bounds]) -> Audit {
                     buckets.entry((gx, gy)).or_default().push(i);
                 }
             }
-            for op in &page.ops {
-                if let Op::Line {
-                    x,
-                    y,
-                    x2,
-                    y2,
-                    width,
-                    ..
-                } = op
-                {
-                    let inset = 0.35 + width / 2.;
-                    let hit = if (y - y2).abs() < 0.05 {
-                        *y > y0 + inset
-                            && *y < y1 - inset
-                            && x.min(*x2) < x1 - 0.5
-                            && x.max(*x2) > x0 + 0.5
-                    } else if (x - x2).abs() < 0.05 {
-                        *x > x0 + inset
-                            && *x < x1 - inset
-                            && y.min(*y2) < y1 - 0.5
-                            && y.max(*y2) > y0 + 0.5
-                    } else {
-                        false
-                    };
-                    if hit {
-                        audit
-                            .border_crossings
-                            .push(finding(format!("line ({x:.2},{y:.2})-({x2:.2},{y2:.2})")));
-                    }
+            for (x, y, x2, y2, width) in &rules {
+                let inset = 0.35 + width / 2.;
+                let hit = if (y - y2).abs() < 0.05 {
+                    *y > y0 + inset
+                        && *y < y1 - inset
+                        && x.min(*x2) < x1 - 0.5
+                        && x.max(*x2) > x0 + 0.5
+                } else if (x - x2).abs() < 0.05 {
+                    *x > x0 + inset
+                        && *x < x1 - inset
+                        && y.min(*y2) < y1 - 0.5
+                        && y.max(*y2) > y0 + 0.5
+                } else {
+                    false
+                };
+                if hit {
+                    audit
+                        .border_crossings
+                        .push(finding(format!("line ({x:.2},{y:.2})-({x2:.2},{y2:.2})")));
                 }
             }
             for b in bounds

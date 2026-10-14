@@ -9,6 +9,26 @@ use std::{
 
 #[derive(Clone, Debug, Serialize)]
 pub enum Op {
+    TransformBegin {
+        matrix: crate::graphics::Matrix,
+    },
+    TransformEnd,
+    Bezier {
+        start: (f64, f64),
+        segments: Vec<[f64; 6]>,
+        closed: bool,
+        width: f64,
+        color: [f64; 3],
+        fill: Option<[f64; 3]>,
+    },
+    ImageClip {
+        x: f64,
+        y: f64,
+        w: f64,
+        h: f64,
+        id: String,
+        source: [f64; 4],
+    },
     Path {
         points: Vec<(f64, f64)>,
         closed: bool,
@@ -63,6 +83,26 @@ pub struct Fonts {
     pub list: Vec<Font>,
     pub root: PathBuf,
 }
+/// Unicode cmap first; Windows Symbol cmap (platform 3 / encoding 0) is not
+/// searched by ttf-parser's Unicode-only Face::glyph_index convenience method.
+pub fn glyph_id(face: &ttf_parser::Face<'_>, c: char) -> Option<ttf_parser::GlyphId> {
+    face.glyph_index(c).or_else(|| {
+        face.tables()
+            .cmap?
+            .subtables
+            .into_iter()
+            .filter(|t| t.platform_id == ttf_parser::PlatformId::Windows && t.encoding_id == 0)
+            .find_map(|t| {
+                t.glyph_index(c as u32).or_else(|| {
+                    if (c as u32) <= 0xff {
+                        t.glyph_index(0xf000 + c as u32)
+                    } else {
+                        None
+                    }
+                })
+            })
+    })
+}
 impl Fonts {
     pub fn new(root: &Path) -> Self {
         Self {
@@ -95,7 +135,7 @@ impl Fonts {
         let f = ttf_parser::Face::parse(&self.list[id].bytes, 0).unwrap();
         text.chars()
             .map(|c| {
-                f.glyph_index(c)
+                glyph_id(&f, c)
                     .and_then(|g| f.glyph_hor_advance(g))
                     .unwrap_or(f.units_per_em()) as f64
                     / f.units_per_em() as f64
@@ -104,17 +144,18 @@ impl Fonts {
             .sum()
     }
     pub fn has(&self, id: usize, c: char) -> bool {
-        ttf_parser::Face::parse(&self.list[id].bytes, 0)
-            .unwrap()
-            .glyph_index(c)
-            .is_some()
+        glyph_id(
+            &ttf_parser::Face::parse(&self.list[id].bytes, 0).unwrap(),
+            c,
+        )
+        .is_some()
     }
     fn encode(&mut self, id: usize, text: &str) -> String {
         let font = &mut self.list[id];
         let f = ttf_parser::Face::parse(&font.bytes, 0).unwrap();
         let mut result = String::new();
         for c in text.chars() {
-            let gid = f.glyph_index(c).map(|v| v.0).unwrap_or(0);
+            let gid = glyph_id(&f, c).map(|v| v.0).unwrap_or(0);
             font.used.insert(gid, c);
             result.push_str(&format!("{gid:04X}"));
         }
@@ -237,6 +278,53 @@ pub fn save(
         let mut content = String::new();
         for op in &page.ops {
             match op {
+                Op::TransformBegin { matrix: m } => content.push_str(&format!(
+                    "q {} {} {} {} {} {} cm\n",
+                    m[0],
+                    -m[1],
+                    -m[2],
+                    m[3],
+                    m[4] + m[2] * page.height,
+                    page.height - m[5] - m[3] * page.height
+                )),
+                Op::TransformEnd => content.push_str("Q\n"),
+                Op::Bezier {
+                    start,
+                    segments,
+                    closed,
+                    width,
+                    color,
+                    fill,
+                } => {
+                    content.push_str(&format!(
+                        "q {} {} {} RG {} w {} {} m\n",
+                        color[0],
+                        color[1],
+                        color[2],
+                        width,
+                        start.0,
+                        page.height - start.1
+                    ));
+                    for s in segments {
+                        content.push_str(&format!(
+                            "{} {} {} {} {} {} c\n",
+                            s[0],
+                            page.height - s[1],
+                            s[2],
+                            page.height - s[3],
+                            s[4],
+                            page.height - s[5]
+                        ));
+                    }
+                    if *closed {
+                        content.push_str("h\n");
+                    }
+                    if let Some(f) = fill {
+                        content.push_str(&format!("{} {} {} rg B Q\n", f[0], f[1], f[2]));
+                    } else {
+                        content.push_str("S Q\n");
+                    }
+                }
                 Op::Path {
                     points,
                     closed,
@@ -305,7 +393,10 @@ pub fn save(
                     fill[2],
                     page.height - y - h
                 )),
-                Op::Image { x, y, w: iw, h, id } => {
+                Op::Image { x, y, w: iw, h, id }
+                | Op::ImageClip {
+                    x, y, w: iw, h, id, ..
+                } => {
                     if !image_ids.contains_key(id) {
                         let bytes = images.get(id).context("Missing image payload")?;
                         let im = image::load_from_memory(bytes)?.to_rgb8();
@@ -313,6 +404,29 @@ pub fn save(
                         image_ids.insert(id.clone(), (obj, image_ids.len()));
                     }
                     let (_, index) = image_ids[id];
+                    if let Op::ImageClip { source: s, .. } = op {
+                        anyhow::ensure!(
+                            s.iter().all(|v| v.is_finite()) && s[2] > s[0] && s[3] > s[1],
+                            "Invalid image crop"
+                        );
+                        let full_w = iw / (s[2] - s[0]);
+                        let full_h = h / (s[3] - s[1]);
+                        let px = x - s[0] * full_w;
+                        let py = y - s[1] * full_h;
+                        content.push_str(&format!(
+                            "q {} {} {} {} re W n {} 0 0 {} {} {} cm /I{} Do Q\n",
+                            x,
+                            page.height - y - h,
+                            iw,
+                            h,
+                            full_w,
+                            full_h,
+                            px,
+                            page.height - py - full_h,
+                            index
+                        ));
+                        continue;
+                    }
                     content.push_str(&format!(
                         "q {iw:0.4} 0 0 {h:0.4} {x:0.4} {:0.4} cm /I{index} Do Q\n",
                         page.height - y - h
