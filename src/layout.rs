@@ -336,6 +336,7 @@ mod table_measure;
 mod table_pagination;
 mod table_vectors;
 mod text_decorations;
+mod text_metrics;
 mod text_paint;
 mod text_style;
 mod toc;

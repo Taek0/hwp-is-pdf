@@ -12,6 +12,7 @@ mod operations;
 pub use operations::{Op, Page, PositionedGlyph};
 mod font_catalog;
 mod fonts;
+mod kerning;
 pub use fonts::{Font, Fonts, glyph_id};
 fn compress(b: &[u8]) -> Result<Vec<u8>> {
     let mut z = ZlibEncoder::new(Vec::new(), Compression::default());

@@ -53,3 +53,6 @@ Additional typography modules:
 Page coordinate modules:
 - `layout/page_borders.rs`: source border-origin normalization, parity, visibility and fill extent.
 - `layout/object_position.rs`: shared paragraph/page/paper vertical anchor calculation.
+
+- `layout/text_metrics.rs`: language slots, sparse-property fallback and shared pair-kerning policy.
+- `pdf/kerning.rs`: cached OpenType pair advances.

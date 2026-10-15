@@ -169,12 +169,12 @@
       },
       {
         "id": 17,
-        "status": "in_progress",
+        "status": "complete",
         "task": "Kerning and language-specific glyph styles"
       },
       {
         "id": 18,
-        "status": "pending",
+        "status": "in_progress",
         "task": "Symbols and graphic border fidelity"
       },
       {

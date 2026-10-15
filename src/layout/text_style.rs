@@ -16,9 +16,19 @@ impl<'a> Engine<'a> {
             return Ok(g.clone());
         }
         let ch = self.doc.chars.get(style).context("Invalid charPrIDRef")?;
-        let latin = c.is_ascii();
-        let lang = if latin { "latin" } else { "hangul" };
-        let langkey = if latin { "LATIN" } else { "HANGUL" };
+        let (script, script_key) = text_metrics::language(c);
+        let fallback = if c.is_ascii() { "latin" } else { "hangul" };
+        let specified = ch
+            .child("fontRef")
+            .is_some_and(|r| r.attrs.contains_key(script));
+        let lang = if specified { script } else { fallback };
+        let langkey = if specified {
+            script_key
+        } else if c.is_ascii() {
+            "LATIN"
+        } else {
+            "HANGUL"
+        };
         let fontref = ch.child("fontRef").map(|n| n.a(lang)).unwrap_or("0");
         let name = self
             .doc
@@ -52,20 +62,24 @@ impl<'a> Engine<'a> {
                     .insert(format!("Missing glyph U+{:04X}", c as u32));
             }
         }
-        let nominal_size =
-            ch.n("height") / 100. * ch.child("relSz").map(|n| n.n(lang) / 100.).unwrap_or(1.);
+        let nominal_size = ch.n("height") / 100.
+            * text_metrics::property(ch, "relSz", script, fallback, 100.)
+            / 100.;
         let superscript = ch.child("supscript").is_some();
         let subscript = ch.child("subscript").is_some();
         let script_scale = if superscript || subscript { 0.65 } else { 1. };
         let size = nominal_size * script_scale;
-        let offset_lang = match c as u32 {
-            0x3040..=0x30ff | 0x31f0..=0x31ff => "japanese",
-            0x3400..=0x9fff | 0xf900..=0xfaff | 0x20000..=0x323af => "hanja",
-            0x1100..=0x11ff | 0x3130..=0x318f | 0xa960..=0xa97f | 0xac00..=0xd7ff => "hangul",
-            0..=0x024f => "latin",
-            _ => "other",
-        };
-        let offset = ch.child("offset").map(|n| n.n(offset_lang)).unwrap_or(0.);
+        let offset = text_metrics::property(
+            ch,
+            "offset",
+            script,
+            if script == "symbol" {
+                "other"
+            } else {
+                fallback
+            },
+            0.,
+        );
         let shift = nominal_size
             * (offset / 100.
                 + if superscript {
@@ -78,11 +92,8 @@ impl<'a> Engine<'a> {
         if superscript || subscript {
             self.report.warnings.insert("Superscript/subscript use 65% size and nominal-font baseline shifts; exact Hancom metrics unverified".into());
         }
-        let scale = ch.child("ratio").map(|n| n.n(lang) / 100.).unwrap_or(1.);
-        let spacing = ch
-            .child("spacing")
-            .map(|n| n.n(lang) / 100. * size)
-            .unwrap_or(0.);
+        let scale = text_metrics::property(ch, "ratio", script, fallback, 100.) / 100.;
+        let spacing = text_metrics::property(ch, "spacing", script, fallback, 0.) / 100. * size;
         let advance = if c == ' ' && ch.a("useFontSpace") == "0" {
             size * 0.5
         } else {

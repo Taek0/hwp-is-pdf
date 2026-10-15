@@ -229,7 +229,12 @@ impl<'a> Engine<'a> {
         }
         for i in 0..units.len().saturating_sub(1) {
             if let (Some(a), Some(b)) = (&glyphs[i], &glyphs[i + 1]) {
-                units[i].width = units[i].width.max(a.ink_right - b.ink_left + 0.02);
+                units[i].width =
+                    if let Some(adjust) = self.pair_kerning(&items[i], &items[i + 1], a, b) {
+                        (units[i].width + adjust).max(0.)
+                    } else {
+                        units[i].width.max(a.ink_right - b.ink_left + 0.02)
+                    };
             }
         }
         for i in 1..items.len() {

@@ -1009,3 +1009,17 @@ captions and mixed rotated objects. Four target PDFs are byte-identical to stage
 15 (2/15/9/50 pages); this change does not resolve their remaining intermediate
 page-boundary differences. The three-page nested mixed-table fixture was rendered
 and visually checked with zero geometric findings. Results: output/roadmap/16-pagination/.
+
+## Final pass 17 — language styles and kerning
+Character font references, relative sizes, width ratios and tracking now use the
+Hancom language slots (Latin, Hangul, Hanja, Japanese, symbol, user, other), with
+fallbacks for sparse HWPX definitions. Enabled Latin pair kerning uses OpenType
+advances cached per face/pair, shared by saved painting and line measurement.
+Complex scripts retain their existing shaping path; general contextual positioning
+and exact Hancom typography are not claimed.
+
+143 tests and Clippy pass. The new language-kerning.hwpx example is rendered in
+saved and reflow modes with no missing glyphs or overlaps. Four target PDFs retain
+page/object counts and character multisets, with zero geometric findings. Math
+and form are byte-identical to stage 16; law/report changed typography, with
+representative pages reviewed. Results: output/roadmap/17-text/.

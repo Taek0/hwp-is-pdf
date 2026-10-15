@@ -9,6 +9,7 @@ pub struct Font {
 pub struct Fonts {
     pub list: Vec<Font>,
     pub root: PathBuf,
+    pub(super) kern_cache: BTreeMap<(usize, char, char), f64>,
 }
 /// Unicode cmap first; Windows Symbol cmap (platform 3 / encoding 0) is not
 /// searched by ttf-parser's Unicode-only Face::glyph_index convenience method.
@@ -35,6 +36,7 @@ impl Fonts {
         Self {
             list: Vec::new(),
             root: root.into(),
+            kern_cache: BTreeMap::new(),
         }
     }
     pub fn get(&mut self, name: &str) -> Result<usize> {

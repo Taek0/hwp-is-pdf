@@ -144,7 +144,12 @@ impl<'a> Engine<'a> {
                 && matches!(its[i + 1].kind, ItemKind::Char(_))
                 && let (Some(left), Some(right)) = (&gs[i], &gs[i + 1])
             {
-                widths[i] = widths[i].max(left.ink_right - right.ink_left + 0.02);
+                widths[i] =
+                    if let Some(adjust) = self.pair_kerning(&its[i], &its[i + 1], left, right) {
+                        (widths[i] + adjust).max(0.)
+                    } else {
+                        widths[i].max(left.ink_right - right.ink_left + 0.02)
+                    };
             }
         }
         if p.a("reflowed") == "1" {
