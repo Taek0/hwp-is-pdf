@@ -56,7 +56,9 @@ pub(super) fn paragraph(r: &Record) -> Result<Node> {
         } else if ![0, 10, 13, 24, 25, 30, 31].contains(&code) {
             advance = 8;
             bytes(textdata, pos * 2, 16)?;
-            if code == 9 {
+            if code == 4 {
+                run.children.push(n("ctrl").with(vec![n("fieldEnd")]));
+            } else if code == 9 {
                 run.children
                     .push(n("t").with(vec![n("tab").at("width", u32(textdata, pos * 2 + 2)?)]));
             } else {

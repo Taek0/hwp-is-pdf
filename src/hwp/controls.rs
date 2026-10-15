@@ -59,9 +59,7 @@ pub(super) fn control(r: &Record) -> Result<Node> {
             }
             Ok(n("ctrl").with(vec![h]))
         }
-        "bokm" | "idxm" | "tcmt" => {
-            Ok(n("ctrl").with(vec![n("nonPrinting").at("sourceControl", r.id())]))
-        }
+        "idxm" | "tcmt" => Ok(n("ctrl").with(vec![n("nonPrinting").at("sourceControl", r.id())])),
         "eqed" => {
             let eq = r.first(88).context("Missing equation payload")?;
             let ed = &eq.data;
@@ -416,10 +414,8 @@ pub(super) fn control(r: &Record) -> Result<Node> {
             }
             Ok(out)
         }
-        "%hlk" => Ok(n("ctrl").with(vec![n("hyperlink")])),
-        field if field.starts_with('%') => {
-            Ok(n("ctrl").with(vec![n("cachedField").at("sourceControl", field)]))
-        }
+        "bokm" => field_records::bookmark(r),
+        field if field.starts_with('%') => field_records::field(r),
         other => bail!("Unsupported HWP control {other}"),
     }
 }
