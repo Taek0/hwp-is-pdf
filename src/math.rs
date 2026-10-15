@@ -27,7 +27,7 @@ pub(crate) fn group(s: &str) -> (&str, &str) {
     }
     (&s[1..], "")
 }
-fn top_over(s: &str) -> Option<usize> {
+fn top_keyword(s: &str, keyword: &str) -> Option<usize> {
     let mut d = 0;
     for (i, c) in s.char_indices() {
         if c == '{' {
@@ -35,7 +35,15 @@ fn top_over(s: &str) -> Option<usize> {
         } else if c == '}' {
             d -= 1
         }
-        if d == 0 && s[i..].starts_with("over") {
+        if d == 0
+            && s[i..]
+                .get(..keyword.len())
+                .is_some_and(|s| s.eq_ignore_ascii_case(keyword))
+            && !(keyword == "over"
+                && s[i..]
+                    .get(..8)
+                    .is_some_and(|s| s.eq_ignore_ascii_case("overline")))
+        {
             return Some(i);
         }
     }
@@ -43,6 +51,33 @@ fn top_over(s: &str) -> Option<usize> {
 }
 pub(crate) fn moved(op: Op, dx: f64, dy: f64) -> Op {
     match op {
+        Op::Bezier {
+            start,
+            segments,
+            closed,
+            width,
+            color,
+            fill,
+        } => Op::Bezier {
+            start: (start.0 + dx, start.1 + dy),
+            segments: segments
+                .into_iter()
+                .map(|s| {
+                    [
+                        s[0] + dx,
+                        s[1] + dy,
+                        s[2] + dx,
+                        s[3] + dy,
+                        s[4] + dx,
+                        s[5] + dy,
+                    ]
+                })
+                .collect(),
+            closed,
+            width,
+            color,
+            fill,
+        },
         Op::Shaped {
             x,
             y,
@@ -128,7 +163,7 @@ pub(crate) fn layout_inner(
         descent: size * 0.2,
         ..Default::default()
     };
-    if let Some(i) = top_over(s) {
+    if let Some(i) = top_keyword(s, "over") {
         let left = s[..i].trim();
         let num = if left.starts_with('{') {
             group(left).0
@@ -171,10 +206,49 @@ pub(crate) fn layout_inner(
         result.width += tail.width + size * 0.1;
         return Ok(result);
     }
+    for keyword in ["atop", "choose"] {
+        if let Some(i) = top_keyword(s, keyword) {
+            let left = s[..i].trim();
+            let top = if left.starts_with('{') {
+                group(left).0
+            } else {
+                left
+            };
+            let (bottom, rest) = group(&s[i + keyword.len()..]);
+            let mut b = crate::math_stacks::compose(
+                top,
+                bottom,
+                size,
+                fonts,
+                depth + 1,
+                keyword == "choose",
+            )?;
+            let tail = layout_inner(rest, size, fonts, depth + 1)?;
+            b.ops.extend(
+                tail.ops
+                    .into_iter()
+                    .map(|o| moved(o, b.width + size * 0.1, 0.)),
+            );
+            b.width += tail.width;
+            return Ok(b);
+        }
+    }
     let mut p = 0;
     let mut bar = false;
     while p < s.len() {
         let tail = &s[p..];
+        if let Some((b, used)) = crate::math_accents::parse(tail, size, fonts, depth + 1)?
+            .or(crate::math_stacks::prefix(tail, size, fonts, depth + 1)?)
+        {
+            result
+                .ops
+                .extend(b.ops.into_iter().map(|o| moved(o, result.width, 0.)));
+            result.width += b.width;
+            result.ascent = result.ascent.max(b.ascent);
+            result.descent = result.descent.max(b.descent);
+            p += used;
+            continue;
+        }
         if let Some((b, used)) = crate::math_extra::parse(tail, size, fonts, depth + 1)? {
             result
                 .ops
@@ -312,6 +386,58 @@ pub fn place(b: MathBox, x: f64, baseline: f64, w: f64, h: f64) -> Vec<Op> {
     b.ops
         .into_iter()
         .map(|op| match op {
+            Op::Bezier {
+                start,
+                segments,
+                closed,
+                width,
+                color,
+                fill,
+            } => Op::Bezier {
+                start: (x + start.0 * sx, baseline + start.1 * sy),
+                segments: segments
+                    .into_iter()
+                    .map(|s| {
+                        [
+                            x + s[0] * sx,
+                            baseline + s[1] * sy,
+                            x + s[2] * sx,
+                            baseline + s[3] * sy,
+                            x + s[4] * sx,
+                            baseline + s[5] * sy,
+                        ]
+                    })
+                    .collect(),
+                closed,
+                width,
+                color,
+                fill,
+            },
+            Op::Shaped {
+                x: xx,
+                y,
+                text,
+                font,
+                size,
+                scale,
+                color,
+                mut glyphs,
+            } => {
+                for g in &mut glyphs {
+                    g.x *= sx;
+                    g.y *= sy;
+                }
+                Op::Shaped {
+                    x: x + xx * sx,
+                    y: baseline + y * sy,
+                    text,
+                    font,
+                    size: size * sy,
+                    scale: scale * sx / sy,
+                    color,
+                    glyphs,
+                }
+            }
             Op::Path {
                 points,
                 closed,
@@ -373,6 +499,6 @@ mod tests {
     }
     #[test]
     fn fraction_operator_outside_groups() {
-        assert_eq!(top_over("{10} over {3}"), Some(5));
+        assert_eq!(top_keyword("{10} over {3}", "over"), Some(5));
     }
 }
