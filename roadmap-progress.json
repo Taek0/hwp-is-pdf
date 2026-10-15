@@ -155,7 +155,7 @@
     "remaining": "Table internal placement, receipt wrapping, intermediate page boundaries and font/symbol fidelity; further independent exports for HWPX border enum compatibility"
   },
   "final_fidelity_pass": {
-    "status": "in_progress",
+    "status": "complete",
     "stages": [
       {
         "id": 15,
@@ -184,9 +184,18 @@
       },
       {
         "id": 20,
-        "status": "in_progress",
-        "task": "Automatic row heights and final Hancom comparison"
+        "status": "complete",
+        "task": "Automatic row heights, page-number side characters and final Hancom comparison"
       }
-    ]
+    ],
+    "verification": {
+      "tests": 151,
+      "documents": 43,
+      "pages": 205,
+      "hancom_pages": 76,
+      "geometry_findings": 0,
+      "report": "output/roadmap/20-final/SUMMARY.html",
+      "remaining": "Receipt-label wrapping, some intermediate page boundaries, missing-font/synthetic metrics and exact graphic fidelity remain different from Hancom"
+    }
   }
 }

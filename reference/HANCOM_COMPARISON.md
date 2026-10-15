@@ -172,3 +172,11 @@ its nine pages were visually reviewed. The four target PDFs preserve their
 non-whitespace character multisets and 2/15/9/50 page counts. Frame edge errors
 against the reference are 0.030/0.050/0.040/0.010 pt (left/right/top/bottom).
 This does not imply matching table positions, fonts or all page contents.
+
+## Final pass completed — 2026-10-15
+
+See FINAL_COMPARISON.md for the final 151-test / 43-document, 205-page audit, the
+76-page paired reference set, lossless font subsetting evidence and remaining
+visible differences. Original user-exported Hancom PDFs remain unchanged.
+The final form grid-offset error is approximately 2.46 pt; report page-number
+dashes are restored from the source's side-character field.
