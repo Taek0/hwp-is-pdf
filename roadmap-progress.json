@@ -174,12 +174,12 @@
       },
       {
         "id": 18,
-        "status": "in_progress",
+        "status": "complete",
         "task": "Symbols and graphic border fidelity"
       },
       {
         "id": 19,
-        "status": "pending",
+        "status": "in_progress",
         "task": "Font subsetting and final Hancom comparison"
       }
     ]

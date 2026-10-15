@@ -56,3 +56,6 @@ Page coordinate modules:
 
 - `layout/text_metrics.rs`: language slots, sparse-property fallback and shared pair-kerning policy.
 - `pdf/kerning.rs`: cached OpenType pair advances.
+
+- `layout/border_strokes.rs`: shared vector border patterns and compound-rule bands.
+- `image_effects.rs`: alpha-preserving derived raster effects for both input formats.

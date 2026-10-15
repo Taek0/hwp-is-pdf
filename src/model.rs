@@ -132,7 +132,7 @@ impl Document {
                 bail!("Duplicate ZIP entry")
             }
         }
-        let header = xml(files
+        let mut header = xml(files
             .get("Contents/header.xml")
             .context("Missing header.xml")?)?;
         let manifest = xml(files
@@ -173,6 +173,9 @@ impl Document {
         if sections.is_empty() {
             bail!("No sections")
         }
+        crate::image_effects::apply(&mut sections, &mut binaries)?;
+        crate::image_effects::apply(&mut masters, &mut binaries)?;
+        crate::image_effects::apply(std::slice::from_mut(&mut header), &mut binaries)?;
         let collect = |tag: &str| {
             let mut nodes = Vec::new();
             header.all(tag, &mut nodes);

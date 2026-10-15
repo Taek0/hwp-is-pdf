@@ -188,21 +188,9 @@ impl<'a> Engine<'a> {
             ("bottomBorder", last, (x, y2, x2, y2)),
         ] {
             if draw && let Some(s) = def.child(name).filter(|s| s.a("type") != "NONE") {
-                let mm = s
-                    .a("width")
-                    .split_whitespace()
-                    .next()
-                    .unwrap_or("0.1")
-                    .parse::<f64>()
-                    .unwrap_or(0.1);
-                self.current.ops.push(Op::Line {
-                    x: a,
-                    y: b,
-                    x2: c,
-                    y2: d,
-                    width: mm * 72. / 25.4,
-                    color: color(s.a("color")),
-                });
+                self.current
+                    .ops
+                    .extend(border_strokes::stroke(s, (a, b), (c, d)));
             }
         }
     }

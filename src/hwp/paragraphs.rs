@@ -42,17 +42,9 @@ pub(super) fn paragraph(r: &Record) -> Result<Node> {
                 1
             };
             let value = utf16(bytes(textdata, pos * 2, advance * 2)?)?;
-            let mapped = match value.as_str() {
-                "\u{f012b}" => Some("(인)"),
-                "\u{f081c}" => Some(""),
-                "\u{329e}" => Some("(인)"),
-                _ => None,
-            };
-            run.children.push(n("t").with(vec![if let Some(s) = mapped {
-                n("hwpDisplay").at("units", advance).at("value", s)
-            } else {
-                txt(value)
-            }]));
+            // Keep Unicode and supplementary Hancom PUA code points intact.
+            // Installed HCR faces contain the legacy seal/decorative glyphs.
+            run.children.push(n("t").with(vec![txt(value)]));
         } else if ![0, 10, 13, 24, 25, 30, 31].contains(&code) {
             advance = 8;
             bytes(textdata, pos * 2, 16)?;

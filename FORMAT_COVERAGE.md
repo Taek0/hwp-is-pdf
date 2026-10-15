@@ -1023,3 +1023,26 @@ saved and reflow modes with no missing glyphs or overlaps. Four target PDFs reta
 page/object counts and character multisets, with zero geometric findings. Math
 and form are byte-identical to stage 16; law/report changed typography, with
 representative pages reviewed. Results: output/roadmap/17-text/.
+
+## Final pass 18 — borders, image effects and legacy glyphs
+Native border style IDs are retained instead of flattening every visible rule to
+SOLID. Cell/paragraph/page borders share vector dash/dot/compound/wave/3D painting.
+Compound strokes are centered and fit within the declared total band; this fixed
+a real government-notice text crossing introduced by a naive second-line offset.
+Pattern pitch and 3D shading are approximations rather than pixel-exact Hancom styles.
+
+HWP/HWPX image effects now share one module and preserve original alpha, including
+grayscale and black/white output. Source image bytes remain unchanged; derived
+images are cached, and applying effects twice is idempotent.
+
+Installed HCR Batang/Dotum were verified to contain Hancom PUA glyph U+F081C.
+Native U+F012B/U+F081C/U+329E are now preserved, with HCR fallback instead of
+replacing them by "(인)" or dropping them. This restores the form's seal and
+100 decorative-rule characters. The expected PDF text delta is removal of three
+"(인)" substitutes and restoration of two U+F012B, 100 U+F081C and one U+329E.
+It is a repair of earlier lossy display mapping, not removal of source content.
+
+146 tests and Clippy pass. Four target PDFs retain pages/object counts and have
+zero geometry findings. Other than the documented form-symbol restoration, their
+character multisets are unchanged. Form comparison and border-effects example
+were rendered and inspected. Results: output/roadmap/18-graphics/.

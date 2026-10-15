@@ -46,6 +46,16 @@ impl<'a> Engine<'a> {
                 "msgothic.ttc",
                 "seguisym.ttf",
                 "arial.ttf",
+                if bold {
+                    "HANBatangB.ttf"
+                } else {
+                    "HANBatang.ttf"
+                },
+                if bold {
+                    "HANDotumB.ttf"
+                } else {
+                    "HANDotum.ttf"
+                },
             ] {
                 if !self.fonts.root.join(fallback).exists() {
                     continue;

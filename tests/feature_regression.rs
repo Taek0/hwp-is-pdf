@@ -81,7 +81,11 @@ fn feature_documents_render_without_geometry_collisions() {
         let audit = qa::inspect(&engine.pages, &engine.fonts, &engine.report.bounds);
         assert!(audit.outside_page.is_empty(), "{name}: outside page");
         assert!(audit.text_overlaps.is_empty(), "{name}: overlapping text");
-        assert!(audit.border_crossings.is_empty(), "{name}: crossing rule");
+        assert!(
+            audit.border_crossings.is_empty(),
+            "{name}: crossing rule: {:?}",
+            audit.border_crossings
+        );
         assert!(
             audit.foreground_image_overlaps.is_empty(),
             "{name}: foreground image overlap"
@@ -154,7 +158,11 @@ fn public_documents_keep_negative_tracking_from_colliding() {
             audit.text_overlaps
         );
         assert!(audit.outside_page.is_empty(), "{name}: outside page");
-        assert!(audit.border_crossings.is_empty(), "{name}: crossing rule");
+        assert!(
+            audit.border_crossings.is_empty(),
+            "{name}: crossing rule: {:?}",
+            audit.border_crossings
+        );
         assert!(
             audit.foreground_image_overlaps.is_empty(),
             "{name}: foreground image overlap"

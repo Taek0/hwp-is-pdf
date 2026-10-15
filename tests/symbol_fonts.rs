@@ -38,6 +38,51 @@ fn symbol_cmap_is_shared_by_metrics_pdf_encoding_and_qa() {
     let audit = qa::inspect(&[page], &fonts, &[]);
     assert_eq!(audit.glyphs_checked, 1);
 }
+
+#[test]
+fn native_legacy_symbols_are_preserved_and_have_installed_glyphs() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("복학원서.hwp");
+    if !path.exists() {
+        return;
+    }
+    let d = Document::open(&path).unwrap();
+    let text = d
+        .sections
+        .iter()
+        .map(hwp_engine::model::text)
+        .collect::<String>();
+    assert!(text.contains('\u{f081c}'));
+    let mut e = Engine::new(&d, &fonts());
+    e.render().unwrap();
+    for c in ['\u{f081c}', '\u{f012b}', '\u{329e}'] {
+        let expected = text.matches(c).count();
+        let actual: usize = e
+            .pages
+            .iter()
+            .flat_map(|p| &p.ops)
+            .filter_map(|o| {
+                if let Op::Text { text, font, .. } = o {
+                    if text.contains(c) {
+                        assert!(e.fonts.has(*font, c));
+                    }
+                    Some(text.matches(c).count())
+                } else {
+                    None
+                }
+            })
+            .sum();
+        assert_eq!(actual, expected, "U+{:X}", c as u32);
+    }
+    assert!(
+        e.report
+            .warnings
+            .iter()
+            .all(|w| !w.starts_with("Missing glyph"))
+    );
+}
 #[test]
 fn legacy_bullet_is_visible_without_missing_glyph_warning() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

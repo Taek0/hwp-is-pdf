@@ -4,6 +4,7 @@ mod decoration;
 pub mod distribution;
 pub mod graphics;
 pub mod hwp;
+mod image_effects;
 mod image_layout;
 pub mod layout;
 pub mod math;

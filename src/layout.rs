@@ -300,6 +300,7 @@ pub struct Engine<'a> {
     flow_floor: Option<(usize, f64, bool)>,
 }
 mod anchors;
+mod border_strokes;
 mod caption_layout;
 use caption_layout::side_caption_height;
 mod column_balance;

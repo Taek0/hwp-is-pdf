@@ -252,7 +252,32 @@ pub fn open(path: &Path) -> Result<Document> {
                     let weight = bytes(d, 3 + 6 * i, 1)?[0] as usize;
                     b.children.push(
                         n(key)
-                            .at("type", if typ == 0 { "NONE" } else { "SOLID" })
+                            .at(
+                                "type",
+                                [
+                                    "NONE",
+                                    "SOLID",
+                                    "DASH",
+                                    "DOT",
+                                    "DASH_DOT",
+                                    "DASH_DOT_DOT",
+                                    "LONG_DASH",
+                                    "CIRCLE",
+                                    "DOUBLE_SLIM",
+                                    "SLIM_THICK",
+                                    "THICK_SLIM",
+                                    "SLIM_THICK_SLIM",
+                                    "WAVE",
+                                    "DOUBLEWAVE",
+                                    "THICK3D",
+                                    "THICKREV3D",
+                                    "3D",
+                                    "REV3D",
+                                ]
+                                .get(typ as usize)
+                                .copied()
+                                .unwrap_or("SOLID"),
+                            )
                             .at("width", format!("{} mm", widths[weight.min(15)]))
                             .at("color", rgb(u32(d, 4 + 6 * i)?)),
                     );
@@ -355,52 +380,9 @@ pub fn open(path: &Path) -> Result<Document> {
         sections.push(section);
     }
     ensure!(!sections.is_empty(), "Missing BodyText");
-    fn effects(nodes: &mut [Node], binaries: &mut BTreeMap<String, Vec<u8>>) -> Result<()> {
-        for node in nodes {
-            if matches!(node.name.as_str(), "pic" | "bullet")
-                && let Some(img) = node.children.iter_mut().find(|n| n.name == "img")
-            {
-                let brightness = img.n("bright");
-                let contrast = img.n("contrast");
-                let gray = img.a("effect") == "1";
-                if brightness != 0. || contrast != 0. || gray {
-                    let id = img.a("binaryItemIDRef").to_string();
-                    let derived = format!("{id}-{}-{}-{}", brightness, contrast, gray);
-                    if !binaries.contains_key(&derived) {
-                        let raw = binaries.get(&id).context("Missing effect image")?;
-                        let image = image::load_from_memory(raw)?;
-                        let mut rgb = if gray {
-                            image.grayscale().to_rgb8()
-                        } else {
-                            image.to_rgb8()
-                        };
-                        for px in rgb.pixels_mut() {
-                            for v in &mut px.0 {
-                                let c = 255. + (*v as f64 - 255.) * (1. + contrast / 100.);
-                                *v = if brightness >= 0. {
-                                    c + (255. - c) * brightness / 100.
-                                } else {
-                                    c * (1. + brightness / 100.)
-                                }
-                                .clamp(0., 255.)
-                                .round() as u8;
-                            }
-                        }
-                        let mut out = Cursor::new(Vec::new());
-                        image::DynamicImage::ImageRgb8(rgb)
-                            .write_to(&mut out, image::ImageFormat::Png)?;
-                        binaries.insert(derived.clone(), out.into_inner());
-                    }
-                    img.attrs.insert("binaryItemIDRef".into(), derived);
-                }
-            }
-            effects(&mut node.children, binaries)?;
-        }
-        Ok(())
-    }
-    effects(&mut sections, &mut binaries)?;
-    effects(&mut masters, &mut binaries)?;
-    effects(std::slice::from_mut(&mut header), &mut binaries)?;
+    crate::image_effects::apply(&mut sections, &mut binaries)?;
+    crate::image_effects::apply(&mut masters, &mut binaries)?;
+    crate::image_effects::apply(std::slice::from_mut(&mut header), &mut binaries)?;
     fn static_ole(nodes: &mut [Node], binaries: &mut BTreeMap<String, Vec<u8>>) -> Result<()> {
         for node in nodes {
             if node.name == "ole" {

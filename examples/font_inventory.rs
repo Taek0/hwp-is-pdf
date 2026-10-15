@@ -1,5 +1,9 @@
 //! Inspect installed or embedded TrueType font families and face indices.
 fn main() -> anyhow::Result<()> {
+    let glyph = std::env::args()
+        .nth(2)
+        .and_then(|s| u32::from_str_radix(s.trim_start_matches("U+"), 16).ok())
+        .and_then(char::from_u32);
     let root = std::env::args()
         .nth(1)
         .unwrap_or("/mnt/c/Windows/Fonts".into());
@@ -24,6 +28,9 @@ fn main() -> anyhow::Result<()> {
             let Ok(face) = ttf_parser::Face::parse(&bytes, index) else {
                 continue;
             };
+            if glyph.is_some_and(|c| hwp_engine::pdf::glyph_id(&face, c).is_none()) {
+                continue;
+            }
             let names: std::collections::BTreeSet<_> = face
                 .names()
                 .into_iter()
