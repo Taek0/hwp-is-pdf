@@ -10,7 +10,7 @@ pub(crate) struct Atom {
     pub top: f64,
     pub bottom: f64,
 }
-fn bounds(op: &Op, fonts: &Fonts) -> Option<[f64; 4]> {
+pub(crate) fn bounds(op: &Op, fonts: &Fonts) -> Option<[f64; 4]> {
     match op {
         Op::FieldText {
             x, y, width, size, ..

@@ -393,19 +393,29 @@ impl<'a> Engine<'a> {
             let overhead =
                 self.note_gap(false, "aboveLine", 6.) + self.note_gap(false, "belowLine", 4.) + 1.;
             let capacity = (if first {
-                let text_bottom = self
-                    .current
-                    .ops
-                    .iter()
-                    .filter_map(|op| match op {
-                        Op::Text { y, size, .. }
-                            if *y >= self.top && *y < self.ph - self.bottom =>
-                        {
-                            Some(y + size * 0.35)
+                let mut text_bottom = self.top;
+                let mut matrix = crate::graphics::IDENTITY;
+                let mut stack = Vec::new();
+                for op in &self.current.ops {
+                    match op {
+                        Op::TransformBegin { matrix: m } => {
+                            stack.push(matrix);
+                            matrix = crate::graphics::compose(matrix, *m);
                         }
-                        _ => None,
-                    })
-                    .fold(self.top, f64::max);
+                        Op::TransformEnd => {
+                            matrix = stack.pop().unwrap_or(crate::graphics::IDENTITY)
+                        }
+                        Op::Text { .. } | Op::Shaped { .. } => {
+                            if let Some(b) = crate::pagination::bounds(op, &self.fonts) {
+                                let b = crate::graphics::rect(matrix, b);
+                                if b[1] >= self.top && b[3] < self.ph - self.bottom {
+                                    text_bottom = text_bottom.max(b[3]);
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
                 let object_bottom = self
                     .report
                     .bounds

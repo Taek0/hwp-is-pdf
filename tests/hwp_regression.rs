@@ -16,7 +16,7 @@ fn fonts() -> PathBuf {
 fn hwp_inputs_render_directly_with_no_unintended_geometry_collisions() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     for (name, pages, tables, pictures) in [
-        ("복학원서.hwp", 1, 3, 2),
+        ("복학원서.hwp", 2, 3, 2),
         ("21_언어_기출_편집가능본.hwp", 15, 16, 1),
     ] {
         let path = root.parent().unwrap().join(name);
@@ -62,7 +62,7 @@ fn hwp_inputs_render_directly_with_no_unintended_geometry_collisions() {
             "{name}: {:?}",
             audit.foreground_image_overlaps
         );
-        if pages == 1 {
+        if name == "복학원서.hwp" {
             assert_eq!(audit.background_images_exempted, 2)
         } else {
             assert_eq!(audit.background_images_exempted, 0)

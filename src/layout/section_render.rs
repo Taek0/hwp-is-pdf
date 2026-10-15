@@ -60,6 +60,8 @@ impl<'a> Engine<'a> {
                 let mut last = None;
                 let mut flow_shift = 0f64;
                 let mut table_reflowed = false;
+                let mut repage_saved_tail = false;
+                let mut previous_end = self.top;
                 let fallback_flow = section
                     .children_named("p")
                     .filter(|p| !text(p).trim().is_empty())
@@ -83,6 +85,7 @@ impl<'a> Engine<'a> {
                         let next_count = def.u("colCount").max(1);
                         let next_gap = val(Some(def), "sameGap");
                         if next_count != cols || next_gap != gap {
+                            repage_saved_tail = false;
                             if last.is_some_and(|y| ls[0].n("vertpos") < y)
                                 || p.a("pageBreak") == "1"
                             {
@@ -104,9 +107,15 @@ impl<'a> Engine<'a> {
                         let floor = self.flow_floor.take().filter(|f| f.0 == self.pages.len());
                         let table_consumed_break =
                             floor.is_some_and(|f| f.2) && p.a("pageBreak") != "1";
-                        if (last.is_some_and(|last| y < last) && !table_consumed_break)
-                            || (last.is_some() && i == 0 && p.a("pageBreak") == "1")
-                        {
+                        let cached_break =
+                            last.is_some_and(|last| y < last) && !table_consumed_break;
+                        let explicit_break = last.is_some() && i == 0 && p.a("pageBreak") == "1";
+                        if cached_break && repage_saved_tail && !explicit_break {
+                            // Changed table/note geometry invalidated the saved page boundary.
+                            // Reuse cached line positions as continuous flow until an explicit break.
+                            flow_shift = previous_end - self.top - y / 100.;
+                        } else if cached_break || explicit_break {
+                            repage_saved_tail = false;
                             col += 1;
                             flow_shift = 0.;
                             table_reflowed = false;
@@ -119,9 +128,18 @@ impl<'a> Engine<'a> {
                                 self.decorations(section, false, cols, gap)?;
                             }
                         }
-                        if let Some((page, bottom, _)) = floor.filter(|f| f.0 == self.pages.len()) {
-                            let _ = page;
-                            flow_shift = flow_shift.max(bottom - self.top - y / 100.);
+                        if let Some((_, bottom, continued)) =
+                            floor.filter(|f| f.0 == self.pages.len())
+                        {
+                            let shift = bottom - self.top - y / 100.;
+                            // The table already crossed the cached page boundary. Its
+                            // actual last fragment, not the stale continuation Y, owns
+                            // the following flow origin (including upward movement).
+                            flow_shift = if continued {
+                                shift
+                            } else {
+                                flow_shift.max(shift)
+                            };
                             table_reflowed = true;
                         }
                         let end = ls.get(i + 1).map(|l| l.u("textpos")).unwrap_or(usize::MAX);
@@ -147,9 +165,24 @@ impl<'a> Engine<'a> {
                                 }
                                 _ => false,
                             });
+                        let inline_object = its.iter().filter(|it| it.pos >= l.u("textpos") && it.pos < end)
+                            .any(|it| matches!(&it.kind,ItemKind::Object(n) if n.name=="tbl" && n.a("pageBreak")=="NONE" && n.child("pos").is_some_and(|p|p.a("treatAsChar")=="1")));
+                        let line_slot = l.n("vertsize")
+                            + if inline_object {
+                                l.n("spacing").max(0.)
+                            } else {
+                                0.
+                            };
                         if visible
-                            && (reserve > 0. || fallback_flow || table_reflowed)
-                            && self.top + flow_shift + (y + l.n("vertsize")) / 100.
+                            && (repage_saved_tail
+                                || reserve > 0.
+                                || fallback_flow
+                                || table_reflowed
+                                || (inline_object
+                                    && self.top + flow_shift + (y + l.n("vertsize")) / 100.
+                                        <= self.ph - self.bottom
+                                    && line_slot / 100. <= self.ph - self.top - self.bottom))
+                            && self.top + flow_shift + (y + line_slot) / 100.
                                 > self.ph - self.bottom - reserve
                             && self.top + flow_shift + y / 100. > self.top + 0.1
                         {
@@ -160,6 +193,9 @@ impl<'a> Engine<'a> {
                                 self.decorations(section, false, cols, gap)?;
                             }
                             flow_shift = -y / 100.;
+                            if cols == 1 && (reserve > 0. || table_reflowed) {
+                                repage_saved_tail = true;
+                            }
                         }
                         self.line(
                             p,
@@ -201,6 +237,8 @@ impl<'a> Engine<'a> {
                             gap,
                         );
                         last = Some(y);
+                        previous_end =
+                            self.top + flow_shift + (y + l.n("vertsize") + l.n("spacing")) / 100.;
                         if fallback_flow {
                             flow_shift += (l.n("vertsize") + l.n("spacing")) / 100.;
                         }
