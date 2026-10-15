@@ -58,10 +58,11 @@ fn supplied_math_document_has_complete_object_coverage_and_repaired_box() {
     assert!(audit.text_overlaps.is_empty());
     assert!(audit.outside_page.is_empty());
     assert!(audit.foreground_image_overlaps.is_empty());
-    // PAPER-relative page borders use offsets from the physical page, not text margins.
+    // Hancom's print is text-relative despite the HWPX wire enum PAPER.
+    // Reference PDF top/left are 48.24/28.32 pt (printer quantization).
     assert!(engine.pages[0].ops.iter().any(|op| matches!(op,
         hwp_engine::pdf::Op::Line{x,y,x2,y2,..}
-        if (*x-14.17).abs()<0.02 && (*y-14.17).abs()<0.02 && *x2>*x && (*y2-*y).abs()<0.01)));
+        if (*x-28.35).abs()<0.02 && (*y-48.20).abs()<0.02 && *x2>*x && (*y2-*y).abs()<0.01)));
     assert!(
         engine
             .report

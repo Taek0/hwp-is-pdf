@@ -131,7 +131,10 @@ impl<'a> Engine<'a> {
                     let y = if c.name == "header" {
                         self.top - self.header
                     } else {
-                        self.ph - self.bottom + self.footer - content_height(list)
+                        // A tall saved footer grows into the lower margin. A
+                        // negative bottom-alignment offset pulls it into the
+                        // body and through the page border instead.
+                        self.ph - self.bottom + (self.footer - content_height(list)).max(0.)
                     };
                     self.local(list, self.left, y, self.pw - self.left - self.right)?;
                 }

@@ -98,5 +98,66 @@ pub(super) fn section_properties(r: &Record) -> Result<Node> {
             ]),
         );
     }
+    let flags = u32(&r.data, 4)?;
+    let visibility = |hide, only| {
+        if flags & hide != 0 {
+            "HIDE_FIRST"
+        } else if flags & only != 0 {
+            "SHOW_FIRST"
+        } else {
+            "SHOW_ALL"
+        }
+    };
+    sec.children.push(
+        n("visibility")
+            .at("border", visibility(8, 256))
+            .at("fill", visibility(16, 512)),
+    );
+    for (index, border) in r
+        .children
+        .iter()
+        .filter(|r| r.tag == 75)
+        .take(3)
+        .enumerate()
+    {
+        sec.children
+            .push(page_border(&border.data, ["BOTH", "EVEN", "ODD"][index])?);
+    }
     Ok(sec)
+}
+
+fn page_border(d: &[u8], kind: &str) -> Result<Node> {
+    let flags = u32(d, 0)?;
+    // Table 135's fields total 14 bytes, despite its printed total of 12.
+    Ok(n("pageBorderFill")
+        .at("type", kind)
+        .at(
+            "borderReference",
+            if flags & 1 != 0 { "PAPER" } else { "CONTENT" },
+        )
+        .at("headerInside", (flags >> 1) & 1)
+        .at("footerInside", (flags >> 2) & 1)
+        .at(
+            "fillArea",
+            ["PAPER", "PAGE", "BORDER", "BORDER"][((flags >> 3) & 3) as usize],
+        )
+        .at("borderFillIDRef", u16(d, 12)?)
+        .with(vec![margins("offset", d, 4)?]))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn page_border_record_preserves_flags_offsets_and_rejects_truncation() {
+        let d = [23, 0, 0, 0, 100, 0, 200, 0, 44, 1, 144, 1, 7, 0];
+        let n = page_border(&d, "ODD").unwrap();
+        assert_eq!(n.a("borderReference"), "PAPER");
+        assert_eq!(n.a("headerInside"), "1");
+        assert_eq!(n.a("footerInside"), "1");
+        assert_eq!(n.a("fillArea"), "BORDER");
+        assert_eq!(n.a("borderFillIDRef"), "7");
+        assert_eq!(n.child("offset").unwrap().a("bottom"), "400");
+        assert!(page_border(&d[..12], "BOTH").is_err());
+    }
 }

@@ -49,3 +49,7 @@ Additional typography modules:
 - `layout/saved_cell_text.rs`: overflowing plain-text HWPX cell cache recovery and nested height propagation.
 - `layout/paragraph_borders.rs`, `layout/rectangles.rs`: connected paragraph borders/fills and rounded rectangle geometry.
 - `layout/text_decorations.rs`: underline and strike rendering.
+
+Page coordinate modules:
+- `layout/page_borders.rs`: source border-origin normalization, parity, visibility and fill extent.
+- `layout/object_position.rs`: shared paragraph/page/paper vertical anchor calculation.

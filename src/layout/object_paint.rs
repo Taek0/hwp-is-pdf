@@ -56,23 +56,21 @@ impl<'a> Engine<'a> {
             } else {
                 self.ph - self.top - self.bottom
             };
-            (if vr == "PAPER" {
+            let origin = if vr == "PAPER" {
                 0.
             } else if vr == "PAGE" {
                 self.top
             } else {
                 line_y
-            }) + pos.signed("vertOffset") / 100.
-                * if pos.a("vertAlign") == "BOTTOM" {
-                    -1.
-                } else {
-                    1.
-                }
-                + match pos.a("vertAlign") {
-                    "CENTER" => (extent - h) / 2.,
-                    "BOTTOM" => extent - h,
-                    _ => 0.,
-                }
+            };
+            object_position::vertical(
+                origin,
+                extent,
+                h,
+                vr,
+                pos.a("vertAlign"),
+                pos.signed("vertOffset") / 100.,
+            )
         };
         if n.a("reflowCaptions") == "1" {
             x += caption_extent(n)[0];

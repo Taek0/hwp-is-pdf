@@ -54,28 +54,7 @@ impl<'a> Engine<'a> {
             }
         }
         let sec = section.find("secPr").unwrap();
-        if let Some(b) = sec
-            .children_named("pageBorderFill")
-            .find(|n| n.a("type") == "BOTH")
-        {
-            let m = margin(b, "offset");
-            let paper = b.a("textBorder") == "PAPER";
-            self.border(
-                b.a("borderFillIDRef"),
-                if paper { m[0] } else { self.left - m[0] },
-                if paper { m[2] } else { self.top - m[2] },
-                if paper {
-                    self.pw - m[0] - m[1]
-                } else {
-                    self.pw - self.left - self.right + m[0] + m[1]
-                },
-                if paper {
-                    self.ph - m[2] - m[3]
-                } else {
-                    self.ph - self.top - self.bottom + m[2] + m[3]
-                },
-            );
-        }
+        self.paint_page_border(sec, first, hiding);
         if cols > 1 && sec.a("binaryHwp") != "1" && self.column_widths.is_empty() {
             let x = self.left + (self.pw - self.left - self.right) / 2.;
             let first_body = section

@@ -68,12 +68,14 @@ impl<'a> Engine<'a> {
                             _ => 0.,
                         };
                     let offset = pos.signed("vertOffset") / 100.;
-                    let y = yo
-                        + match pos.a("vertAlign") {
-                            "CENTER" => (yh - h) / 2. + offset,
-                            "BOTTOM" => yh - h - offset,
-                            _ => offset,
-                        };
+                    let y = object_position::vertical(
+                        yo,
+                        yh,
+                        h,
+                        pos.a("vertRelTo"),
+                        pos.a("vertAlign"),
+                        offset,
+                    );
                     anyhow::ensure!(
                         y >= 0. && y + h <= self.ph + 0.01,
                         "Absolute float lies outside the paper"

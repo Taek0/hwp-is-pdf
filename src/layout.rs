@@ -316,6 +316,8 @@ mod list_labels;
 mod local_flow;
 mod notes;
 mod object_paint;
+mod object_position;
+mod page_borders;
 mod page_decorations;
 mod page_furniture;
 mod paragraph_borders;
