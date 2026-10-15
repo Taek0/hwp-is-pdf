@@ -115,7 +115,25 @@ impl<'a> Engine<'a> {
             && let Some(last) = rh.last_mut()
         {
             *last += h - total;
+            total = h;
         }
         Ok((cw, rh, total))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn allocated_table_height_matches_returned_pagination_extent() {
+        let d = Document::open(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("samples/reflow/contour-single.hwpx"),
+        )
+        .unwrap();
+        let n=crate::model::xml(br#"<tbl rowCnt="1" colCnt="1"><tr><tc><cellAddr rowAddr="0" colAddr="0"/><cellSpan rowSpan="1" colSpan="1"/><cellSz width="9000" height="1000"/></tc></tr></tbl>"#).unwrap();
+        let mut e = Engine::new(&d, Path::new("."));
+        let (_, rows, total) = e.measure_table_grid(&n, 300.).unwrap();
+        assert_eq!(rows, vec![300.]);
+        assert_eq!(total, rows.iter().sum::<f64>());
     }
 }

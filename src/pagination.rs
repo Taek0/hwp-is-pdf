@@ -41,7 +41,7 @@ pub(crate) fn bounds(op: &Op, fonts: &Fonts) -> Option<[f64; 4]> {
                     ]);
                 }
             }
-            points_bounds(&points, 0.)
+            points_bounds(&points, fonts.ink_padding(*font, *size) * 2.)
         }
         Op::Text {
             x,
@@ -51,12 +51,35 @@ pub(crate) fn bounds(op: &Op, fonts: &Fonts) -> Option<[f64; 4]> {
             font,
             text,
             ..
-        } => Some([
-            *x - size * 0.2,
-            y - size * 1.2,
-            x + fonts.width(*font, text, *size) * scale + size * 0.2,
-            y + size * 0.4,
-        ]),
+        } => {
+            let face = ttf_parser::Face::parse(&fonts.list[*font].bytes, 0).ok()?;
+            let unit = size / face.units_per_em() as f64;
+            let mut cursor = *x;
+            let mut points = Vec::new();
+            for c in text.chars() {
+                if let Some(gid) = crate::pdf::glyph_id(&face, c) {
+                    if let Some(bb) = face.glyph_bounding_box(gid) {
+                        points.extend([
+                            (
+                                cursor + bb.x_min as f64 * unit * scale,
+                                y - bb.y_max as f64 * unit,
+                            ),
+                            (
+                                cursor + bb.x_max as f64 * unit * scale,
+                                y - bb.y_min as f64 * unit,
+                            ),
+                        ]);
+                    }
+                    cursor += face.glyph_hor_advance(gid).unwrap_or(face.units_per_em()) as f64
+                        * unit
+                        * scale;
+                }
+            }
+            Some(
+                points_bounds(&points, fonts.ink_padding(*font, *size) * 2.)
+                    .unwrap_or([*x, *y, cursor, *y]),
+            )
+        }
         Op::Rect { x, y, w, h, .. }
         | Op::Image { x, y, w, h, .. }
         | Op::ImageClip { x, y, w, h, .. } => Some([*x, *y, x + w, y + h]),
@@ -174,4 +197,49 @@ pub(crate) fn atoms(ops: &[Op], fonts: &Fonts) -> Result<Vec<Atom>> {
     }
     ensure!(stack.is_empty(), "Unclosed table transform");
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn transformed_text_reserves_actual_ink_not_a_full_em_padding_box() {
+        let mut fonts = Fonts::new(std::path::Path::new(if cfg!(windows) {
+            "C:/Windows/Fonts"
+        } else {
+            "/mnt/c/Windows/Fonts"
+        }));
+        let font = fonts.get("arial.ttf").unwrap();
+        let text = Op::Text {
+            x: 10.,
+            y: 100.,
+            text: "M".into(),
+            font,
+            size: 20.,
+            scale: 1.,
+            color: [0.; 3],
+        };
+        let ops = [
+            Op::TransformBegin {
+                matrix: [1., 0., 0.2, 1., 0., 0.],
+            },
+            text,
+            Op::TransformEnd,
+        ];
+        let groups = atoms(&ops, &fonts).unwrap();
+        assert_eq!(groups.len(), 1);
+        assert!(groups[0].top > 80. && groups[0].bottom <= 100.1);
+        assert!(groups[0].bottom - groups[0].top < 20.);
+        let space = Op::Text {
+            x: 10.,
+            y: 100.,
+            text: " ".into(),
+            font,
+            size: 20.,
+            scale: 1.,
+            color: [0.; 3],
+        };
+        let b = bounds(&space, &fonts).unwrap();
+        assert_eq!(b[1], b[3]);
+    }
 }

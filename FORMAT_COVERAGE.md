@@ -999,3 +999,13 @@ of every native cell or a claim that the receipt now matches the reference.
 counts and character multisets, with zero geometry findings. Form/report PDFs
 are byte-identical to stage 14; math/law previews were reviewed. Results and
 images: output/roadmap/15-tables/. Original files are unchanged.
+
+## Final pass 16 — pagination extents
+Transformed text pagination now uses actual glyph ink bounds and synthetic-bold
+stroke padding instead of a fixed 1.6-em box. Whitespace does not reserve ink.
+Measured table totals now include allocated trailing row height consistently.
+141 tests and Clippy pass, including long-note continuation, repeated headers,
+captions and mixed rotated objects. Four target PDFs are byte-identical to stage
+15 (2/15/9/50 pages); this change does not resolve their remaining intermediate
+page-boundary differences. The three-page nested mixed-table fixture was rendered
+and visually checked with zero geometric findings. Results: output/roadmap/16-pagination/.
