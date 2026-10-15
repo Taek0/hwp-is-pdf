@@ -1,4 +1,4 @@
-# HWP/HWPX implementation coverage — 2026-10-14
+# HWP/HWPX implementation coverage — 2026-10-15
 
 본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 
@@ -438,3 +438,35 @@ All 72 Rust tests and all-target Clippy pass. All 43 prior documents / 210 pages
 retain original hashes, page/object counts and pixel-identical default output;
 all four geometry QA classes are empty. This increment supersedes the earlier
 single-column-table restriction only within the supported conditions above.
+
+## Paragraph-leading float wrapping (2026-10-15)
+
+Reflow supports one leading SQUARE picture/rectangle in a top-level unnumbered
+paragraph, aligned LEFT/RIGHT relative to PARA/COLUMN, vertically TOP relative
+to PARA, with zero source position offsets and no caption. Outer margins and
+rotated bounding boxes define a rectangular exclusion, with a 1pt ink clearance.
+Line widths shrink beside the object and restore below its bottom. The initial
+object-height text band stays on one page/column, including footnote reservation;
+subsequent text can continue normally. A short paragraph reserves trailing height
+so the next paragraph clears the object. Widow adjustment cannot split the initial
+float band. Objects leaving less than 24pt of usable side text fall back to block
+placement. An object/text band taller than a usable column fails explicitly.
+
+Scope limits: cross-paragraph floats, multiple simultaneous floats, centered or
+contour wrapping, nonzero anchor offsets, captioned floats, numbered paragraphs
+and floats in cells/text boxes retain the prior block fallback. This does not
+claim all Hancom SQUARE/text-flow variants or exact original line breaking.
+Saved-layout conversion is unchanged.
+
+Generated single-column (3 pages) and two-column (2 pages) examples cover both
+sides, rotated rectangle text, short body text and an anchored footnote. Tests vary
+page height, check source-character preservation, line-width restoration, object
+and reference placement, geometry QA and a full-width-picture fallback. Generator:
+examples/float_reflow_fixture.rs; tests: tests/reflow_floats.rs. Local results:
+output/reflow-floats/SUMMARY.html. These are controlled generated fixtures, not
+Hancom-reference exports.
+
+All 75 Rust tests and all-target Clippy pass. All 43 prior documents / 210 pages
+retain source hashes and page/object counts, with pixel-identical default output
+and zero findings in all four geometry QA classes. Earlier blanket float-wrap
+limitations are superseded only for the paragraph-leading scope described above.
