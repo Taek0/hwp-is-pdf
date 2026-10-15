@@ -84,7 +84,12 @@ impl<'a> Engine<'a> {
                 .min((ox + container - w - e[1]).max(ox + e[0]));
         }
         let fit_start = self.report.bounds.len();
-        let fit = if self.depth == 0
+        let fit = if n.n("reflowScale") > 0. && n.n("reflowScale") < 1. {
+            let factor = n.n("reflowScale");
+            let matrix = [factor, 0., 0., factor, x * (1. - factor), y * (1. - factor)];
+            self.current.ops.push(Op::TransformBegin { matrix });
+            Some(matrix)
+        } else if self.depth == 0
             && n.name != "tbl"
             && n.child("caption").is_none()
             && n.a("textWrap") != "BEHIND_TEXT"
@@ -234,9 +239,21 @@ impl<'a> Engine<'a> {
                 }
             }
             "group" => {
-                for child in n.children.iter().filter(|c| c.child("pos").is_some()) {
-                    self.object(child, x, y, y, x, w)?;
+                anyhow::ensure!(self.depth < 64, "Excessive nested group layout");
+                let fitted = n.n("reflowScale") > 0. && n.n("reflowScale") < 1.;
+                if fitted {
+                    self.depth += 1;
                 }
+                let result = (|| -> Result<()> {
+                    for child in n.children.iter().filter(|c| c.child("pos").is_some()) {
+                        self.object(child, x, y, y, x, w)?;
+                    }
+                    Ok(())
+                })();
+                if fitted {
+                    self.depth -= 1;
+                }
+                result?;
             }
             "polygon" | "curve" | "arc" => {
                 let ow = if n.n("originalWidth") > 0. {

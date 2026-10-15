@@ -23,10 +23,6 @@ impl<'a> Engine<'a> {
                             self.reflow_table_contents(n, width, nesting)?;
                         } else {
                             if n.name == "group" {
-                                anyhow::ensure!(
-                                    val(n.child("sz"), "width") <= width,
-                                    "Group wider than column requires explicit scaling"
-                                );
                                 let mut para = Node {
                                     name: "p".into(),
                                     ..Default::default()
@@ -42,7 +38,11 @@ impl<'a> Engine<'a> {
                                     run.children.push(child);
                                 }
                                 para.children.push(run);
-                                self.reflow_children(&mut para, width, nesting + 1)?;
+                                self.reflow_children(
+                                    &mut para,
+                                    val(n.child("sz"), "width"),
+                                    nesting + 1,
+                                )?;
                                 let mut prepared = para.children.remove(0).children.into_iter();
                                 for child in
                                     n.children.iter_mut().filter(|c| c.child("pos").is_some())
@@ -51,7 +51,11 @@ impl<'a> Engine<'a> {
                                 }
                             }
                             let old_w = val(n.child("sz"), "width");
-                            let ratio = (width / old_w.max(0.1)).min(1.);
+                            let ratio = if n.name == "group" {
+                                1.
+                            } else {
+                                (width / old_w.max(0.1)).min(1.)
+                            };
                             for key in ["sz", "curSz"] {
                                 if let Some(sz) = n.children.iter_mut().find(|s| s.name == key) {
                                     for dimension in ["width", "height"] {
@@ -175,13 +179,20 @@ impl<'a> Engine<'a> {
             matches!(
                 n.name.as_str(),
                 "pic" | "rect" | "ellipse" | "polygon" | "curve" | "group"
-            ) && n.a("textWrap") == "SQUARE"
+            ) && (n.a("textWrap") == "SQUARE"
+                || (n.a("textWrap") == "TOP_AND_BOTTOM"
+                    && n.child("pos").is_some_and(|p| {
+                        matches!(p.a("horzRelTo"), "PAGE" | "PAPER")
+                            || matches!(p.a("vertRelTo"), "PAGE" | "PAPER")
+                    })))
                 && n.child("caption").is_none()
                 && n.child("pos").is_some_and(|p| {
                     p.a("treatAsChar") != "1"
-                        && matches!(p.a("horzRelTo"), "PARA" | "COLUMN")
-                        && p.a("vertRelTo") == "PARA"
-                        && matches!(p.a("vertAlign"), "" | "TOP")
+                        && matches!(p.a("horzRelTo"), "PARA" | "COLUMN" | "PAGE" | "PAPER")
+                        && matches!(p.a("vertRelTo"), "PARA" | "PAGE" | "PAPER")
+                        && (matches!(p.a("horzRelTo"), "PAGE" | "PAPER")
+                            || matches!(p.a("vertRelTo"), "PAGE" | "PAPER")
+                            || matches!(p.a("vertAlign"), "" | "TOP"))
                 })
         })
     }
@@ -218,6 +229,40 @@ impl<'a> Engine<'a> {
                 .attrs
                 .insert("height".into(), (h * 100.).to_string());
         }
+        let absolute = n.a("pageAbsolute") == "1";
+        let frame_width = if absolute { self.pw } else { width };
+        let offset = n
+            .child("pos")
+            .map(|p| p.signed("vertOffset") / 100.)
+            .unwrap_or(0.)
+            + outer_margin[2];
+        let max_height = if n.n("reflowMaxHeight") > 0. {
+            n.n("reflowMaxHeight")
+        } else {
+            self.ph - self.top - self.bottom - 32.
+        };
+        let scale = if absolute {
+            n.a("reflowScale")
+                .parse::<f64>()
+                .unwrap_or(1.)
+                .clamp(0.001, 1.)
+        } else if n.a("groupMember") == "1" {
+            1.
+        } else {
+            (frame_width / w.max(0.01))
+                .min((max_height - offset.max(0.)).max(24.) / h.max(0.01))
+                .min(1.)
+        };
+        if scale < 1. {
+            n.attrs.insert("reflowScale".into(), scale.to_string());
+            self.report.warnings.insert(format!(
+                "Float {} fitted to usable area at {:.1}%",
+                n.a("id"),
+                scale * 100.
+            ));
+            w *= scale;
+            h *= scale;
+        }
         let pos = n.child("pos").unwrap();
         let allow_overlap = pos.a("allowOverlap") == "1";
         let mut x = pos.signed("horzOffset") / 100.
@@ -228,11 +273,18 @@ impl<'a> Engine<'a> {
             };
         let mut y = pos.signed("vertOffset") / 100. + outer_margin[2];
         anyhow::ensure!(
-            y >= 0.,
+            y >= 0. || n.a("reflowNegativeAllowed") == "1",
             "Negative vertical float anchors require saved-layout conversion"
         );
-        anyhow::ensure!(w <= width + 0.01, "Rotated float is wider than its column");
-        let bounded = x.clamp(0., (width - w).max(0.));
+        anyhow::ensure!(
+            w <= frame_width + 0.01,
+            "Rotated float is wider than its frame"
+        );
+        let bounded = if absolute {
+            x.clamp(-self.left, (self.pw - self.left - w).max(-self.left))
+        } else {
+            x.clamp(0., (width - w).max(0.))
+        };
         if (bounded - x).abs() > 0.01 {
             self.report
                 .warnings
@@ -317,6 +369,8 @@ impl<'a> Engine<'a> {
             );
             for p in &mut points {
                 *p = crate::graphics::point(m, p.0, p.1);
+                p.0 *= scale;
+                p.1 *= scale;
             }
         } else {
             points = vec![(0., 0.), (w, 0.), (w, h), (0., h)];
@@ -357,10 +411,10 @@ impl<'a> Engine<'a> {
                             [r[0] * nw, r[1] * nh, r[2] * nw, r[3] * nh],
                         );
                         vec![
-                            (x + b[0], y + b[1]),
-                            (x + b[2], y + b[1]),
-                            (x + b[2], y + b[3]),
-                            (x + b[0], y + b[3]),
+                            (x + b[0] * scale, y + b[1] * scale),
+                            (x + b[2] * scale, y + b[1] * scale),
+                            (x + b[2] * scale, y + b[3] * scale),
+                            (x + b[0] * scale, y + b[3] * scale),
                         ]
                     })
                     .collect(),
@@ -390,6 +444,7 @@ impl<'a> Engine<'a> {
                 let child_margin = margin(child, "outMargin").map(|v| v.max(0.));
                 let mut prepared = child.clone();
                 prepared.children.retain(|c| c.name != "outMargin");
+                prepared.attrs.insert("groupMember".into(), "1".into());
                 let sub = self.position_region(&mut prepared, nw, &[])?;
                 for part in sub
                     .parts
@@ -406,10 +461,10 @@ impl<'a> Engine<'a> {
                         + child_margin[3];
                     let r = crate::graphics::rect(matrix, [a, c, b, d]);
                     parts.push(vec![
-                        (x + r[0], y + r[1]),
-                        (x + r[2], y + r[1]),
-                        (x + r[2], y + r[3]),
-                        (x + r[0], y + r[3]),
+                        (x + r[0] * scale, y + r[1] * scale),
+                        (x + r[2] * scale, y + r[1] * scale),
+                        (x + r[2] * scale, y + r[3] * scale),
+                        (x + r[0] * scale, y + r[3] * scale),
                     ]);
                 }
                 if let Some(m) = original_margin {
@@ -441,6 +496,7 @@ impl<'a> Engine<'a> {
             }
         }
         if n.name == "pic"
+            && scale == 1.
             && let Some(parts) = &region.parts
         {
             n.attrs

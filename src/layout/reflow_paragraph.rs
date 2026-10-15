@@ -128,6 +128,9 @@ impl<'a> Engine<'a> {
             }
         }
         self.reflow_children(&mut p, width, nesting + 1)?;
+        if self.general_wrap && nesting == 0 && number.is_none() {
+            self.prepare_reflow_anchors(&mut p, width, &mut settings)?;
+        }
         fn normalize(n: &mut Node) {
             if n.name == "lineBreak" {
                 n.name = "#text".into();
@@ -225,6 +228,10 @@ impl<'a> Engine<'a> {
         } else {
             serde_json::from_str(source.a("generalCarry"))?
         };
+        let extra = p.n("anchorBeforeExtra");
+        for region in &mut general {
+            region.shift_y(-extra);
+        }
         let own_general = p
             .children_named("run")
             .flat_map(|r| &r.children)
@@ -236,8 +243,50 @@ impl<'a> Engine<'a> {
                 .filter(|n| n.a("reflowGeneral") == "1")
             {
                 let region = self.position_region(object, width, &general)?;
+                let region = if object.a("pageAbsolute") == "1"
+                    && (self.active_columns > 1 || object.a("textWrap") == "TOP_AND_BOTTOM")
+                {
+                    let b = region.bounds();
+                    crate::wrap_region::Region {
+                        points: vec![(0., b[1]), (width, b[1]), (width, b[3]), (0., b[3])],
+                        parts: None,
+                        margin: [0.; 4],
+                        flow: String::new(),
+                    }
+                } else {
+                    region
+                };
                 general.push(region);
             }
+        }
+        if own_general
+            && p.n("pageFloatFloor") == 0.
+            && general.iter().map(|r| r.bounds()[3]).fold(0f64, f64::max) + settings.before
+                > self.ph - self.top - self.bottom - 16.
+        {
+            let mut fallback = source.clone();
+            fallback.attrs.remove("generalCarry");
+            for run in fallback.children.iter_mut().filter(|r| r.name == "run") {
+                for n in run.children.iter_mut().filter(|n| n.child("pos").is_some()) {
+                    n.attrs.insert("textWrap".into(), "TOP_AND_BOTTOM".into());
+                    n.attrs.remove("reflowFloat");
+                    n.attrs.remove("reflowGeneral");
+                }
+            }
+            self.report.warnings.insert(
+                "Oversized connected objects placed as sequential blocks to preserve all content"
+                    .into(),
+            );
+            return self.reflow_paragraph(&fallback, width, nesting);
+        }
+        if p.n("pageFloatFloor") > 0. {
+            let floor = self.top
+                + settings.before
+                + general.iter().map(|r| r.bounds()[3]).fold(0f64, f64::max);
+            p.attrs.insert(
+                "pageFloatFloor".into(),
+                floor.min(self.ph - self.bottom).to_string(),
+            );
         }
         if !general.is_empty() {
             let height = general.iter().map(|r| r.bounds()[3]).fold(0f64, f64::max);

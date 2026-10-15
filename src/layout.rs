@@ -288,8 +288,10 @@ pub struct Engine<'a> {
     reflow_table_column: Option<usize>,
     contour_wrap: bool,
     general_wrap: bool,
+    page_float_floor: f64,
     flow_floor: Option<(usize, f64, bool)>,
 }
+mod anchors;
 mod notes;
 mod object_paint;
 mod page_decorations;
@@ -339,6 +341,7 @@ impl<'a> Engine<'a> {
             reflow_table_column: None,
             contour_wrap: false,
             general_wrap: false,
+            page_float_floor: 0.,
             flow_floor: None,
         }
     }
@@ -375,6 +378,7 @@ impl<'a> Engine<'a> {
             self.right = m[1];
             self.top = m[2] + val(p.child("margin"), "header");
             self.bottom = m[3] + val(p.child("margin"), "footer");
+            self.page_float_floor = self.top;
             self.header = val(p.child("margin"), "header");
             self.footer = val(p.child("margin"), "footer");
             let col = section_columns(section);

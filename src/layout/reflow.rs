@@ -13,10 +13,11 @@ impl<'a> Engine<'a> {
         *col += 1;
         if *col >= cols {
             self.finish()?;
+            self.page_float_floor = self.top;
             *col = 0;
             self.decorations(section, false, cols, gap)?;
         }
-        *y = self.top;
+        *y = self.top.max(self.page_float_floor);
         Ok(())
     }
     pub(super) fn general_plans(
@@ -47,7 +48,8 @@ impl<'a> Engine<'a> {
                 && style
                     .and_then(|s| s.child("heading"))
                     .is_none_or(|h| !matches!(h.a("type"), "NUMBER" | "BULLET"))
-                && supported;
+                && supported
+                && !source_items.iter().any(|i|matches!(&i.kind,ItemKind::Object(n) if n.child("pos").is_some_and(|p|matches!(p.a("horzRelTo"),"PAGE"|"PAPER") || matches!(p.a("vertRelTo"),"PAGE"|"PAPER"))));
             if !follow && !carry.is_empty() {
                 if let Some((_, _, s)) = plans.last_mut() {
                     s.after += carry.iter().map(|r| r.bounds()[3]).fold(0f64, f64::max);
@@ -69,7 +71,25 @@ impl<'a> Engine<'a> {
                     .attrs
                     .insert("generalCarry".into(), serde_json::to_string(&carry)?);
             }
-            let (mut p, lines, s) = self.reflow_paragraph(&source, width, 0)?;
+            let previous_remaining =
+                carry.iter().map(|r| r.bounds()[3]).fold(0f64, f64::max) + settings.before;
+            let (mut p, mut lines, mut s) = self.reflow_paragraph(&source, width, 0)?;
+            if let Some((origin, elapsed)) = group
+                && p.n("reflowFloatHeight") > 0.
+                && elapsed + s.before + p.n("reflowFloatHeight") + plans[origin].2.before
+                    > self.ph - self.top - self.bottom - 24.
+            {
+                if let Some((_, _, previous)) = plans.last_mut() {
+                    previous.after += previous_remaining;
+                }
+                carry.clear();
+                group = None;
+                source.attrs.remove("generalCarry");
+                (p, lines, s) = self.reflow_paragraph(&source, width, 0)?;
+                self.report
+                    .warnings
+                    .insert("Oversized connected float chain cleared before a later anchor".into());
+            }
             if !p.a("generalRegions").is_empty() {
                 carry = serde_json::from_str(p.a("generalRegions"))?;
             }
@@ -119,7 +139,7 @@ impl<'a> Engine<'a> {
                     .iter()
                     .filter_map(|i| match &i.kind {
                         ItemKind::Object(n)
-                            if n.a("textWrap") == "SQUARE"
+                            if (n.a("textWrap")=="SQUARE" || (n.a("textWrap")=="TOP_AND_BOTTOM" && n.child("pos").is_some_and(|p|matches!(p.a("horzRelTo"),"PAGE"|"PAPER") || matches!(p.a("vertRelTo"),"PAGE"|"PAPER"))))
                                 && n.child("pos").is_some_and(|p| p.a("treatAsChar") != "1") =>
                         {
                             Some(n)
@@ -144,11 +164,15 @@ impl<'a> Engine<'a> {
                             }))
                     || objects.iter().any(|n| {
                         matches!(n.name.as_str(), "ellipse" | "polygon" | "curve" | "group")
+                            || effective_height(n) > self.ph - self.top - self.bottom
+                            || val(n.child("sz"), "width") > width
                             || !matches!(n.a("textFlow"), "" | "BOTH_SIDES")
                             || n.child("pos").is_some_and(|p| {
                                 p.a("horzAlign") == "CENTER"
                                     || p.signed("horzOffset") != 0.
                                     || p.signed("vertOffset") != 0.
+                                    || matches!(p.a("horzRelTo"), "PAGE" | "PAPER")
+                                    || matches!(p.a("vertRelTo"), "PAGE" | "PAPER")
                             })
                     })
             });
@@ -240,9 +264,13 @@ impl<'a> Engine<'a> {
             };
             if (p.a("pageBreak") == "1" || s.page) && (y > self.top + 0.01 || col > 0) {
                 self.finish()?;
+                self.page_float_floor = self.top;
                 col = 0;
                 y = self.top;
                 self.decorations(section, false, cols, gap)?;
+            }
+            if p.n("pageFloatFloor") > 0. {
+                self.page_float_floor = self.page_float_floor.max(p.n("pageFloatFloor"));
             }
             let height = s.before + ls.iter().map(|l| l.height).sum::<f64>() + s.after;
             let mut keep_height = height;
@@ -345,8 +373,8 @@ impl<'a> Engine<'a> {
 
                     let ox = self.left + col as f64 * (width + gap);
                     let reserve = self.footnote_reservation(&[], ox);
-                    if ls[at].height <= body
-                        && y + ls[at].height > self.ph - self.bottom - reserve
+                    if (ls[at].height <= body || object.name != "tbl")
+                        && y + ls[at].height.min(body) > self.ph - self.bottom - reserve
                         && y > self.top + 0.01
                     {
                         self.reflow_advance(section, &mut col, &mut y, cols, gap)?;
@@ -380,9 +408,12 @@ impl<'a> Engine<'a> {
                     } else {
                         y = self.report.bounds[bounds_start..]
                             .iter()
-                            .filter(|b| b.kind == object.name)
+                            .filter(|b| {
+                                b.id == object.a("id")
+                                    && (b.kind == object.name || b.kind == "pic-alpha")
+                            })
                             .map(|b| b.y + b.h)
-                            .fold(y + ls[at].height - cap[3], f64::max)
+                            .fold(y, f64::max)
                             + cap[3];
                     }
                     if let Some(final_column) = final_column {

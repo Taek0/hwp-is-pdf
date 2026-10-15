@@ -114,7 +114,7 @@ impl<'a> Engine<'a> {
                     self.finish()?;
                     let sec = &self.doc.sections[self.active_section];
                     self.decorations(sec, false, self.active_columns, self.active_gap)?;
-                    top = self.top;
+                    top = self.top.max(self.page_float_floor);
                     continue;
                 }
                 bail!("Table line with footnotes exceeds a full page");
@@ -146,7 +146,7 @@ impl<'a> Engine<'a> {
                 self.finish()?;
                 let sec = &self.doc.sections[self.active_section];
                 self.decorations(sec, false, self.active_columns, self.active_gap)?;
-                top = self.top;
+                top = self.top.max(self.page_float_floor);
             }
         }
         self.report.warnings.insert("Oversized table row split at shared text-line boundaries; merged cell borders continued".into());
@@ -169,6 +169,7 @@ impl<'a> Engine<'a> {
             }
         }
         self.finish()?;
+        self.page_float_floor = self.top;
         let section = &self.doc.sections[self.active_section];
         self.decorations(section, false, self.active_columns, self.active_gap)?;
         Ok(())
@@ -362,7 +363,7 @@ impl<'a> Engine<'a> {
         let first_min = headers.iter().map(|h| h.y + h.height).fold(0., f64::max) + 24.;
         if top + first_min > self.ph - self.bottom {
             self.advance_table_fragment(&mut x)?;
-            top = self.top + above;
+            top = self.top.max(self.page_float_floor) + above;
         }
         let mut caption_y = top - above;
         for c in captions.iter().filter(|c| c.a("side") == "TOP") {
@@ -481,7 +482,7 @@ impl<'a> Engine<'a> {
                     "Nested-table text line exceeds printable page"
                 );
                 self.advance_table_fragment(&mut x)?;
-                top = self.top;
+                top = self.top.max(self.page_float_floor);
                 continue;
             }
             let shift = top - start;
@@ -614,7 +615,7 @@ impl<'a> Engine<'a> {
             first = false;
             if start < total - 0.01 {
                 self.advance_table_fragment(&mut x)?;
-                top = self.top;
+                top = self.top.max(self.page_float_floor);
             }
         }
         let mut caption_y = self.last_table_end;
