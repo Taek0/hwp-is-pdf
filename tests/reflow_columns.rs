@@ -136,3 +136,156 @@ fn mixed_tables_continue_through_columns_without_losing_notes_or_images() {
         );
     }
 }
+#[test]
+fn variable_columns_preserve_source_order_and_geometry() {
+    for name in ["unequal", "transition", "right", "balanced"] {
+        let d = Document::open(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("samples/reflow/columns-{name}.hwpx")),
+        )
+        .unwrap();
+        let mut e = Engine::new(
+            &d,
+            std::path::Path::new(if cfg!(windows) {
+                "C:/Windows/Fonts"
+            } else {
+                "/mnt/c/Windows/Fonts"
+            }),
+        );
+        e.render_reflow().unwrap();
+        let actual = e
+            .pages
+            .iter()
+            .flat_map(|p| &p.ops)
+            .filter_map(|o| {
+                if let Op::Text { text, .. } = o {
+                    Some(text.as_str())
+                } else {
+                    None
+                }
+            })
+            .collect::<String>();
+        let compact = |s: &str| s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
+        assert_eq!(compact(&actual), compact(&text(&d.sections[0])), "{name}");
+        let rows: Vec<_> = e
+            .report
+            .bounds
+            .iter()
+            .filter(|b| b.kind == "reflow-line")
+            .collect();
+        assert!(rows.iter().any(|b| b.x > 200.), "{name}");
+        for row in &rows {
+            assert!(
+                row.x >= 49.99 && row.x + row.w <= 545.29,
+                "{name}: {}",
+                row.x + row.w
+            );
+        }
+        if name == "right" {
+            assert!(rows[0].x > 200.);
+        }
+        if name == "balanced" {
+            assert_eq!(e.pages.len(), 1);
+            let a = rows
+                .iter()
+                .filter(|b| b.x < 200.)
+                .map(|b| b.y + b.h)
+                .fold(0f64, f64::max);
+            let b = rows
+                .iter()
+                .filter(|b| b.x > 200.)
+                .map(|b| b.y + b.h)
+                .fold(0f64, f64::max);
+            assert!((a - b).abs() < 30., "unbalanced: {a} {b}");
+        }
+        let q = qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
+        assert!(q.outside_page.is_empty(), "{name}");
+        assert!(q.text_overlaps.is_empty(), "{name}");
+    }
+}
+
+#[test]
+fn shared_notes_reserve_space_before_later_column_references() {
+    let d = Document::open(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("samples/reflow/columns-merged.hwpx"),
+    )
+    .unwrap();
+    let mut e = Engine::new(&d, fonts());
+    e.render_reflow().unwrap();
+    let notes: Vec<_> = e
+        .report
+        .bounds
+        .iter()
+        .filter(|b| b.kind == "footnote")
+        .collect();
+    assert_eq!(notes.len(), 1);
+    assert!((notes[0].w - 495.28).abs() < 0.01);
+    let q = qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
+    assert!(q.text_overlaps.is_empty());
+    assert!(q.outside_page.is_empty());
+    let all = e
+        .pages
+        .iter()
+        .flat_map(|p| &p.ops)
+        .filter_map(|o| {
+            if let Op::Text { text, .. } = o {
+                Some(text.as_str())
+            } else {
+                None
+            }
+        })
+        .collect::<String>();
+    assert_eq!(all.matches("NOTE-1:").count(), 1);
+    for i in 0..10 {
+        assert_eq!(all.matches(&format!("BEGIN-{i}")).count(), 1);
+        assert_eq!(all.matches(&format!("END-{i}")).count(), 1);
+    }
+}
+
+#[test]
+fn mixed_table_fragments_follow_unequal_column_origins() {
+    let mut d = Document::open(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("samples/reflow/mixed-two-column.hwpx"),
+    )
+    .unwrap();
+    fn set_columns(n: &mut hwp_engine::model::Node) {
+        if n.name == "colPr" {
+            n.children
+                .push(hwp_engine::model::xml(br#"<colSz width="20000" gap="2400"/>"#).unwrap());
+            n.children
+                .push(hwp_engine::model::xml(br#"<colSz width="27128" gap="0"/>"#).unwrap());
+        }
+        for c in &mut n.children {
+            set_columns(c);
+        }
+    }
+    set_columns(&mut d.sections[0]);
+    let mut e = Engine::new(&d, fonts());
+    e.render_reflow().unwrap();
+    let all = e
+        .pages
+        .iter()
+        .flat_map(|p| &p.ops)
+        .filter_map(|o| {
+            if let Op::Text { text, .. } = o {
+                Some(text.as_str())
+            } else {
+                None
+            }
+        })
+        .collect::<String>();
+    for i in 1..=60 {
+        assert_eq!(all.matches(&format!("행 R {i:03}")).count(), 1);
+    }
+    assert_eq!(e.report.pictures, 2);
+    let q = qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
+    assert!(q.outside_page.is_empty(), "{:?}", q.outside_page);
+    assert!(q.text_overlaps.is_empty(), "{:?}", q.text_overlaps);
+    assert!(
+        q.foreground_image_overlaps.is_empty(),
+        "{:?}",
+        q.foreground_image_overlaps
+    );
+}
