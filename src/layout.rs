@@ -3663,28 +3663,37 @@ impl<'a> Engine<'a> {
                 }
             })
             .collect();
-        if nesting == 0 && number.is_none() && objects.len() == 1 {
-            let (anchor, object) = objects[0];
-            let eligible = matches!(object.name.as_str(), "pic" | "rect")
-                && object.a("textWrap") == "SQUARE"
-                && object.child("caption").is_none()
-                && object.child("pos").is_some_and(|p| {
-                    p.a("treatAsChar") != "1"
-                        && p.a("vertRelTo") == "PARA"
-                        && matches!(p.a("horzRelTo"), "PARA" | "COLUMN")
-                        && matches!(p.a("horzAlign"), "LEFT" | "RIGHT")
-                        && matches!(p.a("vertAlign"), "" | "TOP")
-                        && p.signed("horzOffset") == 0.
-                        && p.signed("vertOffset") == 0.
+        if nesting == 0 && number.is_none() && !objects.is_empty() && objects.len() <= 2 {
+            let sides: BTreeSet<_> = objects
+                .iter()
+                .map(|(_, o)| o.child("pos").map(|p| p.a("horzAlign")).unwrap_or(""))
+                .collect();
+            let eligible = sides.len() == objects.len()
+                && objects.iter().all(|(_, object)| {
+                    matches!(object.name.as_str(), "pic" | "rect")
+                        && object.a("textWrap") == "SQUARE"
+                        && object.child("caption").is_none()
+                        && object.child("pos").is_some_and(|p| {
+                            p.a("treatAsChar") != "1"
+                                && p.a("vertRelTo") == "PARA"
+                                && matches!(p.a("horzRelTo"), "PARA" | "COLUMN")
+                                && matches!(p.a("horzAlign"), "LEFT" | "RIGHT")
+                                && matches!(p.a("vertAlign"), "" | "TOP")
+                                && p.signed("horzOffset") == 0.
+                                && p.signed("vertOffset") == 0.
+                        })
                 })
                 && source_items
                     .iter()
-                    .filter(|i| i.pos < anchor)
-                    .all(|i| matches!(i.kind, ItemKind::Control(_)));
+                    .filter(|i| i.pos < objects.last().unwrap().0)
+                    .all(|i| matches!(i.kind, ItemKind::Control(_) | ItemKind::Object(_)));
             if eligible {
                 for run in p.children.iter_mut().filter(|r| r.name == "run") {
                     for n in &mut run.children {
-                        if n.a("id") == object.a("id") && n.name == object.name {
+                        if objects
+                            .iter()
+                            .any(|(_, object)| n.a("id") == object.a("id") && n.name == object.name)
+                        {
                             n.attrs.insert("reflowFloat".into(), "1".into());
                         }
                     }
@@ -3706,14 +3715,29 @@ impl<'a> Engine<'a> {
             }
         }
         normalize(&mut p);
-        let inherited = source.n("floatCarryHeight") > 0.;
-        let mut exclusion = inherited.then(|| {
-            (
-                source.n("floatCarryLeft"),
-                source.n("floatCarryRight"),
-                source.n("floatCarryHeight"),
-            )
-        });
+        let mut exclusions: Vec<(f64, f64, f64)> = if source.a("floatCarryRegions").is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(source.a("floatCarryRegions"))?
+        };
+        let inherited = !exclusions.is_empty();
+        let (mut occupied_left, mut occupied_right) = (0f64, 0f64);
+        for object in Self::items(&p).iter().filter_map(|i| match &i.kind {
+            ItemKind::Object(n) if n.a("reflowFloat") == "1" => Some(n),
+            _ => None,
+        }) {
+            let m = margin(object, "outMargin").map(|v| v.max(0.));
+            let occupied = val(object.child("sz"), "width") + m[0] + m[1] + 1.;
+            if object
+                .child("pos")
+                .is_some_and(|p| p.a("horzAlign") == "RIGHT")
+            {
+                occupied_right = occupied_right.max(occupied);
+            } else {
+                occupied_left = occupied_left.max(occupied);
+            }
+        }
+        let side_space = width - occupied_left - occupied_right - settings.left - settings.right;
         for run in p.children.iter_mut().filter(|r| r.name == "run") {
             for n in run
                 .children
@@ -3723,7 +3747,7 @@ impl<'a> Engine<'a> {
                 let m = margin(n, "outMargin").map(|v| v.max(0.));
                 let occupied = val(n.child("sz"), "width") + m[0] + m[1] + 1.;
                 let height = effective_height(n) + m[2] + m[3];
-                if width - occupied - settings.left - settings.right <= 24. {
+                if side_space <= 24. {
                     // A full-width float has no usable side. Clear below it,
                     // retaining the established block layout instead of failing.
                     n.attrs.remove("reflowFloat");
@@ -3746,14 +3770,15 @@ impl<'a> Engine<'a> {
                 );
                 pos.attrs
                     .insert("vertOffset".into(), (m[2] * 100.).to_string());
-                exclusion = Some(if right {
+                exclusions.push(if right {
                     (0., occupied, height)
                 } else {
                     (occupied, 0., height)
                 });
             }
         }
-        if let Some((l, r, h)) = exclusion {
+        if !exclusions.is_empty() {
+            let height = exclusions.iter().map(|(_, _, h)| *h).fold(0f64, f64::max);
             p.attrs.insert(
                 if inherited {
                     "reflowFloatCarry"
@@ -3761,10 +3786,12 @@ impl<'a> Engine<'a> {
                     "reflowFloatHeight"
                 }
                 .into(),
-                h.to_string(),
+                height.to_string(),
             );
-            p.attrs.insert("reflowFloatLeft".into(), l.to_string());
-            p.attrs.insert("reflowFloatRight".into(), r.to_string());
+            p.attrs.insert(
+                "reflowFloatRegions".into(),
+                serde_json::to_string(&exclusions)?,
+            );
         }
         let items = Self::items(&p);
         let mut units = Vec::new();
@@ -3933,11 +3960,11 @@ impl<'a> Engine<'a> {
             grouped[0].descent = grouped[0].descent.max(g.descent);
             grouped[0].em = grouped[0].em.max(g.size);
         }
-        let wrapped = if exclusion.is_some() {
+        let wrapped = if !exclusions.is_empty() {
             if source.a("floatFlow") == "1" {
-                crate::reflow::wrap_flow(&grouped, width, &settings, exclusion)?
+                crate::reflow::wrap_flow(&grouped, width, &settings, &exclusions)?
             } else {
-                crate::reflow::wrap_around(&grouped, width, &settings, exclusion)?
+                crate::reflow::wrap_around(&grouped, width, &settings, exclusions.first().copied())?
             }
         } else {
             crate::reflow::wrap(&grouped, width, &settings)?
@@ -3984,7 +4011,7 @@ impl<'a> Engine<'a> {
         gap: f64,
     ) -> Result<(f64, usize, f64, f64)> {
         let mut plans: Vec<(Node, Vec<crate::reflow::Line>, crate::reflow::Settings)> = Vec::new();
-        let mut carry: Option<(f64, f64, f64)> = None;
+        let mut carry: Vec<(f64, f64, f64)> = Vec::new();
         for source in section.children_named("p") {
             if let Some(c) = paragraph_columns(source) {
                 anyhow::ensure!(
@@ -3994,7 +4021,15 @@ impl<'a> Engine<'a> {
             }
             let style = self.doc.paras.get(source.a("paraPrIDRef"));
             let source_settings = crate::reflow::settings(style);
+            let (cut_left, cut_right) = carry
+                .iter()
+                .filter(|(_, _, h)| *h > source_settings.before)
+                .fold((0f64, 0f64), |(l, r), (a, b, _)| (l.max(*a), r.max(*b)));
+            let side_width = width
+                - (source_settings.left + source_settings.indent.max(0.)).max(cut_left)
+                - source_settings.right.max(cut_right);
             let can_follow = source.a("pageBreak") != "1"
+                && side_width > 24.
                 && !source_settings.page
                 && !source_settings.keep
                 && !source_settings.next
@@ -4004,46 +4039,36 @@ impl<'a> Engine<'a> {
                 && Self::items(source)
                     .iter()
                     .all(|i| !matches!(i.kind, ItemKind::Object(_)));
-            if !can_follow
-                && let Some((_, _, remaining)) = carry.take()
-                && let Some((_, _, last_settings)) = plans.last_mut()
-            {
-                last_settings.after += remaining;
+            if !can_follow && !carry.is_empty() {
+                if let Some((_, _, last_settings)) = plans.last_mut() {
+                    last_settings.after += carry.iter().map(|(_, _, h)| *h).fold(0f64, f64::max);
+                }
+                carry.clear();
             }
             let mut source = source.clone();
             source.attrs.insert("floatFlow".into(), "1".into());
-            if let Some((left, right, remaining)) = carry {
-                let remaining = (remaining - source_settings.before).max(0.);
-                carry = (remaining > 0.).then_some((left, right, remaining));
-                if remaining > 0. {
-                    for (key, value) in [
-                        ("floatCarryLeft", left),
-                        ("floatCarryRight", right),
-                        ("floatCarryHeight", remaining),
-                    ] {
-                        source.attrs.insert(key.into(), value.to_string());
-                    }
-                }
+            for (_, _, remaining) in &mut carry {
+                *remaining -= source_settings.before;
+            }
+            carry.retain(|(_, _, h)| *h > 0.);
+            if !carry.is_empty() {
+                source
+                    .attrs
+                    .insert("floatCarryRegions".into(), serde_json::to_string(&carry)?);
             }
             let (p, lines, settings) = self.reflow_paragraph(&source, width, 0)?;
             if p.n("reflowFloatHeight") > 0. {
-                carry = Some((
-                    p.n("reflowFloatLeft"),
-                    p.n("reflowFloatRight"),
-                    p.n("reflowFloatHeight"),
-                ));
+                carry = serde_json::from_str(p.a("reflowFloatRegions"))?;
             }
-            if let Some((left, right, remaining)) = carry {
-                let remaining =
-                    remaining - lines.iter().map(|l| l.height).sum::<f64>() - settings.after;
-                carry = (remaining > 0.).then_some((left, right, remaining));
+            let consumed = lines.iter().map(|l| l.height).sum::<f64>() + settings.after;
+            for (_, _, remaining) in &mut carry {
+                *remaining -= consumed;
             }
+            carry.retain(|(_, _, h)| *h > 0.);
             plans.push((p, lines, settings));
         }
-        if let Some((_, _, remaining)) = carry
-            && let Some((_, _, settings)) = plans.last_mut()
-        {
-            settings.after += remaining;
+        if let Some((_, _, settings)) = plans.last_mut() {
+            settings.after += carry.iter().map(|(_, _, h)| *h).fold(0f64, f64::max);
         }
         let mut col = 0;
         let mut y = self.top;

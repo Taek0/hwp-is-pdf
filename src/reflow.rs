@@ -94,13 +94,13 @@ pub(crate) fn wrap_around(
     s: &Settings,
     exclusion: Option<(f64, f64, f64)>,
 ) -> anyhow::Result<Vec<Line>> {
-    wrap_exclusion(units, width, s, exclusion, true)
+    wrap_exclusion(units, width, s, exclusion.as_slice(), true)
 }
 pub(crate) fn wrap_flow(
     units: &[Unit],
     width: f64,
     s: &Settings,
-    exclusion: Option<(f64, f64, f64)>,
+    exclusion: &[(f64, f64, f64)],
 ) -> anyhow::Result<Vec<Line>> {
     wrap_exclusion(units, width, s, exclusion, false)
 }
@@ -108,7 +108,7 @@ fn wrap_exclusion(
     units: &[Unit],
     width: f64,
     s: &Settings,
-    exclusion: Option<(f64, f64, f64)>,
+    exclusion: &[(f64, f64, f64)],
     reserve_height: bool,
 ) -> anyhow::Result<Vec<Line>> {
     let mut out = Vec::new();
@@ -116,9 +116,9 @@ fn wrap_exclusion(
     let mut y = 0.;
     loop {
         let (cut_left, cut_right) = exclusion
+            .iter()
             .filter(|(_, _, h)| y < *h - 0.001)
-            .map(|(l, r, _)| (l, r))
-            .unwrap_or((0., 0.));
+            .fold((0f64, 0f64), |(l, r), (a, b, _)| (l.max(*a), r.max(*b)));
         let left = (s.left + if out.is_empty() { s.indent } else { 0. }).max(cut_left);
         let available = width - left - s.right.max(cut_right);
         anyhow::ensure!(
@@ -218,7 +218,8 @@ fn wrap_exclusion(
             break;
         }
     }
-    if reserve_height && let Some((_, _, height)) = exclusion {
+    if reserve_height {
+        let height = exclusion.iter().map(|(_, _, h)| *h).fold(0f64, f64::max);
         let used: f64 = out.iter().map(|l| l.height).sum();
         if let Some(last) = out.last_mut() {
             last.height += (height - used).max(0.);
@@ -253,6 +254,19 @@ mod tests {
             value: 160.,
             ..Default::default()
         }
+    }
+    #[test]
+    fn opposing_exclusions_expire_at_separate_heights() {
+        let lines = wrap_flow(
+            &units(&"가".repeat(100)),
+            100.,
+            &config(),
+            &[(20., 0., 30.), (0., 30., 70.)],
+        )
+        .unwrap();
+        assert_eq!((lines[0].left, lines[0].width), (20., 50.));
+        assert_eq!((lines[2].left, lines[2].width), (0., 70.));
+        assert_eq!((lines[5].left, lines[5].width), (0., 100.));
     }
     #[test]
     fn rectangular_exclusion_ends_at_its_bottom_and_reserves_short_paragraph_height() {
