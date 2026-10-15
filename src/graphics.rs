@@ -1,6 +1,42 @@
 //! Page-space geometry uses x right, y down, and points (1/72 inch).
 pub type Matrix = [f64; 6];
 pub const IDENTITY: Matrix = [1., 0., 0., 1., 0., 0.];
+/// Adaptive cubic subdivision with a conservative page-space tolerance.
+pub(crate) fn flatten_cubics(start: (f64, f64), segments: &[[f64; 6]]) -> Vec<(f64, f64)> {
+    fn split(p: [(f64, f64); 4], depth: usize, out: &mut Vec<(f64, f64)>) {
+        let distance = |q: (f64, f64)| {
+            let (dx, dy) = (p[3].0 - p[0].0, p[3].1 - p[0].1);
+            ((q.0 - p[0].0) * dy - (q.1 - p[0].1) * dx).abs() / dx.hypot(dy).max(0.0001)
+        };
+        if depth >= 12
+            || (distance(p[1]).max(distance(p[2])) < 0.1
+                && (p[1].0 - p[0].0).hypot(p[1].1 - p[0].1)
+                    + (p[2].0 - p[1].0).hypot(p[2].1 - p[1].1)
+                    + (p[3].0 - p[2].0).hypot(p[3].1 - p[2].1)
+                    < (p[3].0 - p[0].0).hypot(p[3].1 - p[0].1) + 0.2)
+        {
+            out.push(p[3]);
+            return;
+        }
+        let mid = |a: (f64, f64), b: (f64, f64)| ((a.0 + b.0) / 2., (a.1 + b.1) / 2.);
+        let a = mid(p[0], p[1]);
+        let b = mid(p[1], p[2]);
+        let c = mid(p[2], p[3]);
+        let d = mid(a, b);
+        let e = mid(b, c);
+        let f = mid(d, e);
+        split([p[0], a, d, f], depth + 1, out);
+        split([f, e, c, p[3]], depth + 1, out);
+    }
+    let mut out = vec![start];
+    let mut at = start;
+    for s in segments {
+        let end = (s[4], s[5]);
+        split([at, (s[0], s[1]), (s[2], s[3]), end], 0, &mut out);
+        at = end;
+    }
+    out
+}
 pub fn point(m: Matrix, x: f64, y: f64) -> (f64, f64) {
     (m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5])
 }

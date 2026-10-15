@@ -399,8 +399,17 @@ pub fn save(
                 } => {
                     if !image_ids.contains_key(id) {
                         let bytes = images.get(id).context("Missing image payload")?;
-                        let im = image::load_from_memory(bytes)?.to_rgb8();
-                        let obj=w.stream(&format!("/Type /XObject /Subtype /Image /Width {} /Height {} /ColorSpace /DeviceRGB /BitsPerComponent 8",im.width(),im.height()),im.as_raw())?;
+                        let decoded = image::load_from_memory(bytes)?;
+                        let rgba = decoded.to_rgba8();
+                        let mask = if rgba.pixels().any(|p| p[3] != 255) {
+                            let alpha = rgba.pixels().map(|p| p[3]).collect::<Vec<_>>();
+                            let id=w.stream(&format!("/Type /XObject /Subtype /Image /Width {} /Height {} /ColorSpace /DeviceGray /BitsPerComponent 8",rgba.width(),rgba.height()),&alpha)?;
+                            format!(" /SMask {id} 0 R")
+                        } else {
+                            String::new()
+                        };
+                        let im = decoded.to_rgb8();
+                        let obj=w.stream(&format!("/Type /XObject /Subtype /Image /Width {} /Height {} /ColorSpace /DeviceRGB /BitsPerComponent 8{mask}",im.width(),im.height()),im.as_raw())?;
                         image_ids.insert(id.clone(), (obj, image_ids.len()));
                     }
                     let (_, index) = image_ids[id];

@@ -1594,9 +1594,48 @@ impl<'a> Engine<'a> {
         } else {
             None
         };
+        let mut opaque_pieces = None;
+        if n.name == "pic"
+            && n.a("alphaParts").is_empty()
+            && n.a("textWrap") != "BEHIND_TEXT"
+            && let Some(img) = n.child("img")
+            && let Some(bytes) = self.doc.binaries.get(img.a("binaryItemIDRef"))
+            && let Some(rects) = crate::image_layout::alpha_rects(bytes, n)?
+        {
+            let angle = n.child("rotationInfo").map(|a| a.n("angle")).unwrap_or(0.);
+            let flip = n.child("flip");
+            let flipped = flip.is_some_and(|f| f.a("horizontal") == "1" || f.a("vertical") == "1");
+            let native = n
+                .child("curSz")
+                .filter(|s| s.n("width") > 0. && s.n("height") > 0. && (angle != 0. || flipped));
+            let nw = native.map(|s| s.n("width") / 100.).unwrap_or(w);
+            let nh = native.map(|s| s.n("height") / 100.).unwrap_or(h);
+            let matrix = crate::graphics::rotation(
+                x,
+                y,
+                nw,
+                nh,
+                angle,
+                flip.is_some_and(|f| f.a("horizontal") == "1"),
+                flip.is_some_and(|f| f.a("vertical") == "1"),
+            );
+            opaque_pieces = Some(
+                rects
+                    .iter()
+                    .map(|r| {
+                        crate::graphics::rect(
+                            matrix,
+                            [x + r[0] * nw, y + r[1] * nh, x + r[2] * nw, y + r[3] * nh],
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            );
+        }
         self.report.bounds.push(Bounds {
             page: self.pages.len() + 1,
-            kind: if n.a("textWrap") == "BEHIND_TEXT" && n.name == "pic" {
+            kind: if n.name == "pic" && (!n.a("alphaParts").is_empty() || opaque_pieces.is_some()) {
+                "pic-alpha".into()
+            } else if n.a("textWrap") == "BEHIND_TEXT" && n.name == "pic" {
                 "watermark".into()
             } else {
                 n.name.clone()
@@ -1607,6 +1646,37 @@ impl<'a> Engine<'a> {
             w,
             h,
         });
+        if !n.a("alphaParts").is_empty() {
+            let parts: Vec<Vec<(f64, f64)>> = serde_json::from_str(n.a("alphaParts"))?;
+            for (i, part) in parts.iter().enumerate() {
+                let x0 = part.iter().map(|p| p.0).fold(f64::INFINITY, f64::min);
+                let x1 = part.iter().map(|p| p.0).fold(f64::NEG_INFINITY, f64::max);
+                let y0 = part.iter().map(|p| p.1).fold(f64::INFINITY, f64::min);
+                let y1 = part.iter().map(|p| p.1).fold(f64::NEG_INFINITY, f64::max);
+                self.report.bounds.push(Bounds {
+                    page: self.pages.len() + 1,
+                    kind: "pic".into(),
+                    id: format!("{}-alpha-{i}", n.a("id")),
+                    x: ox + x0,
+                    y: line_y + y0,
+                    w: x1 - x0,
+                    h: y1 - y0,
+                });
+            }
+        }
+        if let Some(parts) = opaque_pieces {
+            for (i, b) in parts.into_iter().enumerate() {
+                self.report.bounds.push(Bounds {
+                    page: self.pages.len() + 1,
+                    kind: "pic".into(),
+                    id: format!("{}-alpha-{i}", n.a("id")),
+                    x: b[0],
+                    y: b[1],
+                    w: b[2] - b[0],
+                    h: b[3] - b[1],
+                });
+            }
+        }
         let behind = n.a("textWrap") == "BEHIND_TEXT";
         let paint_start = self.current.ops.len();
         let bound_start = self.report.bounds.len();
@@ -3514,7 +3584,7 @@ impl<'a> Engine<'a> {
         for run in p.children.iter_mut().filter(|r| r.name == "run") {
             for n in &mut run.children {
                 match n.name.as_str() {
-                    "tbl" | "pic" | "rect" | "ellipse" | "polygon" => {
+                    "tbl" | "pic" | "rect" | "ellipse" | "polygon" | "curve" | "group" => {
                         anyhow::ensure!(
                             n.a("textWrap") != "BEHIND_TEXT",
                             "Reflow of page-background objects is not supported"
@@ -3524,6 +3594,34 @@ impl<'a> Engine<'a> {
                         if n.name == "tbl" {
                             self.reflow_table_contents(n, width, nesting)?;
                         } else {
+                            if n.name == "group" {
+                                anyhow::ensure!(
+                                    val(n.child("sz"), "width") <= width,
+                                    "Group wider than column requires explicit scaling"
+                                );
+                                let mut para = Node {
+                                    name: "p".into(),
+                                    ..Default::default()
+                                };
+                                let mut run = Node {
+                                    name: "run".into(),
+                                    ..Default::default()
+                                };
+                                for child in n.children.iter().filter(|c| c.child("pos").is_some())
+                                {
+                                    let mut child = child.clone();
+                                    child.attrs.insert("reflowFloat".into(), "1".into());
+                                    run.children.push(child);
+                                }
+                                para.children.push(run);
+                                self.reflow_children(&mut para, width, nesting + 1)?;
+                                let mut prepared = para.children.remove(0).children.into_iter();
+                                for child in
+                                    n.children.iter_mut().filter(|c| c.child("pos").is_some())
+                                {
+                                    *child = prepared.next().unwrap();
+                                }
+                            }
                             let old_w = val(n.child("sz"), "width");
                             let ratio = (width / old_w.max(0.1)).min(1.);
                             for key in ["sz", "curSz"] {
@@ -3646,8 +3744,10 @@ impl<'a> Engine<'a> {
             })
             .collect();
         objects.iter().all(|(_, n)| {
-            matches!(n.name.as_str(), "pic" | "rect" | "ellipse" | "polygon")
-                && n.a("textWrap") == "SQUARE"
+            matches!(
+                n.name.as_str(),
+                "pic" | "rect" | "ellipse" | "polygon" | "curve" | "group"
+            ) && n.a("textWrap") == "SQUARE"
                 && n.child("caption").is_none()
                 && n.child("pos").is_some_and(|p| {
                     p.a("treatAsChar") != "1"
@@ -3663,7 +3763,7 @@ impl<'a> Engine<'a> {
         width: f64,
         existing: &[crate::wrap_region::Region],
     ) -> Result<crate::wrap_region::Region> {
-        let margin = margin(n, "outMargin").map(|v| v.max(0.));
+        let outer_margin = margin(n, "outMargin").map(|v| v.max(0.));
         let angle = n.child("rotationInfo").map(|a| a.n("angle")).unwrap_or(0.);
         let mut w = val(n.child("sz"), "width");
         let mut h = effective_height(n);
@@ -3691,13 +3791,14 @@ impl<'a> Engine<'a> {
                 .insert("height".into(), (h * 100.).to_string());
         }
         let pos = n.child("pos").unwrap();
+        let allow_overlap = pos.a("allowOverlap") == "1";
         let mut x = pos.signed("horzOffset") / 100.
             + match pos.a("horzAlign") {
                 "CENTER" => (width - w) / 2.,
-                "RIGHT" => width - w - margin[1],
-                _ => margin[0],
+                "RIGHT" => width - w - outer_margin[1],
+                _ => outer_margin[0],
             };
-        let mut y = pos.signed("vertOffset") / 100. + margin[2];
+        let mut y = pos.signed("vertOffset") / 100. + outer_margin[2];
         anyhow::ensure!(
             y >= 0.,
             "Negative vertical float anchors require saved-layout conversion"
@@ -3717,7 +3818,7 @@ impl<'a> Engine<'a> {
                     (nw / 2. + nw / 2. * a.cos(), nh / 2. + nh / 2. * a.sin())
                 })
                 .collect::<Vec<_>>()
-        } else if self.contour_wrap && n.name == "polygon" {
+        } else if self.contour_wrap && matches!(n.name.as_str(), "polygon" | "curve") {
             let ow = if n.n("originalWidth") > 0. {
                 n.n("originalWidth") / 100.
             } else {
@@ -3730,7 +3831,7 @@ impl<'a> Engine<'a> {
                 let original = val(n.child("orgSz"), "height");
                 if original > 0. { original } else { nh }
             };
-            let points = n
+            let mut points = n
                 .children
                 .iter()
                 .filter(|p| matches!(p.name.as_str(), "pt" | "point"))
@@ -3741,8 +3842,34 @@ impl<'a> Engine<'a> {
                     )
                 })
                 .collect::<Vec<_>>();
+            if n.name == "curve" {
+                let mut kinds: Vec<_> = n.children_named("segment").map(|s| s.u("type")).collect();
+                if points.is_empty() {
+                    for seg in n.children_named("seg") {
+                        if points.is_empty() {
+                            points.push((
+                                seg.n("x1") / 100. * nw / ow.max(0.01),
+                                seg.n("y1") / 100. * nh / oh.max(0.01),
+                            ));
+                        }
+                        points.push((
+                            seg.n("x2") / 100. * nw / ow.max(0.01),
+                            seg.n("y2") / 100. * nh / oh.max(0.01),
+                        ));
+                        kinds.push(usize::from(seg.a("type") == "CURVE"));
+                    }
+                }
+                anyhow::ensure!(
+                    points.len() >= 2 && points.len() <= 1024,
+                    "Unsupported curve contour"
+                );
+                points = crate::graphics::flatten_cubics(
+                    points[0],
+                    &crate::graphics::curve(&points, &kinds),
+                );
+            }
             anyhow::ensure!(
-                points.len() >= 3 && points.len() <= 4096,
+                points.len() >= 3 && points.len() <= 65536,
                 "Unsupported polygon contour"
             );
             points
@@ -3772,11 +3899,103 @@ impl<'a> Engine<'a> {
         }
         let clearance = 1. + val(n.child("lineShape"), "width") / 2.;
         let mut region = crate::wrap_region::Region {
+            parts: None,
             points,
-            margin: margin.map(|m| m + clearance),
+            margin: outer_margin.map(|m| m + clearance),
             flow: n.a("textFlow").into(),
         };
-        if pos.a("allowOverlap") != "1" {
+        if self.contour_wrap
+            && n.name == "pic"
+            && let Some(img) = n.child("img")
+            && let Some(bytes) = self.doc.binaries.get(img.a("binaryItemIDRef"))
+            && let Some(rects) = crate::image_layout::alpha_rects(bytes, n)?
+        {
+            let flip = n.child("flip");
+            let matrix = crate::graphics::rotation(
+                0.,
+                0.,
+                nw,
+                nh,
+                angle,
+                flip.is_some_and(|f| f.a("horizontal") == "1"),
+                flip.is_some_and(|f| f.a("vertical") == "1"),
+            );
+            region.parts = Some(
+                rects
+                    .iter()
+                    .map(|r| {
+                        let b = crate::graphics::rect(
+                            matrix,
+                            [r[0] * nw, r[1] * nh, r[2] * nw, r[3] * nh],
+                        );
+                        vec![
+                            (x + b[0], y + b[1]),
+                            (x + b[2], y + b[1]),
+                            (x + b[2], y + b[3]),
+                            (x + b[0], y + b[3]),
+                        ]
+                    })
+                    .collect(),
+            );
+        }
+        if self.contour_wrap && n.name == "group" {
+            let flip = n.child("flip");
+            let matrix = crate::graphics::rotation(
+                0.,
+                0.,
+                nw,
+                nh,
+                angle,
+                flip.is_some_and(|f| f.a("horizontal") == "1"),
+                flip.is_some_and(|f| f.a("vertical") == "1"),
+            );
+            let mut parts = Vec::new();
+            for child in n.children.iter_mut().filter(|c| c.child("pos").is_some()) {
+                let cp = child.child("pos").unwrap();
+                anyhow::ensure!(
+                    cp.a("treatAsChar") != "1"
+                        && matches!(cp.a("vertAlign"), "" | "TOP")
+                        && !matches!(cp.a("vertRelTo"), "PAPER" | "PAGE"),
+                    "Group contour requires relative top anchors"
+                );
+                let original_margin = child.child("outMargin").cloned();
+                let child_margin = margin(child, "outMargin").map(|v| v.max(0.));
+                let mut prepared = child.clone();
+                prepared.children.retain(|c| c.name != "outMargin");
+                let sub = self.position_region(&mut prepared, nw, &[])?;
+                for part in sub
+                    .parts
+                    .clone()
+                    .unwrap_or_else(|| vec![sub.points.clone()])
+                {
+                    let a =
+                        part.iter().map(|p| p.0).fold(f64::INFINITY, f64::min) - child_margin[0];
+                    let b = part.iter().map(|p| p.0).fold(f64::NEG_INFINITY, f64::max)
+                        + child_margin[1];
+                    let c =
+                        part.iter().map(|p| p.1).fold(f64::INFINITY, f64::min) - child_margin[2];
+                    let d = part.iter().map(|p| p.1).fold(f64::NEG_INFINITY, f64::max)
+                        + child_margin[3];
+                    let r = crate::graphics::rect(matrix, [a, c, b, d]);
+                    parts.push(vec![
+                        (x + r[0], y + r[1]),
+                        (x + r[2], y + r[1]),
+                        (x + r[2], y + r[3]),
+                        (x + r[0], y + r[3]),
+                    ]);
+                }
+                if let Some(m) = original_margin {
+                    prepared.children.push(m);
+                }
+                *child = prepared;
+            }
+            anyhow::ensure!(
+                !parts.is_empty(),
+                "Group contour has no normalized child shapes"
+            );
+            region.parts = Some(parts);
+        }
+        if !allow_overlap {
             for _ in 0..=existing.len() {
                 let a = region.bounds();
                 let below = existing
@@ -3792,6 +4011,12 @@ impl<'a> Engine<'a> {
                 y = below;
                 self.report.warnings.insert("Overlapping float anchors separated vertically because allowOverlap is disabled".into());
             }
+        }
+        if n.name == "pic"
+            && let Some(parts) = &region.parts
+        {
+            n.attrs
+                .insert("alphaParts".into(), serde_json::to_string(parts)?);
         }
         let pos = node_mut(n, "pos");
         for (k, v) in [
@@ -4091,7 +4316,7 @@ impl<'a> Engine<'a> {
                 ItemKind::Object(n)
                     if matches!(
                         n.name.as_str(),
-                        "tbl" | "pic" | "rect" | "ellipse" | "polygon"
+                        "tbl" | "pic" | "rect" | "ellipse" | "polygon" | "curve" | "group"
                     ) =>
                 {
                     let block =
@@ -4378,7 +4603,7 @@ impl<'a> Engine<'a> {
                                     .any(|i| matches!(i.kind, ItemKind::Char(_)))
                             }))
                     || objects.iter().any(|n| {
-                        matches!(n.name.as_str(), "ellipse" | "polygon")
+                        matches!(n.name.as_str(), "ellipse" | "polygon" | "curve" | "group")
                             || !matches!(n.a("textFlow"), "" | "BOTH_SIDES")
                             || n.child("pos").is_some_and(|p| {
                                 p.a("horzAlign") == "CENTER"
@@ -4633,14 +4858,26 @@ impl<'a> Engine<'a> {
                 let mut used = 0.;
                 let mut incoming = Vec::new();
                 while at + count < ls.len() && !ls[at + count].block {
-                    incoming.extend(notes_for(at + count));
+                    let mut row_count = 1;
+                    while at + count + row_count < ls.len()
+                        && ls[at + count + row_count - 1].height == 0.
+                    {
+                        row_count += 1;
+                    }
+                    for index in at + count..at + count + row_count {
+                        incoming.extend(notes_for(index));
+                    }
+                    let row_height = ls[at + count..at + count + row_count]
+                        .iter()
+                        .map(|l| l.height)
+                        .sum::<f64>();
                     let reserve = self
                         .footnote_reservation(&incoming, self.left + col as f64 * (width + gap));
-                    if y + used + ls[at + count].height > self.ph - self.bottom - reserve + 0.001 {
+                    if y + used + row_height > self.ph - self.bottom - reserve + 0.001 {
                         break;
                     }
-                    used += ls[at + count].height;
-                    count += 1;
+                    used += row_height;
+                    count += row_count;
                 }
                 if count == 0 {
                     anyhow::ensure!(
@@ -4650,6 +4887,7 @@ impl<'a> Engine<'a> {
                     self.reflow_advance(section, &mut col, &mut y, cols, gap)?;
                     continue;
                 }
+                let unsplit_count = count;
                 if s.widow
                     && !(at == 0 && (p.n("reflowFloatHeight") > 0. || p.n("reflowFloatCarry") > 0.))
                     && at + count < ls.len()
@@ -4662,6 +4900,12 @@ impl<'a> Engine<'a> {
                     if ls.len() - at - count == 1 && count > 1 {
                         count -= 1;
                     }
+                }
+                while count > 0 && ls[at + count - 1].height == 0. {
+                    count -= 1;
+                }
+                if count == 0 {
+                    count = unsplit_count;
                 }
                 for (i, line) in ls.iter().enumerate().skip(at).take(count) {
                     self.line(
@@ -4700,7 +4944,7 @@ impl<'a> Engine<'a> {
     }
     pub fn render_contours(&mut self) -> Result<()> {
         self.contour_wrap = true;
-        self.report.warnings.insert("Opt-in geometric contour wrapping; largest free interval per line; images retain rectangular exclusions".into());
+        self.report.warnings.insert("Opt-in geometric contour wrapping with source flow direction, alpha masks, cubic outlines and group components; complex contours use conservative bounds".into());
         self.render_mode(true)
     }
     pub fn render_reflow(&mut self) -> Result<()> {

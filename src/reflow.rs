@@ -123,6 +123,8 @@ fn wrap_exclusion(
     let mut out = Vec::new();
     let mut begin = 0;
     let mut y = 0.;
+    let mut row_gaps = std::collections::VecDeque::new();
+    let mut row_metrics: Option<(f64, f64, f64)> = None;
     loop {
         let (cut_left, cut_right) = exclusion
             .iter()
@@ -131,7 +133,11 @@ fn wrap_exclusion(
         let mut left = (s.left + if out.is_empty() { s.indent } else { 0. }).max(cut_left);
         let mut available = width - left - s.right.max(cut_right);
         let mut skipped = 0.;
-        if !regions.is_empty() {
+        if let Some((a, b)) = row_gaps.pop_front() {
+            left = a;
+            available = b - a;
+            skipped = row_metrics.unwrap().2;
+        } else if !regions.is_empty() {
             // Reserve the entire possible glyph/line band before selecting a gap.
             let asc = units.iter().map(|u| u.ascent).fold(0f64, f64::max);
             let desc = units.iter().map(|u| u.descent).fold(0f64, f64::max);
@@ -150,22 +156,71 @@ fn wrap_exclusion(
                 .map(|u| u.width)
                 .unwrap_or(1.)
                 .max(24.);
-            let mut found = None;
+            let mut found = Vec::new();
             for _ in 0..10000 {
-                if let Some((a, b)) =
-                    crate::wrap_region::gap(regions, y + skipped, band, left, right)
-                        .filter(|(a, b)| b - a >= required)
-                {
-                    found = Some((a, b));
+                let gaps = crate::wrap_region::gaps(regions, y + skipped, band, left, right)
+                    .into_iter()
+                    .filter(|(a, b)| b - a >= required)
+                    .collect::<Vec<_>>();
+                if !gaps.is_empty() {
+                    found = gaps;
                     break;
                 }
                 skipped += 1.;
             }
-            let (a, b) = found.ok_or_else(|| {
-                anyhow::anyhow!("No usable text interval around floating objects")
-            })?;
+            anyhow::ensure!(
+                !found.is_empty(),
+                "No usable text interval around floating objects"
+            );
+            if regions.iter().any(|r| r.flow == "LARGEST_ONLY") {
+                found = vec![
+                    *found
+                        .iter()
+                        .max_by(|a, b| {
+                            (a.1 - a.0)
+                                .total_cmp(&(b.1 - b.0))
+                                .then_with(|| b.0.total_cmp(&a.0))
+                        })
+                        .unwrap(),
+                ];
+            }
+            let (a, b) = found.remove(0);
+            if !found.is_empty() {
+                row_gaps.extend(found);
+                row_metrics = Some((
+                    band,
+                    if asc > 0. { asc } else { em * 0.8 } + (band - ink) / 2.,
+                    skipped,
+                ));
+            }
             left = a;
             available = b - a;
+        }
+        // Keep a Latin token intact when a later interval on this row can hold it.
+        let mut token_width = 0.;
+        let mut token_started = false;
+        for unit in &units[begin..] {
+            match unit.ch {
+                Some(c) if c.is_ascii_alphanumeric() || (token_started && "'-._".contains(c)) => {
+                    token_started = true;
+                    token_width += unit.width;
+                }
+                None if !token_started => token_width += unit.width,
+                Some(' ') if !token_started => token_width += unit.width,
+                _ => break,
+            }
+        }
+        if token_started
+            && token_width > available
+            && row_gaps.iter().any(|(a, b)| b - a >= token_width)
+        {
+            while let Some((a, b)) = row_gaps.pop_front() {
+                left = a;
+                available = b - a;
+                if available >= token_width {
+                    break;
+                }
+            }
         }
         anyhow::ensure!(
             available > 1.,
@@ -235,20 +290,34 @@ fn wrap_exclusion(
         } else {
             requested.max(ink + 1.)
         };
+        let continues = !row_gaps.is_empty() && !hard && !block && end < units.len();
+        let (row_height, row_baseline) = if let Some((h, b, skip)) = row_metrics {
+            (h + skip, b + skip)
+        } else {
+            (
+                height + skipped,
+                if ascent > 0. { ascent } else { em * 0.8 } + (height - ink) / 2. + skipped,
+            )
+        };
+        let advance = if continues { 0. } else { row_height };
         out.push(Line {
             pos: units
                 .get(begin)
                 .map(|u| u.pos)
                 .unwrap_or_else(|| units.last().map(|u| u.pos + 1).unwrap_or(0)),
-            height: height + skipped,
-            baseline: if ascent > 0. { ascent } else { em * 0.8 } + (height - ink) / 2. + skipped,
+            height: advance,
+            baseline: row_baseline,
             left,
             width: available,
             hard,
             block,
         });
         begin = end;
-        y += height + skipped;
+        y += advance;
+        if !continues {
+            row_gaps.clear();
+            row_metrics = None;
+        }
         if begin >= units.len() {
             if hard {
                 out.push(Line {
@@ -276,6 +345,18 @@ fn wrap_exclusion(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn latin_word_uses_a_wider_later_interval_without_splitting() {
+        let region = crate::wrap_region::Region {
+            parts: None,
+            points: vec![(40., 0.), (80., 0.), (80., 100.), (40., 100.)],
+            margin: [0.; 4],
+            flow: "BOTH_SIDES".into(),
+        };
+        let lines = wrap_regions(&units("English"), 160., &config(), &[region]).unwrap();
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].left, 80.);
+    }
     fn units(s: &str) -> Vec<Unit> {
         let mut pos = 0;
         s.chars()
