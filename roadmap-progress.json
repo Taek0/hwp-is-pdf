@@ -153,5 +153,35 @@
     "geometry_findings": 0,
     "report": "output/roadmap/14-coordinates/SUMMARY.html",
     "remaining": "Table internal placement, receipt wrapping, intermediate page boundaries and font/symbol fidelity; further independent exports for HWPX border enum compatibility"
+  },
+  "final_fidelity_pass": {
+    "status": "in_progress",
+    "stages": [
+      {
+        "id": 15,
+        "status": "complete",
+        "task": "Saved table margins and native cell wrapping"
+      },
+      {
+        "id": 16,
+        "status": "in_progress",
+        "task": "Table and note pagination constraints"
+      },
+      {
+        "id": 17,
+        "status": "pending",
+        "task": "Kerning and language-specific glyph styles"
+      },
+      {
+        "id": 18,
+        "status": "pending",
+        "task": "Symbols and graphic border fidelity"
+      },
+      {
+        "id": 19,
+        "status": "pending",
+        "task": "Font subsetting and final Hancom comparison"
+      }
+    ]
   }
 }

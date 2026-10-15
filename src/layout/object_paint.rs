@@ -75,6 +75,17 @@ impl<'a> Engine<'a> {
         if n.a("reflowCaptions") == "1" {
             x += caption_extent(n)[0];
         }
+        // Saved HWPX floating tables position the outside margin box at the
+        // anchor. Rebuilt tables already incorporate this spacing in flow.
+        if !inline
+            && n.name == "tbl"
+            && n.a("binaryHwp") != "1"
+            && n.a("reflowTable") != "1"
+            && n.a("reflowCaptions") != "1"
+        {
+            x += m[0];
+            y += m[2];
+        }
         if !inline
             && n.child("caption").is_some()
             && n.a("binaryHwp") == "1"

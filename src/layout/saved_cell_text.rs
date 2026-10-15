@@ -1,4 +1,4 @@
-//! Recover overflowing HWPX plain-text cell caches that explicitly allow wrapping.
+//! Recover overflowing plain-text cell caches that explicitly allow wrapping.
 use super::*;
 impl<'a> Engine<'a> {
     fn repair_nested_saved_tables(&mut self, n: &mut Node) -> Result<bool> {
@@ -16,7 +16,7 @@ impl<'a> Engine<'a> {
         Ok(changed)
     }
     pub(super) fn repair_saved_cell_text(&mut self, n: &Node) -> Result<Option<Node>> {
-        if n.a("reflowTable") == "1" || n.a("savedTextRepaired") == "1" || n.a("binaryHwp") == "1" {
+        if n.a("reflowTable") == "1" || n.a("savedTextRepaired") == "1" {
             return Ok(None);
         }
         let mut base = n.clone();
@@ -76,7 +76,11 @@ impl<'a> Engine<'a> {
                         } else {
                             width
                         };
-                        overflow |= measured > available * 1.02 + 0.1;
+                        // Native caches often deliberately fit slightly wider
+                        // replacement fonts. Rebuild only a materially stale
+                        // line there; small changes must retain saved pagination.
+                        let tolerance = if n.a("binaryHwp") == "1" { 1.20 } else { 1.02 };
+                        overflow |= measured > available * tolerance + 0.1;
                     }
                 }
                 if overflow {

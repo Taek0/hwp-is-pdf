@@ -2,6 +2,7 @@ use anyhow::Result;
 use hwp_engine::model::{Document, Node};
 fn dump(n: &Node) {
     if n.name == "tc" {
+        println!("text={:?}", hwp_engine::model::text(n));
         let a = n.child("cellAddr").unwrap();
         let mut ls = vec![];
         n.all("lineseg", &mut ls);

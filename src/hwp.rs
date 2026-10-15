@@ -201,10 +201,15 @@ fn groups(rs: &[Record]) -> Vec<(&Record, Vec<&Record>)> {
 }
 fn list(header: &Record, paras: &[&Record]) -> Result<Node> {
     let flags = u32(&header.data, 4)?;
-    let mut out = n("subList").at(
-        "vertAlign",
-        ["TOP", "CENTER", "BOTTOM", "TOP"][((flags >> 5) & 3) as usize],
-    );
+    let mut out = n("subList")
+        .at(
+            "lineWrap",
+            ["BREAK", "SQUEEZE", "KEEP", "BREAK"][((flags >> 3) & 3) as usize],
+        )
+        .at(
+            "vertAlign",
+            ["TOP", "CENTER", "BOTTOM", "TOP"][((flags >> 5) & 3) as usize],
+        );
     for p in paras {
         out.children.push(paragraph(p)?);
     }

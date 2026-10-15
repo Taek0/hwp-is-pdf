@@ -985,3 +985,17 @@ Form page 2, law page 1 and report page 26 were also re-rendered for comparison.
 The new three-page coordinate fixture has zero geometric findings.
 Measured math frame coordinates now differ from Hancom by at most 0.05 pt
 (previously up to 48.19 pt). This measurement applies only to the outer frame.
+
+## Final pass 15 — saved tables
+HWPX floating-table anchors now include source outer margins (the math header was
+2.83 pt too far left/up). HWP list headers preserve BREAK/SQUEEZE/KEEP. Plain-text
+native BREAK cells with materially stale caches (>20% width overflow) can recover
+line wrapping; smaller substitution differences retain saved pagination. HWPX's
+existing 2% threshold remains. The native threshold avoids a verified 30-to-31-page
+government-notice regression. This is bounded cache recovery, not forced reflow
+of every native cell or a claim that the receipt now matches the reference.
+
+139 tests and Clippy pass. The four target outputs retain 15/9/2/50 pages, object
+counts and character multisets, with zero geometry findings. Form/report PDFs
+are byte-identical to stage 14; math/law previews were reviewed. Results and
+images: output/roadmap/15-tables/. Original files are unchanged.
