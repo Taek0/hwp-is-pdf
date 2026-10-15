@@ -142,5 +142,16 @@
     "reference_pages": 76,
     "report": "output/roadmap/13-typography/SUMMARY.html",
     "remaining": "Absolute positions, intermediate page boundaries, unavailable-font substitutions, watermark/symbol fidelity and math page-border offsets still differ from Hancom"
+  },
+  "post_comparison_coordinates": {
+    "status": "complete",
+    "tests": 137,
+    "baseline_documents": 43,
+    "baseline_pages": 205,
+    "byte_identical_pdfs": 42,
+    "fixture_pages": 3,
+    "geometry_findings": 0,
+    "report": "output/roadmap/14-coordinates/SUMMARY.html",
+    "remaining": "Table internal placement, receipt wrapping, intermediate page boundaries and font/symbol fidelity; further independent exports for HWPX border enum compatibility"
   }
 }

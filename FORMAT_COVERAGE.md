@@ -939,3 +939,49 @@ cache repair is restricted to plain-text HWPX BREAK cells. These results do not
 establish pixel identity or a percentage of overall HWP compatibility.
 
 Local results: output/roadmap/13-typography/SUMMARY.html.
+
+## Page coordinates and border origin — 2026-10-15
+
+Separated page-border selection/geometry into layout/page_borders.rs and shared
+vertical object anchoring into layout/object_position.rs. Paragraph-relative
+TOP/CENTER/BOTTOM now stay at the anchor line plus the stored offset, rather than
+using the page's text height for CENTER/BOTTOM. PAPER/PAGE object origins retain
+their separate absolute-frame semantics in saved and rebuilt layouts.
+
+The supplied HWPX math document serializes textBorder=PAPER, but its user-produced
+Hancom PDF places all four border sides at the text-area edges plus outward
+offsets. The HWPX compatibility mapping now follows that observed behavior, rather
+than interpreting the enum's English spelling literally. This is an empirical
+compatibility rule, not a claim that the published HWP5 table says the opposite.
+Native HWP5 PAGE_BORDER_FILL records now retain the published bit-0 origin in an
+explicit borderReference attribute, separately from the HWPX wire enum. Table 135's
+field sizes total 14 bytes; truncated records are rejected.
+
+Visible odd/even border definitions override BOTH; empty serialized defaults fall
+back to BOTH. Header/footer inclusion, first-page visibility and solid background
+fill area are separate from border extent. Existing first-page pageHiding flags
+are respected. Per-page hiding beyond the existing first-page dispatch and image/
+gradient page backgrounds still need broader coverage.
+
+Tall saved footers no longer acquire a negative bottom-alignment offset into the
+body. This prevents the math footer from crossing the corrected bottom border.
+The deterministic page-coordinates.hwpx fixture covers three paragraph anchor
+alignments on three pages. New focused tests cover the binary record, border
+origins, header inclusion, parity fallback, fill visibility and saved/reflow
+paragraph positioning. Full suite: 137 passing; Clippy with warnings denied passes.
+
+See output/roadmap/14-coordinates/SUMMARY.html for corpus verification and paired
+images. Absolute placement/spacing inside some tables, receipt wrapping, watermark
+and symbol fidelity, and intermediate page boundaries are still open; this stage
+does not claim complete visual identity with Hancom.
+
+Final corpus verification: all 43 inputs / 205 pages retain source hashes and
+page/picture/table/equation/chart counts; every geometry audit has zero findings
+and no new warnings. 42 PDFs are byte-identical to stage 13; only the math PDF
+changes. Four comparison documents retain 2/15/9/50 pages and identical
+non-whitespace character multisets. The changed math document's nine pages were
+reviewed as a contact sheet, with full-size first-page and footer comparisons.
+Form page 2, law page 1 and report page 26 were also re-rendered for comparison.
+The new three-page coordinate fixture has zero geometric findings.
+Measured math frame coordinates now differ from Hancom by at most 0.05 pt
+(previously up to 48.19 pt). This measurement applies only to the outer frame.

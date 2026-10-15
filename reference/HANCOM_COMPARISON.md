@@ -139,3 +139,36 @@ Format references:
   character space flags, paragraph border flags/offsets, rectangle corner ratio.
 - [Hancom paragraph border help](https://help.hancom.com/hoffice130/ko-KR/Hwp/format/paragraph/paragraph(border).htm):
   column/text-area border extent and adjacent paragraph connections.
+
+## Page coordinate correction — 2026-10-15
+
+The math reference's outer frame was measured directly from the supplied PDF:
+left/right 28.32/566.88 pt, top/bottom 48.24/779.52 pt. Source text margins and
+outward offsets predict 28.35/566.93/48.20/779.51 pt. This establishes a text-relative
+interpretation for this HWPX export despite its PAPER wire enum. The renderer now
+uses that compatibility interpretation for HWPX; the native HWP5 adapter retains
+the origin described by table 136 separately. More independently exported
+CONTENT/PAPER examples would strengthen coverage of this format discrepancy.
+
+Correcting the border exposed an existing tall-footer placement defect: negative
+bottom-alignment slack pulled the footer back into the body. The footer now starts
+at its allocated origin when it exceeds the reserved height. Paragraph-relative
+CENTER/BOTTOM object positions also stop using a page-height displacement.
+
+The prior stage's PAPER-offset assertion tested the implementation's assumption,
+not the Hancom output. It has been replaced with the reference-derived coordinate
+assertion. 137 tests and Clippy pass. Artifacts, corpus checks and remaining
+differences are recorded in output/roadmap/14-coordinates/SUMMARY.html.
+
+Sources:
+- [Hancom page-border positioning](https://help.hancom.com/hoffice/multi/ko_kr/hwp/format/pageborder/page_border(border).htm)
+- [Hancom object position](https://help.hancom.com/hoffice/multi/ko_kr/hwp/insert/objectattribute/objectattribute(position).htm)
+- [HWP5 revision 1.3, tables 130 and 135–136](https://cdn.hancom.com/link/docs/한글문서파일형식_5.0_revision1.3.pdf)
+
+Final stage-14 regression: 43 documents / 205 pages, all source hashes and object/
+page counts unchanged, zero geometry findings and no new warnings. 42 PDFs are
+byte-identical to stage 13. The math document is the only changed baseline PDF;
+its nine pages were visually reviewed. The four target PDFs preserve their
+non-whitespace character multisets and 2/15/9/50 page counts. Frame edge errors
+against the reference are 0.030/0.050/0.040/0.010 pt (left/right/top/bottom).
+This does not imply matching table positions, fonts or all page contents.
