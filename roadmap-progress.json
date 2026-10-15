@@ -179,8 +179,13 @@
       },
       {
         "id": 19,
+        "status": "complete",
+        "task": "Font subsetting and lossless rendering verification"
+      },
+      {
+        "id": 20,
         "status": "in_progress",
-        "task": "Font subsetting and final Hancom comparison"
+        "task": "Automatic row heights and final Hancom comparison"
       }
     ]
   }

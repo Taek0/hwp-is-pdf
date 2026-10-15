@@ -59,3 +59,5 @@ Page coordinate modules:
 
 - `layout/border_strokes.rs`: shared vector border patterns and compound-rule bands.
 - `image_effects.rs`: alpha-preserving derived raster effects for both input formats.
+
+- `pdf/font_subset.rs`: stable-ID TrueType glyph closure, sfnt reconstruction and embedding fallback.

@@ -11,6 +11,7 @@ pub(crate) mod navigation;
 mod operations;
 pub use operations::{Op, Page, PositionedGlyph};
 mod font_catalog;
+mod font_subset;
 mod fonts;
 mod kerning;
 pub use fonts::{Font, Fonts, glyph_id};
@@ -314,9 +315,23 @@ pub fn save(
         let f = ttf_parser::Face::parse(&font.bytes, 0).unwrap();
         let units = f.units_per_em() as f64;
         let scale = 1000. / units;
-        let file = w.stream(&format!("/Length1 {}", font.bytes.len()), &font.bytes)?;
+        let subset = font_subset::subset(&font.bytes, font.used.keys().copied())?;
+        let embedded = subset.as_deref().unwrap_or(&font.bytes);
+        let file = w.stream(&format!("/Length1 {}", embedded.len()), embedded)?;
         let bb = f.global_bounding_box();
-        let name = format!("HwpFont{index}");
+        let name = if subset.is_some() {
+            let mut hash = crc32fast::hash(embedded);
+            let tag: String = (0..6)
+                .map(|_| {
+                    let c = (b'A' + (hash % 26) as u8) as char;
+                    hash /= 26;
+                    c
+                })
+                .collect();
+            format!("{tag}+HwpFont{index}")
+        } else {
+            format!("HwpFont{index}")
+        };
         let desc=w.add(format!("<< /Type /FontDescriptor /FontName /{name} /Flags 4 /FontBBox [{} {} {} {}] /ItalicAngle 0 /Ascent {} /Descent {} /CapHeight {} /StemV 80 /FontFile2 {file} 0 R >>",bb.x_min as f64*scale,bb.y_min as f64*scale,bb.x_max as f64*scale,bb.y_max as f64*scale,f.ascender() as f64*scale,f.descender() as f64*scale,f.capital_height().unwrap_or(f.ascender()) as f64*scale));
         let mut widths = String::new();
         for &gid in font.used.keys() {

@@ -1046,3 +1046,18 @@ It is a repair of earlier lossy display mapping, not removal of source content.
 zero geometry findings. Other than the documented form-symbol restoration, their
 character multisets are unchanged. Form comparison and border-effects example
 were rendered and inspected. Results: output/roadmap/18-graphics/.
+
+## Final pass 19 — lossless embedded font subsetting
+TrueType PDF programs retain used glyph IDs, recursively retain composite
+dependencies, preserve metrics/hinting and rebuild loca/table checksums. Original
+fonts remain in memory for layout/QA. Variable/color/non-glyf fonts and fonts with
+the no-subsetting flag retain full embedding. Font programs do not depend on a
+viewer installation.
+
+149 tests and Clippy pass. All 43 baseline documents / 205 pages retain source
+hashes, page/object counts, zero geometric findings and no new missing glyphs.
+For the four comparison PDFs, all 76 pages rendered at 1000px are pixel-identical
+to stage 18, and text extraction is unchanged. File size reductions are 98.08%
+(form), 97.28% (law), 96.42% (math), 97.23% (report): approximately 0.94 / 1.44 /
+2.13 / 2.82 MB. This is lossless output optimization, not a fidelity improvement.
+Evidence: output/roadmap/19-final/pixel-and-size-verification.json and corpus-verification.json.
