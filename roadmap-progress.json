@@ -50,7 +50,13 @@
     {
       "id": 5,
       "task": "Complex cell, textbox and caption reflow",
-      "status": "pending"
+      "status": "complete",
+      "tests": 108,
+      "report": "output/roadmap/05-captions/SUMMARY.html",
+      "images": [
+        "output/roadmap/05-captions/table-nested-1.png",
+        "output/roadmap/05-captions/table-note-3.png"
+      ]
     },
     {
       "id": 6,

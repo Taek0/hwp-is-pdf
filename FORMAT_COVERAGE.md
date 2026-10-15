@@ -695,3 +695,29 @@ zero geometry findings, and byte-identical PDFs. Hancom comparison remains defer
 Equation preparation/painting, endnote flow and wrapping-unit measurement have
 separate modules; the largest Rust file remains below 600 lines.
 Results: output/roadmap/04-equation-notes/SUMMARY.html.
+
+## Roadmap stage 5 — captions and cell composition (2026-10-15)
+
+Reflow budgets left/right caption width before measuring the object. Inline objects
+reserve both the caption width and its full vertical extent. Textboxes grow with
+their contents, and following paragraphs clear the complete caption/object area.
+HWP reflow avoids applying binary caption offsets twice. Saved placement is unchanged.
+
+Caption footnotes participate in incoming-note reservation. Measured table vectors
+include side captions and nested captions, so their text continues without duplication
+across table fragments. Bottom-caption notes reserve space on the final fragment;
+the reservation is conservative on earlier fragments. Per-column notes are measured
+at the narrowest destination width when a table can move from a wider column.
+
+Five fixtures / 11 pages cover inline picture captions, textboxes, multi-column side
+captions, bottom-caption notes, and nested cell textboxes/captions. Tests check all
+42 table rows, caption markers, note/reference page identity, following-paragraph
+clearance and all four geometry checks. All 108 tests and Clippy pass. The baseline
+43 documents / 210 pages retain hashes, object/page counts, zero findings and
+byte-identical PDFs. Stage-3/4 generated PDFs are also unchanged.
+
+Large top/bottom caption groups exceeding half a page, rotated whole tables, and
+block content in endnotes retain explicit limits. Side-caption width fitting can
+change source geometry and is reported. Exact Hancom composition remains unverified.
+Caption ownership is isolated in src/layout/caption_layout.rs.
+Results: output/roadmap/05-captions/SUMMARY.html.
