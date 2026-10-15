@@ -189,6 +189,9 @@ impl<'a> Engine<'a> {
         if notes.is_empty() {
             return Ok(());
         }
+        if notes.iter().any(|n| n.a("reflowEndnote") == "1") {
+            return self.render_reflow_endnotes(notes, start);
+        }
         let (mut y, mut col, width, gap) = start;
         let above = self.note_gap(true, "aboveLine", 0.);
         let below = self.note_gap(true, "belowLine", 0.);

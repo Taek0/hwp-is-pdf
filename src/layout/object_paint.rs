@@ -328,12 +328,7 @@ impl<'a> Engine<'a> {
                 }
             }
             "equation" => {
-                let script = n.child("script").map(text).unwrap_or_default();
-                let b = math::layout(&script, n.n("baseUnit") / 100., &mut self.fonts)?;
-                self.current
-                    .ops
-                    .extend(math::place(b, x, y + h * n.n("baseLine") / 100., w, h));
-                self.report.equations += 1;
+                self.paint_equation(n, x, y, w, h)?;
             }
             "pic" => {
                 let img = n.child("img").context("Missing image reference")?;

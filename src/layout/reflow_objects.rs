@@ -12,6 +12,7 @@ impl<'a> Engine<'a> {
         for run in p.children.iter_mut().filter(|r| r.name == "run") {
             for n in &mut run.children {
                 match n.name.as_str() {
+                    "equation" => self.prepare_equation(n, width)?,
                     "tbl" | "pic" | "rect" | "ellipse" | "polygon" | "curve" | "group" => {
                         anyhow::ensure!(
                             n.a("textWrap") != "BEHIND_TEXT",
@@ -151,6 +152,9 @@ impl<'a> Engine<'a> {
                     }
                     "ctrl" => {
                         for control in &mut n.children {
+                            if control.name == "endNote" {
+                                control.attrs.insert("reflowEndnote".into(), "1".into());
+                            }
                             if control.name == "footNote" {
                                 let (_, w) = self.footnote_area(self.column_x(self.reflow_column));
                                 if let Some(list) =
