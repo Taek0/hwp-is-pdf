@@ -85,7 +85,7 @@
 따라 본문을 배치합니다. 기본 `--reflow`는 원본의 사각 감싸기를 유지합니다.
 BOTH_SIDES는 같은 줄의 여러 구간을 사용하고, LARGEST_ONLY는 가장 넓은 구간을 선택합니다.
 투명 그림은 PDF 마스크로 보존하며 자르기·회전을 반영한 불투명 영역을 사용합니다.
-음수 세로 앵커, PAGE/PAPER 기준의 절대 위치, 연결된 개체 영역이 한 단보다 큰 경우,
+음수·절대 위치와 큰 개체는 아래 2단계 규칙으로 처리합니다.
 복잡한 그룹 변환과 셀 내부 감싸기는 남아 있습니다.
 최신 결과: `output/reflow-contours/SUMMARY.html` (91개 테스트·Clippy 통과,
 기존 43개 문서 210쪽과 이전 감싸기 예제 5쪽 픽셀 동일).
@@ -96,6 +96,13 @@ BOTH_SIDES는 같은 줄의 여러 구간을 사용하고, LARGEST_ONLY는 가�
 기존 210쪽 중 209쪽은 동일하며 1쪽은 투명 로고의 검은 배경을 수정한 결과입니다.
 이미지·검증 보고서: `output/roadmap/01-wrapping/SUMMARY.html`.
 한컴 출력과의 비교는 요청대로 10단계 완료 후에 진행합니다.
+
+2단계는 음수 오프셋의 선행 여백, PAGE/PAPER 절대 좌표, 큰 그림·그룹의 비율 맞춤,
+연결 개체의 분리를 구현했습니다. 절대 앵커 문단은 새 재배치 페이지에서 시작하고,
+다단에서는 해당 개체 아래를 이후 단의 시작 위치로 삼는 보수적인 배치를 사용합니다.
+한 문단의 연결 개체가 너무 크면 문서 순서의 블록으로 배치하며 경고를 남깁니다.
+100개 테스트·Clippy 통과, 기존 43개 문서 210쪽 동일.
+결과: `output/roadmap/02-anchors/SUMMARY.html`.
 
 ## 실행
 
@@ -137,7 +144,7 @@ hwp_engine::convert_with_options(input_path, output_path, font_directory, true, 
 - `src/model.rs`: 크기 제한을 적용한 HWPX ZIP/XML 로딩, 문자·문단·테두리 정의와 이미지 참조.
 - `src/hwp.rs`: 읽기 전용 CFB 저장소, HWP 압축 스트림/CRC, 길이·중첩 제한이 있는 레코드 파서,
   문단/글꼴/표/바탕쪽/그림 정규화, PCX 해독, 한컴 전용 표시 문자 처리.
-- `src/layout.rs`: 공개 Engine API, 상태 및 변환 흐름 조정(565줄).
+- `src/layout.rs`: 공개 Engine API, 상태 및 변환 흐름 조정.
 - `src/layout/text_style.rs`, `text_paint.rs`: 글자 측정·서식과 텍스트 출력.
 - `src/layout/object_paint.rs`: 개체 출력, `table_layout.rs`·`table_pagination.rs`: 표 배치·분할.
 - `src/layout/notes.rs`, `page_decorations.rs`: 각주·미주와 머리말·꼬리말.

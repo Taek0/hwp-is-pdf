@@ -16,7 +16,14 @@
     {
       "id": 2,
       "task": "Negative/absolute anchors and oversized connected object pagination",
-      "status": "pending"
+      "status": "complete",
+      "tests": 100,
+      "report": "output/roadmap/02-anchors/SUMMARY.html",
+      "images": [
+        "output/roadmap/02-anchors/negative-1.png",
+        "output/roadmap/02-anchors/absolute-columns-1.png",
+        "output/roadmap/02-anchors/large-group-1.png"
+      ]
     },
     {
       "id": 3,

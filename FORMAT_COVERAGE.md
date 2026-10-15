@@ -614,3 +614,30 @@ The root layout.rs decreased from 5,159 to 565 lines; child modules range from
 roughly 100 to 650 lines. Public API paths are unchanged. All tests/Clippy pass
 and the two stage-1 PDF outputs are byte-identical before/after the refactor.
 Results: output/roadmap/01-wrapping/SUMMARY.html.
+
+## Roadmap stage 2 — anchors and oversized objects (2026-10-15)
+
+Negative paragraph-relative offsets reserve lead-in space so the anchor paragraph
+moves down without overlapping the previous paragraph. PAGE/PAPER positions are
+normalized on a new reflow page; source coordinates are retained within the paper.
+Both SQUARE and absolute TOP_AND_BOTTOM are supported. Later columns conservatively
+clear a page-wide floor beneath absolute objects. This may use more whitespace
+than Hancom; absolute anchors outside the paper remain explicit errors.
+
+Oversized floats/groups fit the usable area with a reported uniform scale. Already
+fitted groups suppress a second fit of their members, preserving relative sizes.
+A long chain of later anchors clears the previous region before continuing; an
+oversized same-paragraph connected set uses sequential blocks with a warning.
+Splittable tables still consume remaining column space and retain their previous
+pagination. Internal mixed headers and exact absolute-anchor pagination remain
+subjects for the final reference comparison and later stage integration.
+
+Six examples (11 pages) cover negative offsets, PAGE/PAPER coordinates, absolute
+objects in two columns, a large image, a large group, and a long chain. Additional
+tests cover absolute TOP_AND_BOTTOM, square/contour equivalence for image anchors,
+member scale ratios and sequential fallback. All 100 tests and all-target Clippy
+pass. Baseline 43 documents / 210 pages retain source hashes, page/object counts,
+zero geometry findings and pixel-identical output. The two stage-1 PDFs remain
+byte-identical. New code resides primarily in src/layout/anchors.rs and the
+existing responsibility-specific layout modules.
+Results: output/roadmap/02-anchors/SUMMARY.html.
