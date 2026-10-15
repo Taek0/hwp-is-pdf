@@ -122,48 +122,7 @@ impl<'a> Engine<'a> {
                 )?;
             }
         }
-        // Only section-level header/footer controls, never table/note descendants.
-        for p in section.children_named("p") {
-            for run in p.children_named("run") {
-                for ctrl in run.children_named("ctrl") {
-                    for c in &ctrl.children {
-                        if let Some(list) = c.child("subList") {
-                            let parity = match c.a("applyPageType") {
-                                "ODD" => (self.pages.len() + 1) % 2 == 1,
-                                "EVEN" => (self.pages.len() + 1).is_multiple_of(2),
-                                _ => true,
-                            };
-                            if c.name == "header"
-                                && parity
-                                && hiding.is_none_or(|h| h.a("hideHeader") != "1")
-                                && (!first
-                                    || (sec.a("binaryHwp") == "1"
-                                        && sec.a("hideFirstHeader") != "1"))
-                            {
-                                self.local(
-                                    list,
-                                    self.left,
-                                    self.top - self.header,
-                                    self.pw - self.left - self.right,
-                                )?;
-                            }
-                            if c.name == "footer"
-                                && parity
-                                && hiding.is_none_or(|h| h.a("hideFooter") != "1")
-                                && !(first && sec.a("hideFirstFooter") == "1")
-                            {
-                                self.local(
-                                    list,
-                                    self.left,
-                                    self.ph - self.bottom + self.footer - content_height(list),
-                                    self.pw - self.left - self.right,
-                                )?;
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        self.paint_furniture(section, first, hiding)?;
         let _ = gap;
         Ok(())
     }

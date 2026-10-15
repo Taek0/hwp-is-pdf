@@ -35,13 +35,21 @@ impl<'a> Engine<'a> {
             self.shared_note_reserve = 0.;
             self.column_band_top = self.top;
             self.reflow_column = 0;
-            if (force_reflow || section.children_named("p").any(|p| lines(p).is_empty()))
-                && Self::complex_columns(section)
+            let rebuild = force_reflow || Self::section_needs_reflow(section);
+            if !force_reflow && rebuild && section.children_named("p").all(|p| !lines(p).is_empty())
             {
+                self.report.warnings.insert(
+                    "Partial nested line cache recovered by rebuilding the section flow".into(),
+                );
+            }
+            self.prepare_furniture(section, rebuild)?;
+            self.page_float_floor = self.top;
+            self.column_band_top = self.top;
+            if rebuild && Self::complex_columns(section) {
                 self.configure_columns(col)?;
             }
             self.decorations(section, true, cols, gap)?;
-            if force_reflow || section.children_named("p").any(|p| lines(p).is_empty()) {
+            if rebuild {
                 reflow_used = true;
                 note_start = self.reflow_text_section(section, cw, cols, gap)?;
             } else {

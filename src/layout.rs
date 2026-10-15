@@ -295,6 +295,7 @@ pub struct Engine<'a> {
     column_band_top: f64,
     reflow_column: usize,
     shared_note_reserve: f64,
+    furniture: Vec<Node>,
     flow_floor: Option<(usize, f64, bool)>,
 }
 mod anchors;
@@ -310,6 +311,7 @@ mod list_labels;
 mod notes;
 mod object_paint;
 mod page_decorations;
+mod page_furniture;
 mod reflow;
 mod reflow_objects;
 mod reflow_paragraph;
@@ -366,6 +368,7 @@ impl<'a> Engine<'a> {
             column_band_top: 0.,
             reflow_column: 0,
             shared_note_reserve: 0.,
+            furniture: Vec::new(),
             flow_floor: None,
         }
     }
