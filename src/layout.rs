@@ -245,6 +245,13 @@ struct TableHeaderPaint {
     end: f64,
     ops: Vec<Op>,
 }
+struct TableCellPaint {
+    y: f64,
+    height: f64,
+    ops: std::ops::Range<usize>,
+    borders: std::ops::Range<usize>,
+    bounds: std::ops::Range<usize>,
+}
 struct PlannedTableNote {
     node: Node,
     x: f64,
@@ -273,6 +280,7 @@ pub struct Engine<'a> {
     draining_notes: bool,
     capture_table_headers: bool,
     table_headers: Vec<TableHeaderPaint>,
+    table_cells: Vec<TableCellPaint>,
     table_note_anchors: Vec<PlannedTableNote>,
     split_caption_handled: bool,
     depth: usize,
@@ -333,6 +341,7 @@ mod saved_float_order;
 mod section_render;
 mod shape_paths;
 mod tab_layout;
+mod table_cell_split;
 mod table_layout;
 mod table_measure;
 mod table_pagination;
@@ -365,6 +374,7 @@ impl<'a> Engine<'a> {
             draining_notes: false,
             capture_table_headers: false,
             table_headers: Vec::new(),
+            table_cells: Vec::new(),
             table_note_anchors: Vec::new(),
             split_caption_handled: false,
             depth: 0,

@@ -290,6 +290,8 @@ impl<'a> Engine<'a> {
             let hh = rh[row..row + s.u("rowSpan")].iter().sum::<f64>();
             let cell_paint_start = self.current.ops.len();
             self.border(c.a("borderFillIDRef"), xx, yy, ww, hh);
+            let content_start = self.current.ops.len();
+            let bounds_start = self.report.bounds.len();
             if let Some(list) = c.child("subList") {
                 let m = if c.a("hasMargin") == "1" {
                     margin(c, "cellMargin")
@@ -305,6 +307,15 @@ impl<'a> Engine<'a> {
                     _ => 0.,
                 };
                 self.local(list, xx + m[0], yy + m[2] + shift - min, ww - m[0] - m[1])?;
+            }
+            if self.capture_table_headers && self.depth == 1 {
+                self.table_cells.push(TableCellPaint {
+                    y: yy,
+                    height: hh,
+                    ops: content_start..self.current.ops.len(),
+                    borders: cell_paint_start..content_start,
+                    bounds: bounds_start..self.report.bounds.len(),
+                });
             }
             if row == 0
                 && let Some(index) = captured_header

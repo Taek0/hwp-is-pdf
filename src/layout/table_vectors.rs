@@ -62,6 +62,7 @@ impl<'a> Engine<'a> {
         );
         self.capture_table_headers = true;
         self.table_headers.clear();
+        self.table_cells.clear();
         self.table_note_anchors.clear();
         self.depth += 1;
         let rendered = self.table(n, x, 0., w, total).and_then(|()| {
@@ -76,6 +77,7 @@ impl<'a> Engine<'a> {
         self.depth -= 1;
         self.capture_table_headers = false;
         let mut headers = std::mem::take(&mut self.table_headers);
+        let mut cells = std::mem::take(&mut self.table_cells);
         let mut planned_notes = std::mem::take(&mut self.table_note_anchors);
         // Native saved floating-table notes belong to the table's final fragment.
         // Reflowed and inline tables retain anchor-fragment note placement.
@@ -83,14 +85,48 @@ impl<'a> Engine<'a> {
             && n.a("reflowTable") != "1"
             && n.child("pos").is_some_and(|p| p.a("treatAsChar") == "0");
         headers.sort_by(|a, b| a.y.total_cmp(&b.y));
-        let canvas = std::mem::replace(&mut self.current, previous);
-        let bounds = self.report.bounds.split_off(bound_start);
+        let mut canvas = std::mem::replace(&mut self.current, previous);
+        let mut bounds = self.report.bounds.split_off(bound_start);
         rendered?;
-        let total = if n.a("reflowTable") == "1" {
+        let mut total = if n.a("reflowTable") == "1" {
             total.max(side_caption_height(n))
         } else {
             total
         };
+        if notes_at_end
+            && n.a("pageBreak") == "TABLE"
+            && bottom_notes.is_empty()
+            && table_nodes.len() == 1
+            && n.children_named("tr")
+                .flat_map(|r| r.children_named("tc"))
+                .filter_map(|c| c.child("subList"))
+                .flat_map(|l| l.children_named("p"))
+                .all(|p| {
+                    Self::items(p)
+                        .iter()
+                        .all(|i| !matches!(i.kind, ItemKind::Object(_)))
+                })
+        {
+            for c in &mut cells {
+                c.bounds.start -= bound_start;
+                c.bounds.end -= bound_start;
+            }
+            let original_total = total;
+            total = table_cell_split::pack_cells(
+                &mut canvas.ops,
+                &mut bounds,
+                &mut cells,
+                &mut headers,
+                &mut planned_notes,
+                &self.fonts,
+                total,
+                self.ph - self.bottom - top.max(self.top + above),
+                self.ph - self.bottom - self.top,
+            );
+            if total > original_total + 0.001 {
+                self.report.warnings.insert("Staggered native table cell lines continued independently; merged borders extended without scaling".into());
+            }
+        }
         let atoms = crate::pagination::atoms(&canvas.ops, &self.fonts)?;
         let supported = atoms.iter().all(|a| {
             a.bottom - a.top
@@ -451,6 +487,11 @@ impl<'a> Engine<'a> {
                 if let Some(op) = clipped {
                     self.current.ops.push(op);
                 }
+            }
+            if notes_at_end && cut < total - 0.01 {
+                self.current
+                    .ops
+                    .extend(table_cell_split::bottom_rules(&canvas.ops, &cells, cut));
             }
             self.current.ops.push(Op::TransformEnd);
             for b in &bounds {

@@ -89,6 +89,17 @@ fn report_anchor_precedes_table_and_research_table_returns_to_reference_page() {
     assert!(page_text(34).contains("이 과정에서"));
     assert!(!page_text(41).contains("이 과정에서"));
     assert!(page_text(45).contains("제목(년도)"));
+    let tail = e
+        .report
+        .bounds
+        .iter()
+        .find(|b| b.kind == "tbl" && b.id == "hwp-44c83" && b.page == 42)
+        .unwrap();
+    assert!(
+        tail.h < 100.,
+        "staggered merged cells should not leave whole-row gaps: {}",
+        tail.h
+    );
     let q = qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
     assert!(q.text_overlaps.is_empty());
     assert!(q.border_crossings.is_empty());
