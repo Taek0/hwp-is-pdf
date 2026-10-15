@@ -3,6 +3,14 @@ use anyhow::Result;
 use std::io::Read;
 fn main() -> Result<()> {
     let path = std::env::args().nth(1).expect("input.hwp");
+    let tags: Vec<u32> = std::env::args()
+        .nth(2)
+        .map(|s| s.split(',').filter_map(|s| s.parse().ok()).collect())
+        .unwrap_or_else(|| vec![71, 72, 74, 77, 81, 82, 83, 87, 88]);
+    let limit = std::env::args()
+        .nth(3)
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(64usize);
     let mut f = cfb::open(path)?;
     let names: Vec<_> = f
         .walk()
@@ -55,14 +63,14 @@ fn main() -> Result<()> {
                 p += 4;
             }
             let d = &b[p..p + len];
-            if [71, 72, 74, 77, 81, 82, 83, 87, 88].contains(&tag) {
+            if tags.contains(&tag) {
                 println!(
                     "{:x} {} {} len={} data={:02x?}",
                     p - 4,
                     tag,
                     lev,
                     len,
-                    &d[..len.min(64)]
+                    &d[..len.min(limit)]
                 );
             }
             p += len;

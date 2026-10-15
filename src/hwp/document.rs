@@ -57,49 +57,11 @@ pub fn open(path: &Path) -> Result<Document> {
         match r.tag {
             23 => {
                 let id = header.children_named("numbering").count() + 1;
-                let mut number = n("numbering").at("id", id);
-                let mut off = 0;
-                for level in 1..=7 {
-                    let props = u32(d, off)?;
-                    let count = u16(d, off + 12)? as usize;
-                    let fmt = utf16(bytes(d, off + 14, count * 2)?)?;
-                    let head = n("paraHead")
-                        .at("level", level)
-                        .at("charPrIDRef", u32(d, off + 8)?)
-                        .at("textOffset", u16(d, off + 6)?)
-                        .at(
-                            "textOffsetType",
-                            if props & 16 == 0 {
-                                "PERCENT"
-                            } else {
-                                "HWPUNIT"
-                            },
-                        )
-                        .with(vec![txt(fmt)]);
-                    number.children.push(head);
-                    off += 14 + count * 2;
-                }
-                let start = u16(d, off)?;
-                number = number.at("start", start);
-                header.children.push(number);
+                header.children.push(list_records::numbering(d, id)?);
             }
             24 => {
                 let id = header.children_named("bullet").count() + 1;
-                header.children.push(
-                    n("bullet")
-                        .at("id", id)
-                        .at("charPrIDRef", u32(d, 8)?)
-                        .at("textOffset", u16(d, 6)?)
-                        .at(
-                            "textOffsetType",
-                            if u32(d, 0)? & 16 == 0 {
-                                "PERCENT"
-                            } else {
-                                "HWPUNIT"
-                            },
-                        )
-                        .at("char", utf16(bytes(d, 12, 2)?)?),
-                );
+                header.children.push(list_records::bullet(d, id)?);
             }
             21 => {
                 let id = chars.len().to_string();
@@ -383,7 +345,7 @@ pub fn open(path: &Path) -> Result<Document> {
     ensure!(!sections.is_empty(), "Missing BodyText");
     fn effects(nodes: &mut [Node], binaries: &mut BTreeMap<String, Vec<u8>>) -> Result<()> {
         for node in nodes {
-            if node.name == "pic"
+            if matches!(node.name.as_str(), "pic" | "bullet")
                 && let Some(img) = node.children.iter_mut().find(|n| n.name == "img")
             {
                 let brightness = img.n("bright");
@@ -426,6 +388,7 @@ pub fn open(path: &Path) -> Result<Document> {
     }
     effects(&mut sections, &mut binaries)?;
     effects(&mut masters, &mut binaries)?;
+    effects(std::slice::from_mut(&mut header), &mut binaries)?;
     fn static_ole(nodes: &mut [Node], binaries: &mut BTreeMap<String, Vec<u8>>) -> Result<()> {
         for node in nodes {
             if node.name == "ole" {
