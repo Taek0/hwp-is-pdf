@@ -1,4 +1,4 @@
-# Current HWP/HWPX coverage — 2026-10-15
+# Current HWP/HWPX coverage — 2026-10-16
 
 본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 
@@ -22,25 +22,27 @@ Hancom are not achieved.**
 
 ## Final validation
 
-151 Rust tests and all-target Clippy pass. 43 baseline documents / 205 pages retain
+156 Rust tests and all-target Clippy pass. 43 baseline documents / 205 pages retain
 their source hashes and page/picture/table/equation/chart counts, with zero findings
-in the four geometry audit classes. The last layout pass removes no PDF characters:
-38 outputs retain character multisets; five restore 208 page-number dashes.
-Earlier native-symbol repair separately restores two U+F012B, 100 U+F081C and one
+in the four geometry audit classes. The latest pass removes no PDF characters:
+42 outputs retain character multisets; the report adds one required repeated table
+header. 41 PDFs are byte-identical to stage 20. Earlier native-symbol repair
+separately restores two U+F012B, 100 U+F081C and one
 U+329E in place of three lossy "(인)" substitutes.
 
-Four user-exported Hancom references agree in page counts (2/15/9/50). All 76 pages
-are rasterized with paired comparisons. Font subsetting alone preserves every
+Four user-exported Hancom references agree in page counts (2/15/9/50). The 76-page
+reference set and earlier paired rasters are retained; changed pages have fresh
+comparisons. Font subsetting alone preserves every
 pixel at 1000px while reducing target PDF sizes by 96.4–98.1%.
-The last auto-row correction changes the form's layout and is verified separately.
+Subsequent layout corrections are verified separately from font subsetting.
 
-Known visible differences include receipt-label wrapping, approximately 2.5pt
-remaining form frame offset, intermediate report page boundaries, some typography,
+Centered Latin receipt-label wrapping is corrected. Known differences include approximately 2.5pt
+remaining form frame offset, internal report table/footnote page boundaries, some typography,
 watermark tone/geometry and border pattern details. The empty report TOC page is
 also empty in Hancom. QA zero is not a compatibility percentage or proof of reading order.
 
-Final evidence: output/roadmap/20-final/SUMMARY.html and
-[FINAL_COMPARISON.md](reference/FINAL_COMPARISON.md).
+Latest evidence: output/roadmap/21-cell-flow/SUMMARY.html and
+[CELL_FLOW_COMPARISON.md](reference/CELL_FLOW_COMPARISON.md).
 Historical increments, fixture restrictions and earlier measurements are preserved
 in [IMPLEMENTATION_HISTORY.md](reference/IMPLEMENTATION_HISTORY.md); their old
 "current"/"remaining" statements describe those earlier versions.

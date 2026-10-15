@@ -1064,3 +1064,28 @@ to stage 18, and text extraction is unchanged. File size reductions are 98.08%
 2.13 / 2.82 MB. This is lossless output optimization, not a fidelity improvement.
 Evidence: output/roadmap/19-final/pixel-and-size-verification.json and corpus-verification.json.
 
+
+## Follow-up 21 — 2026-10-16
+Centered plain Latin labels with an explicit KEEP_WORD setting and one cached
+line now wrap small overflows, while SQUEEZE/KEEP and general native prose retain
+the prior policy. The form's two English rows match the reference x origins
+within 0.1 pt and differ in top positions by approximately 0.55 pt.
+
+Long-note queues no longer include final-line leading or a trailing inter-note
+gap. A single native floating table explicitly positioned below its anchor
+paragraph is painted after that paragraph. UTF-16 item positions remain intact;
+inline tables, above/overlapping anchors, multiple objects, field scopes and
+nested/rebuilt paragraphs retain their existing paths. A subsequent saved page
+reset is no longer consumed as anchor-text continuation.
+
+The report's anchor text moves from page 42 back to page 35 before the table.
+The research table starts on page 46 instead of 47, matching the reference start.
+Its complete internal split still differs: Hancom uses pages 46–47, Rust 46–48.
+Repeated headers remain required, so the extracted PDF gains exactly one
+"제목(년도) 주요내용" header; no body text is removed.
+
+156 tests and all-target Clippy pass. 43 documents / 205 pages retain original
+hashes and page/object counts with zero geometry findings and no new missing
+glyphs. 41 PDFs are byte-identical to stage 20. Only form page 1 and report pages
+35/42/43/44/45/46/47/48 change visually. These pages were reviewed.
+Evidence: output/roadmap/21-cell-flow/.

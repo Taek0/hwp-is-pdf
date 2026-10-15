@@ -197,5 +197,16 @@
       "report": "output/roadmap/20-final/SUMMARY.html",
       "remaining": "Receipt-label wrapping, some intermediate page boundaries, missing-font/synthetic metrics and exact graphic fidelity remain different from Hancom"
     }
+  },
+  "post_final_cell_flow": {
+    "status": "complete",
+    "date": "2026-10-16",
+    "tests": 156,
+    "documents": 43,
+    "pages": 205,
+    "byte_identical_pdfs": 41,
+    "geometry_findings": 0,
+    "report": "output/roadmap/21-cell-flow/SUMMARY.html",
+    "remaining": "Research table now starts on page 46, but row distribution spans 46–48 versus Hancom 46–47"
   }
 }

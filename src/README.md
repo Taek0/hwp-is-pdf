@@ -61,3 +61,5 @@ Page coordinate modules:
 - `image_effects.rs`: alpha-preserving derived raster effects for both input formats.
 
 - `pdf/font_subset.rs`: stable-ID TrueType glyph closure, sfnt reconstruction and embedding fallback.
+
+- `layout/saved_float_order.rs`: preserve text-before-table order for cached paragraph-below native floats.

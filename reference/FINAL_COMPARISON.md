@@ -1,5 +1,7 @@
 # Final independent-engine comparison — 2026-10-15
 
+Update 2026-10-16: receipt wrapping and the report table start are improved; see [CELL_FLOW_COMPARISON.md](CELL_FLOW_COMPARISON.md). The dated results below are retained as history.
+
 This closes the requested implementation/verification pass, not a claim of full
 HWP compatibility or pixel identity with Hancom. Password-encrypted documents,
 HWP 2.x/3.x and original-document editing remain outside the agreed scope.
@@ -94,4 +96,3 @@ No overall compatibility percentage is inferred from page counts or QA zero.
 - [OpenType glyf](https://learn.microsoft.com/en-us/typography/opentype/spec/glyf),
   [loca](https://learn.microsoft.com/en-us/typography/opentype/spec/loca) and
   [font-file checksums](https://learn.microsoft.com/en-us/typography/opentype/spec/otff).
-

@@ -6,18 +6,18 @@ HWP 5.x와 HWPX를 직접 읽어 PDF를 만드는 Rust 엔진입니다. 한컴 �
 DLL을 호출하지 않습니다. 글꼴은 지정한 디렉터리에서 읽으며 저장소에 재배포하지 않습니다.
 암호 문서, 구형 HWP 2.x/3.x, 원본 편집은 현재 범위에서 제외합니다.
 
-## 현재 검증 결과 — 2026-10-15
+## 현재 검증 결과 — 2026-10-16
 
-- Rust 테스트 151개 및 all-target Clippy 통과.
+- Rust 테스트 156개 및 all-target Clippy 통과.
 - 기존 43개 문서·205쪽 재변환: 원본 해시와 페이지·개체 수 유지, 네 종류의 기하 검사 0건.
 - 한컴 비교 문서 4개의 페이지 수 일치: 복학원서 2, 법학적성시험 15, 수학 시험지 9, 중간보고서 50.
 - 글꼴 부분 포함 전후 76쪽의 1000px 렌더링 픽셀 동일. 비교 PDF 용량 약 96.4~98.1% 감소.
-- 최종 배치·쪽 번호 보완 후 43개 문서에서 제거된 문자는 없고, 5개 문서의 쪽 번호 장식선 208개만 복원.
+- 최신 수정: 접수자 영문 두 줄 복원, 표 앞 문단의 원래 위치 복원, 연구 표 시작 47→46쪽. 41개 PDF는 직전 버전과 바이트 동일.
 
 페이지 수나 검사 통과가 한컴과의 완전한 일치를 의미하지는 않습니다.
-접수자 셀의 줄바꿈, 일부 중간 페이지 경계와 대체 글꼴·워터마크 표현 차이가 남아 있습니다.
+일부 표의 내부 행 분할·각주 분배와 대체 글꼴·워터마크 표현 차이가 남아 있습니다.
 현재 범위는 [FORMAT_COVERAGE.md](FORMAT_COVERAGE.md),
-최종 비교는 [reference/FINAL_COMPARISON.md](reference/FINAL_COMPARISON.md)를 확인하세요.
+최신 비교는 [reference/CELL_FLOW_COMPARISON.md](reference/CELL_FLOW_COMPARISON.md)를 확인하세요.
 
 ## 실행
 
@@ -57,8 +57,8 @@ hwp_engine::convert_with_options(input_path, output_path, font_directory, true, 
 - [src/README.md](src/README.md): 파서, 배치, 글꼴, PDF 출력의 모듈별 책임.
 - `tests/`: 기능·회귀 검사. 일부 통합 검사는 로컬 사용자 문서와 Windows 글꼴이 필요합니다.
 - `samples/`, `examples/`: 공개 예제, 재현용 HWPX 생성기 및 진단 명령.
-- `output/roadmap/15-tables/` ~ `20-final/`: 이번 단계별 PDF·이미지·검증 로그.
-- `output/roadmap/20-final/SUMMARY.html`: 76쪽 한컴/Rust 비교 이미지와 최종 PDF.
+- `output/roadmap/15-tables/` ~ `21-cell-flow/`: 이번 단계별 PDF·이미지·검증 로그.
+- `output/roadmap/21-cell-flow/SUMMARY.html`: 최신 수정 전후 비교와 PDF. 이전 76쪽 비교는 `20-final/`에 보존.
 - [reference/IMPLEMENTATION_HISTORY.md](reference/IMPLEMENTATION_HISTORY.md): 이전 단계의 구현·검증 기록.
 
 생성된 PDF/이미지와 빌드 결과는 `output/`, `target/`에 두고 Git에서 제외합니다.
