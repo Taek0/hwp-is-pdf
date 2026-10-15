@@ -152,7 +152,7 @@ impl<'a> Engine<'a> {
                     "ctrl" => {
                         for control in &mut n.children {
                             if control.name == "footNote" {
-                                let (_, w) = self.footnote_area(self.left);
+                                let (_, w) = self.footnote_area(self.column_x(self.reflow_column));
                                 if let Some(list) =
                                     control.children.iter_mut().find(|n| n.name == "subList")
                                 {

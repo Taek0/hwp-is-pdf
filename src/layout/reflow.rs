@@ -132,6 +132,9 @@ impl<'a> Engine<'a> {
         cols: usize,
         gap: f64,
     ) -> Result<(f64, usize, f64, f64)> {
+        if !self.column_widths.is_empty() {
+            return self.reflow_complex_columns(section);
+        }
         self.general_wrap = self.contour_wrap
             || section.children_named("p").any(|p| {
                 let items = Self::items(p);
@@ -139,7 +142,12 @@ impl<'a> Engine<'a> {
                     .iter()
                     .filter_map(|i| match &i.kind {
                         ItemKind::Object(n)
-                            if (n.a("textWrap")=="SQUARE" || (n.a("textWrap")=="TOP_AND_BOTTOM" && n.child("pos").is_some_and(|p|matches!(p.a("horzRelTo"),"PAGE"|"PAPER") || matches!(p.a("vertRelTo"),"PAGE"|"PAPER"))))
+                            if (n.a("textWrap") == "SQUARE"
+                                || (n.a("textWrap") == "TOP_AND_BOTTOM"
+                                    && n.child("pos").is_some_and(|p| {
+                                        matches!(p.a("horzRelTo"), "PAGE" | "PAPER")
+                                            || matches!(p.a("vertRelTo"), "PAGE" | "PAPER")
+                                    })))
                                 && n.child("pos").is_some_and(|p| p.a("treatAsChar") != "1") =>
                         {
                             Some(n)

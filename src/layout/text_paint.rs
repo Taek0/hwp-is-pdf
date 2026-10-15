@@ -42,7 +42,7 @@ impl<'a> Engine<'a> {
             .and_then(|n| n.child("align"))
             .map(|n| n.a("horizontal"))
             .unwrap_or("LEFT");
-        let number_draw = if li == 0 {
+        let number_draw = if li == 0 && p.u("reflowStart") == 0 {
             self.paragraph_number(p, p.a("reflowed") == "1")?
         } else {
             None

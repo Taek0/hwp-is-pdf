@@ -76,7 +76,7 @@ impl<'a> Engine<'a> {
                 },
             );
         }
-        if cols > 1 && sec.a("binaryHwp") != "1" {
+        if cols > 1 && sec.a("binaryHwp") != "1" && self.column_widths.is_empty() {
             let x = self.left + (self.pw - self.left - self.right) / 2.;
             let first_body = section
                 .children_named("p")

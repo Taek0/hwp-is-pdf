@@ -37,6 +37,12 @@ impl<'a> Engine<'a> {
             "RTL paragraph reflow is not supported"
         );
         let mut settings = crate::reflow::settings(style);
+        let continuation = source.u("reflowStart");
+        if continuation > 0 {
+            settings.before = 0.;
+            settings.indent = 0.;
+            settings.page = false;
+        }
         let numbered = style
             .and_then(|s| s.child("heading"))
             .is_some_and(|h| matches!(h.a("type"), "NUMBER" | "BULLET"));
@@ -465,6 +471,7 @@ impl<'a> Engine<'a> {
             }
         }
         // The label is not part of the UTF-16 text stream, but its ink must fit
+        grouped.retain(|u| u.pos >= continuation);
         // the first line, including empty list items.
         if let Some((_, g, _)) = &number {
             if grouped.is_empty() {

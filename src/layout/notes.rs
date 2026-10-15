@@ -57,6 +57,13 @@ impl<'a> Engine<'a> {
         if placement == "MERGED_COLUMN" {
             return (self.left, self.pw - self.left - self.right);
         }
+        if !self.column_widths.is_empty() {
+            let col = (0..count)
+                .filter(|&i| placement == "RIGHT_MOST_COLUMN" || self.column_x(i) <= x + 0.01)
+                .max_by(|&a, &b| self.column_x(a).total_cmp(&self.column_x(b)))
+                .unwrap_or(0);
+            return (self.column_x(col), self.column_width(col));
+        }
         let col = if placement == "RIGHT_MOST_COLUMN" {
             count - 1
         } else {
@@ -69,6 +76,11 @@ impl<'a> Engine<'a> {
     }
     pub(super) fn footnote_reservation(&self, extra: &[&Node], x: f64) -> f64 {
         let (nx, _) = self.footnote_area(x);
+        let shared = if self.column_widths.is_empty() {
+            0.
+        } else {
+            self.shared_note_reserve
+        };
         let mut count = 0;
         let mut h = 0.;
         let pending = self.continued_notes.get(&((nx * 100.).round() as i64));
@@ -91,7 +103,7 @@ impl<'a> Engine<'a> {
             }
         }
         if count == 0 {
-            return 0.;
+            return shared;
         }
         let full = h
             + self.note_gap(false, "betweenNotes", 4.) * (count - 1) as f64
@@ -99,13 +111,14 @@ impl<'a> Engine<'a> {
             + self.note_gap(false, "belowLine", 4.)
             + 1.;
         let body = self.ph - self.top - self.bottom;
-        if pending.is_some() {
+        let reservation = if pending.is_some() {
             full.min(body * 0.5)
         } else if full > body - 48. {
             body * 0.5
         } else {
             full
-        }
+        };
+        reservation.max(shared)
     }
     pub(super) fn note_separator(&mut self, end: bool, x: f64, y: f64, width: f64) {
         let line = self.note_spec(end).and_then(|s| s.child("noteLine"));
@@ -253,6 +266,7 @@ impl<'a> Engine<'a> {
         Ok(())
     }
     pub(super) fn finish(&mut self) -> Result<()> {
+        self.column_rules(self.ph - self.bottom - self.shared_note_reserve);
         let body = self.ph - self.top - self.bottom;
         let has_long_group = self.footnotes.iter().any(|(_, x, _)| {
             self.footnotes
