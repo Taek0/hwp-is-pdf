@@ -40,10 +40,23 @@ impl<'a> Engine<'a> {
             settings.indent = 0.;
             settings.page = false;
         }
-        let numbered = style
-            .and_then(|s| s.child("heading"))
-            .is_some_and(|h| matches!(h.a("type"), "NUMBER" | "BULLET"));
+        let numbered = source.a("tocEntry").is_empty()
+            && style
+                .and_then(|s| s.child("heading"))
+                .is_some_and(|h| matches!(h.a("type"), "NUMBER" | "BULLET"));
         let mut p = source.clone();
+        if !source.a("tocEntry").is_empty() {
+            settings.keep = true;
+            settings.left += source.u("tocLevel").min(9) as f64 * 12.;
+            settings.indent = 0.;
+            settings.tabs = vec![crate::tabs::Stop {
+                pos: width - settings.right,
+                kind: "RIGHT".into(),
+                leader: "DOT".into(),
+            }];
+            p.attrs
+                .insert("tocStop".into(), (width - settings.right).to_string());
+        }
         for n in p
             .children
             .iter_mut()

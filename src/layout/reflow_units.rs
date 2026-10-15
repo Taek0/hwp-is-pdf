@@ -167,6 +167,22 @@ impl<'a> Engine<'a> {
                         None,
                     )
                 }
+                ItemKind::Control(n) if n.name == "pageField" => {
+                    let g = self.glyph('8', &item.style)?;
+                    let width = self.fonts.width(g.font, "8888", g.size) * g.scale;
+                    (
+                        crate::reflow::Unit {
+                            pos: item.pos,
+                            ch: Some(' '),
+                            width,
+                            ascent: g.ascent,
+                            descent: g.descent,
+                            em: g.size,
+                            ..Default::default()
+                        },
+                        None,
+                    )
+                }
                 ItemKind::Control(c)
                     if matches!(
                         c.name.as_str(),
@@ -178,7 +194,22 @@ impl<'a> Engine<'a> {
                             | "footer"
                             | "cachedField"
                             | "bookmark"
+                            | "fieldBegin"
+                            | "fieldEnd"
+                            | "hyperlink"
+                            | "nonPrinting"
                     ) =>
+                {
+                    (
+                        crate::reflow::Unit {
+                            pos: item.pos,
+                            ..Default::default()
+                        },
+                        None,
+                    )
+                }
+                ItemKind::Control(n)
+                    if n.name == "opaque" && matches!(n.u("code"), 4..=8 | 19 | 20) =>
                 {
                     (
                         crate::reflow::Unit {

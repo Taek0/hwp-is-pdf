@@ -12,6 +12,9 @@ pub(crate) struct Atom {
 }
 fn bounds(op: &Op, fonts: &Fonts) -> Option<[f64; 4]> {
     match op {
+        Op::FieldText {
+            x, y, width, size, ..
+        } => Some([*x, y - size * 1.2, x + width, y + size * 0.4]),
         Op::Shaped {
             x,
             y,
@@ -134,7 +137,8 @@ pub(crate) fn atoms(ops: &[Op], fonts: &Fonts) -> Result<Vec<Atom>> {
                         Op::Image { .. }
                         | Op::ImageClip { .. }
                         | Op::Bezier { .. }
-                        | Op::Shaped { .. } => true,
+                        | Op::Shaped { .. }
+                        | Op::FieldText { .. } => true,
                         Op::Path {
                             points,
                             closed,

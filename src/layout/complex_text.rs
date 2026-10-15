@@ -56,6 +56,11 @@ impl<'a> Engine<'a> {
                             | "pageNumPos"
                             | "newNumber"
                             | "bookmark"
+                            | "fieldBegin"
+                            | "fieldEnd"
+                            | "hyperlink"
+                            | "cachedField"
+                            | "nonPrinting"
                     ) =>
                 {
                     continue;
@@ -265,6 +270,14 @@ impl<'a> Engine<'a> {
             _ => 0.,
         };
         let origin = x;
+        let field_targets = self.line_field_targets(
+            p,
+            &items,
+            x,
+            line_y,
+            base,
+            li == 0 && p.u("reflowStart") == 0,
+        );
         self.current.ops.push(Op::TransformBegin {
             matrix: crate::graphics::IDENTITY,
         });
@@ -284,6 +297,18 @@ impl<'a> Engine<'a> {
             let g = &run.g;
             for glyph in &mut run.glyphs {
                 glyph.x *= factor;
+            }
+            for (metric, glyph) in run.metrics.iter().zip(&run.glyphs) {
+                if let Some(i) = items.iter().position(|i| i.pos == metric.0) {
+                    self.link_ink(
+                        &field_targets[i],
+                        x + glyph.x,
+                        line_y,
+                        metric.1 * factor,
+                        seg.n("vertsize") / 100.,
+                        base,
+                    );
+                }
             }
             if g.shear != 0. {
                 self.current.ops.push(Op::TransformBegin {

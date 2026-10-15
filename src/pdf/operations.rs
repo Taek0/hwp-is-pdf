@@ -8,6 +8,32 @@ pub struct PositionedGlyph {
 }
 #[derive(Clone, Debug, Serialize)]
 pub enum Op {
+    Link {
+        target: String,
+        rect: [f64; 4],
+        anchor_y: f64,
+    },
+    Destination {
+        name: String,
+        title: String,
+        level: usize,
+        x: f64,
+        y: f64,
+        anchor_y: f64,
+        page_base: i64,
+    },
+    FieldText {
+        kind: String,
+        target: String,
+        x: f64,
+        y: f64,
+        width: f64,
+        font: usize,
+        size: f64,
+        scale: f64,
+        color: [f64; 3],
+        page_base: i64,
+    },
     ActualTextBegin {
         text: String,
     },

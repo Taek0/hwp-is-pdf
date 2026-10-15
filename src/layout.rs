@@ -296,6 +296,7 @@ pub struct Engine<'a> {
     reflow_column: usize,
     shared_note_reserve: f64,
     furniture: Vec<Node>,
+    field_stack: Vec<(String, Option<String>)>,
     flow_floor: Option<(usize, f64, bool)>,
 }
 mod anchors;
@@ -308,6 +309,8 @@ mod column_notes;
 mod complex_text;
 mod endnote_flow;
 mod equation_layout;
+mod field_navigation;
+mod field_values;
 mod list_labels;
 mod local_flow;
 mod notes;
@@ -327,6 +330,7 @@ mod table_pagination;
 mod table_vectors;
 mod text_paint;
 mod text_style;
+mod toc;
 
 impl<'a> Engine<'a> {
     pub fn new(doc: &'a Document, fonts: &Path) -> Self {
@@ -373,6 +377,7 @@ impl<'a> Engine<'a> {
             reflow_column: 0,
             shared_note_reserve: 0.,
             furniture: Vec::new(),
+            field_stack: Vec::new(),
             flow_floor: None,
         }
     }

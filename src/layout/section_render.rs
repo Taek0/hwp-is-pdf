@@ -4,8 +4,11 @@ impl<'a> Engine<'a> {
     pub(super) fn render_mode(&mut self, force_reflow: bool) -> Result<()> {
         let mut reflow_used = false;
         let mut note_start = (0., 0usize, 0., 0.);
-        for (section_index, section) in self.doc.sections.iter().enumerate() {
+        let prepared = self.prepare_field_sections()?;
+        let sections = prepared.as_deref().unwrap_or(&self.doc.sections);
+        for (section_index, section) in sections.iter().enumerate() {
             self.active_section = section_index;
+            self.field_stack.clear();
             if let Some(number) = section.find("newNumber").filter(|n| n.a("type") == "0") {
                 self.page_base = number.u("number") as i64 - self.pages.len() as i64;
             }
@@ -221,6 +224,7 @@ impl<'a> Engine<'a> {
             self.finish()?;
         }
         self.drain_note_tail()?;
+        self.resolve_page_fields();
         self.report.pages = self.pages.len();
         if !reflow_used {
             self.report.warnings.insert("Saved-layout renderer: font substitutions can differ from Hancom; no general paragraph reflow".into());

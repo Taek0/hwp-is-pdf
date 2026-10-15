@@ -217,11 +217,20 @@ impl<'a> Engine<'a> {
                             pos += 8;
                         }
                     }
+                    "fieldBegin" | "fieldEnd" | "bookmark" => {
+                        items.push(Item {
+                            pos,
+                            style: style.clone(),
+                            kind: ItemKind::Control(n.clone()),
+                        });
+                        pos += 8;
+                    }
                     "secPr" => pos += 8,
                     _ => {}
                 }
             }
         }
+        Self::normalize_field_items(&mut items);
         items
     }
 }

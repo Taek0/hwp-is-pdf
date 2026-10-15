@@ -122,6 +122,7 @@ impl<'a> Engine<'a> {
                 selected.push(c.clone());
             }
         }
+        let fields = std::mem::take(&mut self.field_stack);
         let numbering = std::mem::take(&mut self.numbering);
         let labels = std::mem::take(&mut self.labels);
         let result = (|| -> Result<()> {
@@ -139,6 +140,7 @@ impl<'a> Engine<'a> {
         })();
         self.numbering = numbering;
         self.labels = labels;
+        self.field_stack = fields;
         result
     }
 }

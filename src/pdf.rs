@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+pub(crate) mod navigation;
 mod operations;
 pub use operations::{Op, Page, PositionedGlyph};
 pub struct Font {
@@ -214,6 +215,8 @@ pub fn save(
         let mut actual_depth = 0usize;
         for op in &page.ops {
             match op {
+                Op::Link { .. } | Op::Destination { .. } => {}
+                Op::FieldText { .. } => anyhow::bail!("Unresolved PDF field value"),
                 Op::ActualTextBegin { text } => {
                     let actual = text
                         .encode_utf16()
@@ -469,11 +472,32 @@ pub fn save(
         .values()
         .map(|(id, i)| format!("/I{i} {id} 0 R "))
         .collect();
-    let mut ids = Vec::new();
-    for (page, stream) in pages.iter().zip(streams) {
-        ids.push(w.add(format!("<< /Type /Page /Parent {tree} 0 R /MediaBox [0 0 {} {}] /Resources << /Font << {fr} >> /XObject << {ir} >> >> /Contents {stream} 0 R >>",page.width,page.height)));
+    let ids: Vec<_> = pages.iter().map(|_| w.add(Vec::new())).collect();
+    let nav = navigation::install(&mut w, pages, &ids);
+    for (i, (page, stream)) in pages.iter().zip(streams).enumerate() {
+        let annotations = if nav.annotations[i].is_empty() {
+            String::new()
+        } else {
+            format!(
+                " /Annots [{}]",
+                nav.annotations[i]
+                    .iter()
+                    .map(|id| format!("{id} 0 R "))
+                    .collect::<String>()
+            )
+        };
+        w.objects[ids[i]-1]=format!("<< /Type /Page /Parent {tree} 0 R /MediaBox [0 0 {} {}] /Resources << /Font << {fr} >> /XObject << {ir} >> >> /Contents {stream} 0 R{annotations} >>",page.width,page.height).into_bytes();
     }
-    w.objects[root - 1] = format!("<< /Type /Catalog /Pages {tree} 0 R >>").into_bytes();
+    let names = nav
+        .names
+        .map(|id| format!(" /Names {id} 0 R"))
+        .unwrap_or_default();
+    let outlines = nav
+        .outlines
+        .map(|id| format!(" /Outlines {id} 0 R"))
+        .unwrap_or_default();
+    w.objects[root - 1] =
+        format!("<< /Type /Catalog /Pages {tree} 0 R{names}{outlines} >>").into_bytes();
     w.objects[tree - 1] = format!(
         "<< /Type /Pages /Count {} /Kids [{}] >>",
         ids.len(),

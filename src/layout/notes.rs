@@ -283,6 +283,12 @@ impl<'a> Engine<'a> {
         Ok(())
     }
     pub(super) fn finish(&mut self) -> Result<()> {
+        let fields = std::mem::take(&mut self.field_stack);
+        let result = self.finish_page_content();
+        self.field_stack = fields;
+        result
+    }
+    fn finish_page_content(&mut self) -> Result<()> {
         self.column_rules(self.ph - self.bottom - self.shared_note_reserve);
         let body = self.ph - self.top - self.bottom;
         let has_long_group = self.footnotes.iter().any(|(_, x, _)| {

@@ -46,6 +46,11 @@ impl<'a> Engine<'a> {
             .and_then(|n| n.child("align"))
             .map(|n| n.a("horizontal"))
             .unwrap_or("LEFT");
+        let align = if p.a("tocEntry").is_empty() {
+            align
+        } else {
+            "LEFT"
+        };
         let number_draw = if li == 0 && p.u("reflowStart") == 0 {
             self.paragraph_number(p, p.a("reflowed") == "1")?
         } else {
@@ -111,6 +116,11 @@ impl<'a> Engine<'a> {
                 ItemKind::Control(n) if n.name == "autoNum" => {
                     let g = self.glyph('1', &i.style)?;
                     let w = self.fonts.width(g.font, &self.auto_label(n), g.size) * g.scale;
+                    (Some(g), w)
+                }
+                ItemKind::Control(n) if n.name == "pageField" => {
+                    let g = self.glyph('8', &i.style)?;
+                    let w = self.fonts.width(g.font, "8888", g.size) * g.scale;
                     (Some(g), w)
                 }
                 ItemKind::Control(_) => (None, 0.),
@@ -207,10 +217,20 @@ impl<'a> Engine<'a> {
             gap = (avail - total) / stretch as f64;
         }
         let origin = x;
+        let field_targets =
+            self.line_field_targets(p, &its, x, line_y, base, li == 0 && p.u("reflowStart") == 0);
         let mut caption_cursor = line_y;
         let mut underlines: Vec<(String, f64, f64, f64, f64, f64)> = Vec::new();
         let mut strikes: Vec<(String, f64, f64, f64, f64)> = Vec::new();
         for (idx, it) in its.iter().enumerate() {
+            self.link_ink(
+                &field_targets[idx],
+                x,
+                line_y,
+                widths[idx],
+                seg.n("vertsize") / 100.,
+                base,
+            );
             match &it.kind {
                 ItemKind::Char(c) => {
                     let g = gs[idx].as_ref().unwrap();
@@ -352,6 +372,11 @@ impl<'a> Engine<'a> {
                     x += widths[idx];
                 }
                 ItemKind::Control(n) => match n.name.as_str() {
+                    "pageField" => {
+                        let g = gs[idx].as_ref().unwrap();
+                        self.paint_page_field(n, g, x, base, widths[idx]);
+                        x += widths[idx];
+                    }
                     "charOverlay" => {
                         let g = gs[idx].as_ref().unwrap();
                         let w = widths[idx];

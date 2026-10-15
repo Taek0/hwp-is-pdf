@@ -2,6 +2,16 @@
 use super::*;
 impl<'a> Engine<'a> {
     pub(super) fn paragraph_tabs(&self, p: &Node) -> (Vec<crate::tabs::Stop>, f64) {
+        if p.n("tocStop") > 0. {
+            return (
+                vec![crate::tabs::Stop {
+                    pos: p.n("tocStop"),
+                    kind: "RIGHT".into(),
+                    leader: "DOT".into(),
+                }],
+                40.,
+            );
+        }
         let id = self
             .doc
             .paras

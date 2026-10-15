@@ -365,6 +365,13 @@ impl<'a> Engine<'a> {
                     continue;
                 }
                 let clipped = match op {
+                    Op::Link { anchor_y, .. } | Op::Destination { anchor_y, .. } => {
+                        if *anchor_y >= start && *anchor_y < cut {
+                            Some(op.clone())
+                        } else {
+                            None
+                        }
+                    }
                     Op::Text { y, .. } => {
                         if *y >= start && *y < cut {
                             Some(op.clone())

@@ -110,6 +110,9 @@ impl<'a> Engine<'a> {
         p: &Node,
         reflow: bool,
     ) -> Result<Option<(String, Glyph, f64)>> {
+        if !p.a("tocEntry").is_empty() {
+            return Ok(None);
+        }
         let style = self.doc.paras.get(p.a("paraPrIDRef"));
         if let Some(heading) = style.and_then(|s| s.child("heading"))
             && matches!(heading.a("type"), "NUMBER" | "BULLET")
