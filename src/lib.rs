@@ -10,6 +10,7 @@ pub mod math;
 mod math_extra;
 pub mod model;
 mod pagination;
+mod number_format;
 pub mod pdf;
 pub mod qa;
 mod reflow;

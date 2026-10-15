@@ -506,20 +506,13 @@ impl<'a> Engine<'a> {
             ));
         }
         if let Some((label, g, _)) = number_draw {
-            self.current.ops.push(Op::Text {
-                x: ox
-                    + if p.a("reflowed") == "1" {
-                        p.n("reflowNumberX")
-                    } else {
-                        0.
-                    },
-                y: base,
-                text: label,
-                font: g.font,
-                size: g.size,
-                scale: g.scale,
-                color: g.color,
-            });
+            let label_x = ox
+                + if p.a("reflowed") == "1" {
+                    p.n("reflowNumberX")
+                } else {
+                    0.
+                };
+            self.draw_list_label(p, label, g, label_x, base)?;
         }
         self.report.bounds.push(Bounds {
             page: self.pages.len() + 1,

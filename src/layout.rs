@@ -306,6 +306,7 @@ mod column_geometry;
 mod column_notes;
 mod endnote_flow;
 mod equation_layout;
+mod list_labels;
 mod notes;
 mod object_paint;
 mod page_decorations;

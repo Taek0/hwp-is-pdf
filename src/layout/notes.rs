@@ -30,10 +30,12 @@ impl<'a> Engine<'a> {
             n.u("number")
         };
         let format = self.note_spec(end).and_then(|s| s.child("autoNumFormat"));
+        let label = crate::number_format::format(number, format.map(|f| f.a("type")).unwrap_or(""))
+            .unwrap_or_else(|| number.to_string());
         format!(
             "{}{}{}",
             format.map(|f| f.a("prefixChar")).unwrap_or(""),
-            number,
+            label,
             format.map(|f| f.a("suffixChar")).unwrap_or(")")
         )
     }
@@ -44,15 +46,17 @@ impl<'a> Engine<'a> {
             n.u("num")
         };
         let f = n.child("autoNumFormat");
+        let label = crate::number_format::format(number, f.map(|f| f.a("type")).unwrap_or(""))
+            .unwrap_or_else(|| number.to_string());
         if matches!(n.a("numType"), "FOOTNOTE" | "ENDNOTE") {
             format!(
                 "{}{}{}",
                 f.map(|f| f.a("prefixChar")).unwrap_or(""),
-                number,
+                label,
                 f.map(|f| f.a("suffixChar")).unwrap_or(")")
             )
         } else {
-            number.to_string()
+            label
         }
     }
     pub(super) fn footnote_area(&self, x: f64) -> (f64, f64) {
