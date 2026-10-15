@@ -60,7 +60,13 @@ impl<'a> Engine<'a> {
             .insert(format!("Font substitution: {name} -> {file}"));
         let mut font = self.fonts.get(file)?;
         if !self.fonts.has(font, c) {
-            for fallback in ["malgun.ttf", "simsun.ttc", "msgothic.ttc", "seguisym.ttf"] {
+            for fallback in [
+                "malgun.ttf",
+                "simsun.ttc",
+                "msgothic.ttc",
+                "seguisym.ttf",
+                "arial.ttf",
+            ] {
                 if !self.fonts.root.join(fallback).exists() {
                     continue;
                 }

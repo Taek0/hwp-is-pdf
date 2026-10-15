@@ -1,79 +1,14 @@
 use anyhow::{Context, Result};
 use flate2::{Compression, write::ZlibEncoder};
-use serde::Serialize;
+
 use std::{
     collections::BTreeMap,
     io::Write,
     path::{Path, PathBuf},
 };
 
-#[derive(Clone, Debug, Serialize)]
-pub enum Op {
-    TransformBegin {
-        matrix: crate::graphics::Matrix,
-    },
-    TransformEnd,
-    Bezier {
-        start: (f64, f64),
-        segments: Vec<[f64; 6]>,
-        closed: bool,
-        width: f64,
-        color: [f64; 3],
-        fill: Option<[f64; 3]>,
-    },
-    ImageClip {
-        x: f64,
-        y: f64,
-        w: f64,
-        h: f64,
-        id: String,
-        source: [f64; 4],
-    },
-    Path {
-        points: Vec<(f64, f64)>,
-        closed: bool,
-        width: f64,
-        color: [f64; 3],
-        fill: Option<[f64; 3]>,
-    },
-    Text {
-        x: f64,
-        y: f64,
-        text: String,
-        font: usize,
-        size: f64,
-        scale: f64,
-        color: [f64; 3],
-    },
-    Line {
-        x: f64,
-        y: f64,
-        x2: f64,
-        y2: f64,
-        width: f64,
-        color: [f64; 3],
-    },
-    Rect {
-        x: f64,
-        y: f64,
-        w: f64,
-        h: f64,
-        fill: [f64; 3],
-    },
-    Image {
-        x: f64,
-        y: f64,
-        w: f64,
-        h: f64,
-        id: String,
-    },
-}
-#[derive(Default, Serialize)]
-pub struct Page {
-    pub width: f64,
-    pub height: f64,
-    pub ops: Vec<Op>,
-}
+mod operations;
+pub use operations::{Op, Page, PositionedGlyph};
 pub struct Font {
     pub bytes: Vec<u8>,
     pub name: String,
@@ -276,8 +211,49 @@ pub fn save(
     let mut image_ids = BTreeMap::new();
     for page in pages {
         let mut content = String::new();
+        let mut actual_depth = 0usize;
         for op in &page.ops {
             match op {
+                Op::ActualTextBegin { text } => {
+                    let actual = text
+                        .encode_utf16()
+                        .map(|u| format!("{u:04X}"))
+                        .collect::<String>();
+                    content.push_str(&format!("/Span << /ActualText <FEFF{actual}> >> BDC\n"));
+                    actual_depth += 1;
+                }
+                Op::ActualTextEnd => {
+                    anyhow::ensure!(actual_depth > 0, "Unbalanced logical text span");
+                    actual_depth -= 1;
+                    content.push_str("EMC\n");
+                }
+                Op::Shaped {
+                    x,
+                    y,
+                    text,
+                    font,
+                    size,
+                    scale,
+                    color,
+                    glyphs,
+                } => {
+                    let actual = text
+                        .encode_utf16()
+                        .map(|u| format!("{u:04X}"))
+                        .collect::<String>();
+                    if actual_depth == 0 {
+                        content.push_str(&format!("/Span << /ActualText <FEFF{actual}> >> BDC\n"));
+                    }
+                    content.push_str(&format!("q {} {} {} rg\n", color[0], color[1], color[2]));
+                    for glyph in glyphs {
+                        fonts.list[*font].used.entry(glyph.id).or_insert('\u{fffd}');
+                        content.push_str(&format!("BT /F{font} {size:.4} Tf {:.4} Tz 1 0 0 1 {:.4} {:.4} Tm <{:04X}> Tj ET\n",scale*100.,x+glyph.x,page.height-y-glyph.y,glyph.id));
+                    }
+                    content.push_str("Q\n");
+                    if actual_depth == 0 {
+                        content.push_str("EMC\n");
+                    }
+                }
                 Op::TransformBegin { matrix: m } => content.push_str(&format!(
                     "q {} {} {} {} {} {} cm\n",
                     m[0],
@@ -443,6 +419,7 @@ pub fn save(
                 }
             }
         }
+        anyhow::ensure!(actual_depth == 0, "Unclosed logical text span");
         streams.push(w.stream("", content.as_bytes())?);
     }
     let mut font_ids = Vec::new();

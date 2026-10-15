@@ -24,6 +24,7 @@ pub struct Finding {
     pub rect: [f64; 4],
 }
 struct Ink {
+    shaped_group: Option<usize>,
     r: [f64; 4],
     base: f64,
     text: char,
@@ -149,7 +150,7 @@ pub fn inspect(pages: &[Page], fonts: &Fonts, bounds: &[Bounds]) -> Audit {
         let mut transform = crate::graphics::IDENTITY;
         let mut stack = Vec::new();
         let mut rules = Vec::new();
-        for op in &page.ops {
+        for (op_index, op) in page.ops.iter().enumerate() {
             match op {
                 Op::TransformBegin { matrix } => {
                     stack.push(transform);
@@ -174,6 +175,48 @@ pub fn inspect(pages: &[Page], fonts: &Fonts, bounds: &[Bounds]) -> Audit {
                 }
                 _ => {}
             }
+            if let Op::Shaped {
+                x,
+                y,
+                text,
+                font,
+                size,
+                scale,
+                glyphs: positioned,
+                ..
+            } = op
+            {
+                let face = &faces[*font];
+                let unit = size / face.units_per_em() as f64;
+                for shaped in positioned {
+                    let g = ttf_parser::GlyphId(shaped.id);
+                    let xx = x + shaped.x;
+                    let yy = y + shaped.y;
+                    if let Some(bb) = face.glyph_bounding_box(g) {
+                        glyphs.push(Ink {
+                            shaped_group: Some(op_index),
+                            r: crate::graphics::rect(
+                                transform,
+                                [
+                                    xx + bb.x_min as f64 * unit * scale,
+                                    yy - bb.y_max as f64 * unit,
+                                    xx + bb.x_max as f64 * unit * scale,
+                                    yy - bb.y_min as f64 * unit,
+                                ],
+                            ),
+                            base: crate::graphics::point(transform, xx, *y).1,
+                            local_base: yy,
+                            inverse: crate::graphics::inverse(transform),
+                            text: text.chars().next().unwrap_or(' '),
+                            font: *font,
+                            glyph: g,
+                            x: xx,
+                            unit,
+                            scale: *scale,
+                        });
+                    }
+                }
+            }
             if let Op::Text {
                 x,
                 y,
@@ -191,6 +234,7 @@ pub fn inspect(pages: &[Page], fonts: &Fonts, bounds: &[Bounds]) -> Audit {
                     if let Some(g) = crate::pdf::glyph_id(face, c) {
                         if let Some(bb) = face.glyph_bounding_box(g) {
                             glyphs.push(Ink {
+                                shaped_group: None,
                                 r: crate::graphics::rect(
                                     transform,
                                     [
@@ -238,6 +282,11 @@ pub fn inspect(pages: &[Page], fonts: &Fonts, bounds: &[Bounds]) -> Audit {
                                 continue;
                             }
                             let b = &glyphs[j];
+                            // Cursive joins and attached marks inside one shaped run
+                            // intentionally share ink. Cross-run collisions remain checked.
+                            if g.shaped_group.is_some() && g.shaped_group == b.shaped_group {
+                                continue;
+                            }
                             let overlap_x = x1.min(b.r[2]) - x0.max(b.r[0]);
                             let overlap_y = y1.min(b.r[3]) - y0.max(b.r[1]);
                             let substantial_same_line = (g.base - b.base).abs() <= 2.

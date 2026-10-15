@@ -41,7 +41,7 @@ impl<'a> Engine<'a> {
                     crate::reflow::Unit {
                         pos: item.pos,
                         width: *w,
-                        ch: Some(' '),
+                        ch: Some('\t'),
                         ..Default::default()
                     },
                     None,
@@ -194,6 +194,7 @@ impl<'a> Engine<'a> {
             }
         }
         let mut grouped: Vec<crate::reflow::Unit> = Vec::new();
+        self.measure_complex_units(p, &items, &mut units)?;
         for unit in units {
             if let Some(last) = grouped.last_mut().filter(|last| last.pos == unit.pos) {
                 last.width += unit.width;

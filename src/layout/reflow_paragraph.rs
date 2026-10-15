@@ -32,11 +32,8 @@ impl<'a> Engine<'a> {
     ) -> Result<(Node, Vec<crate::reflow::Line>, crate::reflow::Settings)> {
         anyhow::ensure!(nesting < 64, "Excessive nested reflow");
         let style = self.doc.paras.get(source.a("paraPrIDRef"));
-        anyhow::ensure!(
-            style.is_none_or(|s| s.a("textDir") != "RTL"),
-            "RTL paragraph reflow is not supported"
-        );
         let mut settings = crate::reflow::settings(style);
+        (settings.tabs, settings.tab_step) = self.paragraph_tabs(source);
         let continuation = source.u("reflowStart");
         if continuation > 0 {
             settings.before = 0.;

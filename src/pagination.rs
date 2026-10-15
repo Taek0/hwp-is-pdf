@@ -12,6 +12,34 @@ pub(crate) struct Atom {
 }
 fn bounds(op: &Op, fonts: &Fonts) -> Option<[f64; 4]> {
     match op {
+        Op::Shaped {
+            x,
+            y,
+            size,
+            scale,
+            font,
+            glyphs,
+            ..
+        } => {
+            let face = ttf_parser::Face::parse(&fonts.list[*font].bytes, 0).ok()?;
+            let unit = size / face.units_per_em() as f64;
+            let mut points = Vec::new();
+            for g in glyphs {
+                if let Some(b) = face.glyph_bounding_box(ttf_parser::GlyphId(g.id)) {
+                    points.extend([
+                        (
+                            x + g.x + b.x_min as f64 * unit * scale,
+                            y + g.y - b.y_max as f64 * unit,
+                        ),
+                        (
+                            x + g.x + b.x_max as f64 * unit * scale,
+                            y + g.y - b.y_min as f64 * unit,
+                        ),
+                    ]);
+                }
+            }
+            points_bounds(&points, 0.)
+        }
         Op::Text {
             x,
             y,
@@ -103,7 +131,10 @@ pub(crate) fn atoms(ops: &[Op], fonts: &Fonts) -> Result<Vec<Atom>> {
             _ => {
                 let atomic = !stack.is_empty()
                     || match op {
-                        Op::Image { .. } | Op::ImageClip { .. } | Op::Bezier { .. } => true,
+                        Op::Image { .. }
+                        | Op::ImageClip { .. }
+                        | Op::Bezier { .. }
+                        | Op::Shaped { .. } => true,
                         Op::Path {
                             points,
                             closed,

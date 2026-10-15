@@ -34,6 +34,8 @@ pub(crate) struct Settings {
     pub page: bool,
     pub latin_char: bool,
     pub cjk_word: bool,
+    pub tabs: Vec<crate::tabs::Stop>,
+    pub tab_step: f64,
 }
 pub(crate) fn settings(n: Option<&Node>) -> Settings {
     let value = |key: &str| {
@@ -48,6 +50,8 @@ pub(crate) fn settings(n: Option<&Node>) -> Settings {
     };
     let spacing = n.and_then(|n| n.find("lineSpacing"));
     Settings {
+        tabs: Vec::new(),
+        tab_step: 40.,
         left: value("left"),
         right: value("right"),
         indent: value("intent"),
@@ -82,7 +86,7 @@ fn opportunity(a: Option<char>, b: Option<char>, s: &Settings) -> bool {
     {
         return false;
     }
-    a == ' ' || a == '-' || (!s.cjk_word && cjk(a)) || s.latin_char
+    a == ' ' || a == '\t' || a == '-' || (!s.cjk_word && cjk(a)) || s.latin_char
 }
 pub(crate) fn wrap(units: &[Unit], width: f64, s: &Settings) -> anyhow::Result<Vec<Line>> {
     wrap_around(units, width, s, None)
@@ -249,7 +253,20 @@ fn wrap_exclusion(
                 hard = true;
                 break;
             }
-            if end > begin && used + units[end].width > available + 0.001 {
+            let advance = if units[end].ch == Some('\t') {
+                crate::tabs::advance(
+                    &s.tabs,
+                    s.tab_step,
+                    left + used,
+                    units[end + 1..]
+                        .iter()
+                        .take_while(|u| !u.block)
+                        .map(|u| (u.ch, u.width)),
+                )
+            } else {
+                units[end].width
+            };
+            if end > begin && used + advance > available + 0.001 {
                 if let Some(b) = last_break {
                     let mut word_width = 0.;
                     let mut at = b;
@@ -268,7 +285,7 @@ fn wrap_exclusion(
                 }
                 break;
             }
-            used += units[end].width;
+            used += advance;
             end += 1;
             if opportunity(units[end - 1].ch, units.get(end).and_then(|u| u.ch), s) {
                 last_break = Some(end);

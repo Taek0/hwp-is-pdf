@@ -43,6 +43,25 @@ fn top_over(s: &str) -> Option<usize> {
 }
 pub(crate) fn moved(op: Op, dx: f64, dy: f64) -> Op {
     match op {
+        Op::Shaped {
+            x,
+            y,
+            text,
+            font,
+            size,
+            scale,
+            color,
+            glyphs,
+        } => Op::Shaped {
+            x: x + dx,
+            y: y + dy,
+            text,
+            font,
+            size,
+            scale,
+            color,
+            glyphs,
+        },
         Op::Path {
             points,
             closed,

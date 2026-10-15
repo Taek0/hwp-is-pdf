@@ -9,11 +9,12 @@ pub mod layout;
 pub mod math;
 mod math_extra;
 pub mod model;
-mod pagination;
 mod number_format;
+mod pagination;
 pub mod pdf;
 pub mod qa;
 mod reflow;
+mod tabs;
 mod wrap_region;
 
 use anyhow::Result;
