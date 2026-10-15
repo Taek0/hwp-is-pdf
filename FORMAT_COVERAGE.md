@@ -470,3 +470,38 @@ All 75 Rust tests and all-target Clippy pass. All 43 prior documents / 210 pages
 retain source hashes and page/object counts, with pixel-identical default output
 and zero findings in all four geometry QA classes. Earlier blanket float-wrap
 limitations are superseded only for the paragraph-leading scope described above.
+
+## Cross-paragraph float continuation (2026-10-15)
+
+A supported leading float now carries its remaining rectangular exclusion into
+following ordinary body paragraphs. Each paragraph retains its margins, indentation
+and before/after spacing. The line breaker can leave unused float height for the
+next paragraph instead of padding every short paragraph. A short final paragraph,
+new object, explicit page break, numbered/bulleted paragraph or paragraph with
+keepLines/keepWithNext clears the remaining exclusion before the next content.
+Section end also reserves the remaining height.
+
+The initial float-height band can span multiple paragraphs. Pagination reserves
+their footnotes together and moves the band as a group when necessary; later text
+continues independently. Initial widow adjustment cannot separate a carried band.
+Explicit page breaks reset the exclusion. This remains a single active rectangular
+float: multiple simultaneous floats, centered/contour wrapping, captioned/offset
+anchors and cell/textbox float layout are still outside the supported scope.
+
+Controlled single/two-column fixtures include five following paragraphs with
+spacing/indent changes and a note in the second following paragraph. Tests vary
+page height, verify page transitions and source text, and exercise new-object
+clearing and explicit breaks. New outputs are 3 and 2 pages with zero geometry
+findings. The two previous float examples are also reconverted; their short final
+paragraph intentionally now allows following text beside its picture.
+Generator: examples/float_flow_fixture.rs; tests: tests/reflow_float_flow.rs.
+Local results: output/reflow-float-flow/SUMMARY.html. Generated fixtures do not
+establish exact Hancom pagination.
+
+Prior float-example raster comparison: only page 3 of 3 (single column) and
+page 2 of 2 (two columns) change, where following text now wraps beside the last
+picture. Other pages remain identical; both outputs have zero geometry findings.
+
+All 78 Rust tests and all-target Clippy pass. The baseline 43 documents / 210
+pages retain source hashes, page/object counts and pixel-identical default output,
+with zero findings in all four geometry QA classes.
