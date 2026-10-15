@@ -95,7 +95,7 @@ fn block_picture_labels_remain_below_images() {
                 .report
                 .bounds
                 .iter()
-                .find(|b| b.page == page && b.kind == "pic")
+                .find(|b| b.page == page && matches!(b.kind.as_str(), "pic" | "pic-alpha"))
                 .unwrap();
             let label = e
                 .report
