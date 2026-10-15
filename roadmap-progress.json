@@ -61,7 +61,13 @@
     {
       "id": 6,
       "task": "Extended list formats, restarts, image bullets and label geometry",
-      "status": "pending"
+      "status": "complete",
+      "tests": 112,
+      "report": "output/roadmap/06-lists/SUMMARY.html",
+      "images": [
+        "output/roadmap/06-lists/formats-1.png",
+        "output/roadmap/06-lists/image-2.png"
+      ]
     },
     {
       "id": 7,

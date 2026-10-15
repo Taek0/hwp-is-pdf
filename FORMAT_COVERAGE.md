@@ -721,3 +721,34 @@ block content in endnotes retain explicit limits. Side-caption width fitting can
 change source geometry and is reported. Exact Hancom composition remains unverified.
 Caption ownership is isolated in src/layout/caption_layout.rs.
 Results: output/roadmap/05-captions/SUMMARY.html.
+
+## Roadmap stage 6 — list formats and image bullets (2026-10-15)
+
+Fifteen number-format families now produce measured labels, including Roman,
+Latin, circled, Hangul and ideograph forms. Hierarchical ^n/^N paths use each
+level's format. Level starts and child-counter resets are preserved; positive
+width adjustment and label alignment reserve space before body text.
+
+HWPX image bullets use the referenced binary at font-metric height and draw once
+per item, including multi-page continuations. HWP binary image-bullet references
+and image effects are decoded too; that extension has synthetic record coverage,
+while normal binary bullet records are covered by the existing public corpus.
+HWP extended numbering supports both format-only tails and the full heading
+records observed in the public 5.1 numbering fixture. The diagnostic example can
+filter record tags and byte length without executing document content.
+
+Three fixtures / 4 pages verify all 15 families, mixed-format child restarts and
+four image bullets across pages. All 112 tests and Clippy pass. Baseline 43
+documents / 210 pages preserve source hashes, counts, zero findings and identical
+PDF bytes. Hancom-output comparison remains deferred.
+
+Limits: unsupported/out-of-range list formats use a reported decimal fallback.
+Roman numbers are bounded to 3999, Sino-Korean/Chinese cardinal forms to 9999,
+Hangul syllable/jamo labels to 14 and circled forms to available Unicode ranges.
+Unverified extended Hangul sequences and specialized decagon forms are not claimed.
+Counter/label logic was split from text_style.rs into focused modules.
+Results: output/roadmap/06-lists/SUMMARY.html.
+
+References: HWP5 revision 1.3 tables 38–42;
+https://github.com/hancom-io/hwpx-owpml-model/blob/main/OWPML/Class/Head/ParaHeadType.cpp
+and https://github.com/hancom-io/hwpx-owpml-model/blob/main/OWPML/Class/Head/BulletType.cpp.
