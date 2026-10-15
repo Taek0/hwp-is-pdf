@@ -286,6 +286,8 @@ pub struct Engine<'a> {
     active_gap: f64,
     last_table_end: f64,
     reflow_table_column: Option<usize>,
+    contour_wrap: bool,
+    general_wrap: bool,
     flow_floor: Option<(usize, f64, bool)>,
 }
 impl<'a> Engine<'a> {
@@ -323,6 +325,8 @@ impl<'a> Engine<'a> {
             active_gap: 0.,
             last_table_end: 0.,
             reflow_table_column: None,
+            contour_wrap: false,
+            general_wrap: false,
             flow_floor: None,
         }
     }
@@ -904,6 +908,16 @@ impl<'a> Engine<'a> {
     fn line(&mut self, p: &Node, li: usize, ox: f64, oy: f64, width: f64) -> Result<()> {
         let segs = lines(p);
         let seg = segs[li];
+        if li == 0 {
+            for item in Self::items(p) {
+                if let ItemKind::Object(n) = item.kind
+                    && n.a("reflowGeneral") == "1"
+                {
+                    let anchor_y = oy + seg.n("vertpos") / 100.;
+                    self.object(&n, ox, anchor_y, anchor_y, ox, width)?;
+                }
+            }
+        }
         let start = seg.u("textpos");
         let end = segs
             .get(li + 1)
@@ -912,6 +926,7 @@ impl<'a> Engine<'a> {
         let its: Vec<_> = Self::items(p)
             .into_iter()
             .filter(|i| i.pos >= start && i.pos < end)
+            .filter(|i| !matches!(&i.kind,ItemKind::Object(n) if n.a("reflowGeneral")=="1"))
             .filter(|i| p.a("reflowed") != "1" || !matches!(i.kind, ItemKind::Char('\n' | '\r')))
             .collect();
         let mut line_y = oy + seg.n("vertpos") / 100.;
@@ -3499,7 +3514,7 @@ impl<'a> Engine<'a> {
         for run in p.children.iter_mut().filter(|r| r.name == "run") {
             for n in &mut run.children {
                 match n.name.as_str() {
-                    "tbl" | "pic" | "rect" => {
+                    "tbl" | "pic" | "rect" | "ellipse" | "polygon" => {
                         anyhow::ensure!(
                             n.a("textWrap") != "BEHIND_TEXT",
                             "Reflow of page-background objects is not supported"
@@ -3622,6 +3637,177 @@ impl<'a> Engine<'a> {
         }
         Ok(())
     }
+    fn general_objects(items: &[Item]) -> bool {
+        let objects: Vec<_> = items
+            .iter()
+            .filter_map(|i| match &i.kind {
+                ItemKind::Object(n) => Some((i.pos, n)),
+                _ => None,
+            })
+            .collect();
+        objects.iter().all(|(_, n)| {
+            matches!(n.name.as_str(), "pic" | "rect" | "ellipse" | "polygon")
+                && n.a("textWrap") == "SQUARE"
+                && n.child("caption").is_none()
+                && n.child("pos").is_some_and(|p| {
+                    p.a("treatAsChar") != "1"
+                        && matches!(p.a("horzRelTo"), "PARA" | "COLUMN")
+                        && p.a("vertRelTo") == "PARA"
+                        && matches!(p.a("vertAlign"), "" | "TOP")
+                })
+        })
+    }
+    fn position_region(
+        &mut self,
+        n: &mut Node,
+        width: f64,
+        existing: &[crate::wrap_region::Region],
+    ) -> Result<crate::wrap_region::Region> {
+        let margin = margin(n, "outMargin").map(|v| v.max(0.));
+        let angle = n.child("rotationInfo").map(|a| a.n("angle")).unwrap_or(0.);
+        let mut w = val(n.child("sz"), "width");
+        let mut h = effective_height(n);
+        let native = n
+            .child("curSz")
+            .filter(|s| s.n("width") > 0. && s.n("height") > 0.);
+        let nw = native.map(|s| s.n("width") / 100.).unwrap_or(w);
+        let nh = native.map(|s| s.n("height") / 100.).unwrap_or(h);
+        if angle != 0. {
+            node_mut(n, "curSz")
+                .attrs
+                .insert("width".into(), (nw * 100.).to_string());
+            node_mut(n, "curSz")
+                .attrs
+                .insert("height".into(), (nh * 100.).to_string());
+            let m = crate::graphics::rotation(0., 0., nw, nh, angle, false, false);
+            let b = crate::graphics::rect(m, [0., 0., nw, nh]);
+            w = b[2] - b[0];
+            h = b[3] - b[1];
+            node_mut(n, "sz")
+                .attrs
+                .insert("width".into(), (w * 100.).to_string());
+            node_mut(n, "sz")
+                .attrs
+                .insert("height".into(), (h * 100.).to_string());
+        }
+        let pos = n.child("pos").unwrap();
+        let mut x = pos.signed("horzOffset") / 100.
+            + match pos.a("horzAlign") {
+                "CENTER" => (width - w) / 2.,
+                "RIGHT" => width - w - margin[1],
+                _ => margin[0],
+            };
+        let mut y = pos.signed("vertOffset") / 100. + margin[2];
+        anyhow::ensure!(
+            y >= 0.,
+            "Negative vertical float anchors require saved-layout conversion"
+        );
+        anyhow::ensure!(w <= width + 0.01, "Rotated float is wider than its column");
+        let bounded = x.clamp(0., (width - w).max(0.));
+        if (bounded - x).abs() > 0.01 {
+            self.report
+                .warnings
+                .insert("Float horizontal position clamped to printable column".into());
+            x = bounded;
+        }
+        let mut points = if self.contour_wrap && n.name == "ellipse" {
+            (0..128)
+                .map(|i| {
+                    let a = i as f64 * std::f64::consts::TAU / 128.;
+                    (nw / 2. + nw / 2. * a.cos(), nh / 2. + nh / 2. * a.sin())
+                })
+                .collect::<Vec<_>>()
+        } else if self.contour_wrap && n.name == "polygon" {
+            let ow = if n.n("originalWidth") > 0. {
+                n.n("originalWidth") / 100.
+            } else {
+                let original = val(n.child("orgSz"), "width");
+                if original > 0. { original } else { nw }
+            };
+            let oh = if n.n("originalHeight") > 0. {
+                n.n("originalHeight") / 100.
+            } else {
+                let original = val(n.child("orgSz"), "height");
+                if original > 0. { original } else { nh }
+            };
+            let points = n
+                .children
+                .iter()
+                .filter(|p| matches!(p.name.as_str(), "pt" | "point"))
+                .map(|p| {
+                    (
+                        p.n("x") / 100. * nw / ow.max(0.01),
+                        p.n("y") / 100. * nh / oh.max(0.01),
+                    )
+                })
+                .collect::<Vec<_>>();
+            anyhow::ensure!(
+                points.len() >= 3 && points.len() <= 4096,
+                "Unsupported polygon contour"
+            );
+            points
+        } else {
+            vec![(0., 0.), (nw, 0.), (nw, nh), (0., nh)]
+        };
+        if self.contour_wrap && n.name != "pic" {
+            let flip = n.child("flip");
+            let m = crate::graphics::rotation(
+                0.,
+                0.,
+                nw,
+                nh,
+                angle,
+                flip.is_some_and(|f| f.a("horizontal") == "1"),
+                flip.is_some_and(|f| f.a("vertical") == "1"),
+            );
+            for p in &mut points {
+                *p = crate::graphics::point(m, p.0, p.1);
+            }
+        } else {
+            points = vec![(0., 0.), (w, 0.), (w, h), (0., h)];
+        }
+        for p in &mut points {
+            p.0 += x;
+            p.1 += y;
+        }
+        let clearance = 1. + val(n.child("lineShape"), "width") / 2.;
+        let mut region = crate::wrap_region::Region {
+            points,
+            margin: margin.map(|m| m + clearance),
+            flow: n.a("textFlow").into(),
+        };
+        if pos.a("allowOverlap") != "1" {
+            for _ in 0..=existing.len() {
+                let a = region.bounds();
+                let below = existing
+                    .iter()
+                    .map(|r| r.bounds())
+                    .filter(|b| a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1])
+                    .map(|b| b[3] + region.margin[2])
+                    .fold(y, f64::max);
+                if below <= y + 0.01 {
+                    break;
+                }
+                region.shift_y(below - y);
+                y = below;
+                self.report.warnings.insert("Overlapping float anchors separated vertically because allowOverlap is disabled".into());
+            }
+        }
+        let pos = node_mut(n, "pos");
+        for (k, v) in [
+            ("horzAlign", "LEFT"),
+            ("horzRelTo", "PARA"),
+            ("vertRelTo", "PARA"),
+            ("vertAlign", "TOP"),
+        ] {
+            pos.attrs.insert(k.into(), v.into());
+        }
+        pos.attrs
+            .insert("horzOffset".into(), (x * 100.).to_string());
+        pos.attrs
+            .insert("vertOffset".into(), (y * 100.).to_string());
+        Ok(region)
+    }
     fn reflow_paragraph(
         &mut self,
         source: &Node,
@@ -3663,7 +3849,12 @@ impl<'a> Engine<'a> {
                 }
             })
             .collect();
-        if nesting == 0 && number.is_none() && !objects.is_empty() && objects.len() <= 2 {
+        if !self.general_wrap
+            && nesting == 0
+            && number.is_none()
+            && !objects.is_empty()
+            && objects.len() <= 2
+        {
             let sides: BTreeSet<_> = objects
                 .iter()
                 .map(|(_, o)| o.child("pos").map(|p| p.a("horzAlign")).unwrap_or(""))
@@ -3695,6 +3886,26 @@ impl<'a> Engine<'a> {
                             .any(|(_, object)| n.a("id") == object.a("id") && n.name == object.name)
                         {
                             n.attrs.insert("reflowFloat".into(), "1".into());
+                        }
+                    }
+                }
+            }
+        }
+        if self.general_wrap && nesting == 0 && number.is_none() && !objects.is_empty() {
+            anyhow::ensure!(
+                objects.len() <= 32,
+                "Too many anchored objects in a paragraph"
+            );
+            let eligible = Self::general_objects(&source_items);
+            if eligible {
+                for run in p.children.iter_mut().filter(|r| r.name == "run") {
+                    for n in &mut run.children {
+                        if objects
+                            .iter()
+                            .any(|(_, o)| o.a("id") == n.a("id") && o.name == n.name)
+                        {
+                            n.attrs.insert("reflowFloat".into(), "1".into());
+                            n.attrs.insert("reflowGeneral".into(), "1".into());
                         }
                     }
                 }
@@ -3742,7 +3953,7 @@ impl<'a> Engine<'a> {
             for n in run
                 .children
                 .iter_mut()
-                .filter(|n| n.a("reflowFloat") == "1")
+                .filter(|n| n.a("reflowFloat") == "1" && n.a("reflowGeneral") != "1")
             {
                 let m = margin(n, "outMargin").map(|v| v.max(0.));
                 let occupied = val(n.child("sz"), "width") + m[0] + m[1] + 1.;
@@ -3792,6 +4003,39 @@ impl<'a> Engine<'a> {
                 "reflowFloatRegions".into(),
                 serde_json::to_string(&exclusions)?,
             );
+        }
+        let mut general: Vec<crate::wrap_region::Region> = if source.a("generalCarry").is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(source.a("generalCarry"))?
+        };
+        let own_general = p
+            .children_named("run")
+            .flat_map(|r| &r.children)
+            .any(|n| n.a("reflowGeneral") == "1");
+        for run in p.children.iter_mut().filter(|r| r.name == "run") {
+            for object in run
+                .children
+                .iter_mut()
+                .filter(|n| n.a("reflowGeneral") == "1")
+            {
+                let region = self.position_region(object, width, &general)?;
+                general.push(region);
+            }
+        }
+        if !general.is_empty() {
+            let height = general.iter().map(|r| r.bounds()[3]).fold(0f64, f64::max);
+            p.attrs.insert(
+                if own_general {
+                    "reflowFloatHeight"
+                } else {
+                    "reflowFloatCarry"
+                }
+                .into(),
+                height.to_string(),
+            );
+            p.attrs
+                .insert("generalRegions".into(), serde_json::to_string(&general)?);
         }
         let items = Self::items(&p);
         let mut units = Vec::new();
@@ -3844,7 +4088,12 @@ impl<'a> Engine<'a> {
                     },
                     None,
                 ),
-                ItemKind::Object(n) if matches!(n.name.as_str(), "tbl" | "pic" | "rect") => {
+                ItemKind::Object(n)
+                    if matches!(
+                        n.name.as_str(),
+                        "tbl" | "pic" | "rect" | "ellipse" | "polygon"
+                    ) =>
+                {
                     let block =
                         n.name == "tbl" || n.child("pos").is_none_or(|p| p.a("treatAsChar") != "1");
                     let m = margin(n, "outMargin");
@@ -3960,7 +4209,9 @@ impl<'a> Engine<'a> {
             grouped[0].descent = grouped[0].descent.max(g.descent);
             grouped[0].em = grouped[0].em.max(g.size);
         }
-        let wrapped = if !exclusions.is_empty() {
+        let wrapped = if !general.is_empty() {
+            crate::reflow::wrap_regions(&grouped, width, &settings, &general)?
+        } else if !exclusions.is_empty() {
             if source.a("floatFlow") == "1" {
                 crate::reflow::wrap_flow(&grouped, width, &settings, &exclusions)?
             } else {
@@ -4003,15 +4254,16 @@ impl<'a> Engine<'a> {
         p.children.push(segments);
         Ok((p, wrapped, settings))
     }
-    fn reflow_text_section(
+    fn general_plans(
         &mut self,
         section: &Node,
         width: f64,
         cols: usize,
         gap: f64,
-    ) -> Result<(f64, usize, f64, f64)> {
+    ) -> Result<Vec<(Node, Vec<crate::reflow::Line>, crate::reflow::Settings)>> {
         let mut plans: Vec<(Node, Vec<crate::reflow::Line>, crate::reflow::Settings)> = Vec::new();
-        let mut carry: Vec<(f64, f64, f64)> = Vec::new();
+        let mut carry: Vec<crate::wrap_region::Region> = Vec::new();
+        let mut group: Option<(usize, f64)> = None;
         for source in section.children_named("p") {
             if let Some(c) = paragraph_columns(source) {
                 anyhow::ensure!(
@@ -4020,56 +4272,190 @@ impl<'a> Engine<'a> {
                 );
             }
             let style = self.doc.paras.get(source.a("paraPrIDRef"));
-            let source_settings = crate::reflow::settings(style);
-            let (cut_left, cut_right) = carry
-                .iter()
-                .filter(|(_, _, h)| *h > source_settings.before)
-                .fold((0f64, 0f64), |(l, r), (a, b, _)| (l.max(*a), r.max(*b)));
-            let side_width = width
-                - (source_settings.left + source_settings.indent.max(0.)).max(cut_left)
-                - source_settings.right.max(cut_right);
-            let can_follow = source.a("pageBreak") != "1"
-                && side_width > 24.
-                && !source_settings.page
-                && !source_settings.keep
-                && !source_settings.next
+            let settings = crate::reflow::settings(style);
+            let source_items = Self::items(source);
+            let supported = Self::general_objects(&source_items);
+            let follow = source.a("pageBreak") != "1"
+                && !settings.page
+                && !settings.keep
+                && !settings.next
                 && style
                     .and_then(|s| s.child("heading"))
                     .is_none_or(|h| !matches!(h.a("type"), "NUMBER" | "BULLET"))
-                && Self::items(source)
-                    .iter()
-                    .all(|i| !matches!(i.kind, ItemKind::Object(_)));
-            if !can_follow && !carry.is_empty() {
-                if let Some((_, _, last_settings)) = plans.last_mut() {
-                    last_settings.after += carry.iter().map(|(_, _, h)| *h).fold(0f64, f64::max);
+                && supported;
+            if !follow && !carry.is_empty() {
+                if let Some((_, _, s)) = plans.last_mut() {
+                    s.after += carry.iter().map(|r| r.bounds()[3]).fold(0f64, f64::max);
                 }
                 carry.clear();
+                group = None;
+            }
+            for r in &mut carry {
+                r.shift_y(-settings.before);
+            }
+            carry.retain(|r| r.bounds()[3] > 0.);
+            if carry.is_empty() {
+                group = None;
             }
             let mut source = source.clone();
             source.attrs.insert("floatFlow".into(), "1".into());
-            for (_, _, remaining) in &mut carry {
-                *remaining -= source_settings.before;
-            }
-            carry.retain(|(_, _, h)| *h > 0.);
             if !carry.is_empty() {
                 source
                     .attrs
-                    .insert("floatCarryRegions".into(), serde_json::to_string(&carry)?);
+                    .insert("generalCarry".into(), serde_json::to_string(&carry)?);
             }
-            let (p, lines, settings) = self.reflow_paragraph(&source, width, 0)?;
-            if p.n("reflowFloatHeight") > 0. {
-                carry = serde_json::from_str(p.a("reflowFloatRegions"))?;
+            let (mut p, lines, s) = self.reflow_paragraph(&source, width, 0)?;
+            if !p.a("generalRegions").is_empty() {
+                carry = serde_json::from_str(p.a("generalRegions"))?;
             }
-            let consumed = lines.iter().map(|l| l.height).sum::<f64>() + settings.after;
-            for (_, _, remaining) in &mut carry {
-                *remaining -= consumed;
+            let remaining = carry.iter().map(|r| r.bounds()[3]).fold(0f64, f64::max);
+            if remaining > 0. {
+                if let Some((origin, elapsed)) = group {
+                    let height = (elapsed + s.before + remaining)
+                        .max(plans[origin].0.n("reflowFloatHeight"));
+                    plans[origin]
+                        .0
+                        .attrs
+                        .insert("reflowFloatHeight".into(), height.to_string());
+                    p.attrs.remove("reflowFloatHeight");
+                    p.attrs
+                        .insert("reflowFloatCarry".into(), remaining.to_string());
+                    group = Some((origin, elapsed + s.before));
+                } else {
+                    group = Some((plans.len(), 0.));
+                }
             }
-            carry.retain(|(_, _, h)| *h > 0.);
-            plans.push((p, lines, settings));
+            let consumed = lines.iter().map(|l| l.height).sum::<f64>() + s.after;
+            for r in &mut carry {
+                r.shift_y(-consumed);
+            }
+            carry.retain(|r| r.bounds()[3] > 0.);
+            if let Some((origin, elapsed)) = group {
+                group = (!carry.is_empty()).then_some((origin, elapsed + consumed));
+            }
+            plans.push((p, lines, s));
         }
-        if let Some((_, _, settings)) = plans.last_mut() {
-            settings.after += carry.iter().map(|(_, _, h)| *h).fold(0f64, f64::max);
+        if let Some((_, _, s)) = plans.last_mut() {
+            s.after += carry.iter().map(|r| r.bounds()[3]).fold(0f64, f64::max);
         }
+        Ok(plans)
+    }
+    fn reflow_text_section(
+        &mut self,
+        section: &Node,
+        width: f64,
+        cols: usize,
+        gap: f64,
+    ) -> Result<(f64, usize, f64, f64)> {
+        self.general_wrap = self.contour_wrap
+            || section.children_named("p").any(|p| {
+                let items = Self::items(p);
+                let objects: Vec<_> = items
+                    .iter()
+                    .filter_map(|i| match &i.kind {
+                        ItemKind::Object(n)
+                            if n.a("textWrap") == "SQUARE"
+                                && n.child("pos").is_some_and(|p| p.a("treatAsChar") != "1") =>
+                        {
+                            Some(n)
+                        }
+                        _ => None,
+                    })
+                    .collect();
+                let sides: BTreeSet<_> = objects
+                    .iter()
+                    .map(|n| n.child("pos").unwrap().a("horzAlign"))
+                    .collect();
+                objects.len() > 2
+                    || sides.len() < objects.len()
+                    || (!objects.is_empty()
+                        && items
+                            .iter()
+                            .rposition(|i| matches!(i.kind, ItemKind::Object(_)))
+                            .is_some_and(|last| {
+                                items[..last]
+                                    .iter()
+                                    .any(|i| matches!(i.kind, ItemKind::Char(_)))
+                            }))
+                    || objects.iter().any(|n| {
+                        matches!(n.name.as_str(), "ellipse" | "polygon")
+                            || !matches!(n.a("textFlow"), "" | "BOTH_SIDES")
+                            || n.child("pos").is_some_and(|p| {
+                                p.a("horzAlign") == "CENTER"
+                                    || p.signed("horzOffset") != 0.
+                                    || p.signed("vertOffset") != 0.
+                            })
+                    })
+            });
+        let plans = if self.general_wrap {
+            self.general_plans(section, width, cols, gap)?
+        } else {
+            let mut plans: Vec<(Node, Vec<crate::reflow::Line>, crate::reflow::Settings)> =
+                Vec::new();
+            let mut carry: Vec<(f64, f64, f64)> = Vec::new();
+            for source in section.children_named("p") {
+                if let Some(c) = paragraph_columns(source) {
+                    anyhow::ensure!(
+                        c.u("colCount").max(1) == cols
+                            && (val(Some(c), "sameGap") - gap).abs() < 0.01,
+                        "Reflow with mid-section column changes is not supported"
+                    );
+                }
+                let style = self.doc.paras.get(source.a("paraPrIDRef"));
+                let source_settings = crate::reflow::settings(style);
+                let (cut_left, cut_right) = carry
+                    .iter()
+                    .filter(|(_, _, h)| *h > source_settings.before)
+                    .fold((0f64, 0f64), |(l, r), (a, b, _)| (l.max(*a), r.max(*b)));
+                let side_width = width
+                    - (source_settings.left + source_settings.indent.max(0.)).max(cut_left)
+                    - source_settings.right.max(cut_right);
+                let can_follow = source.a("pageBreak") != "1"
+                    && side_width > 24.
+                    && !source_settings.page
+                    && !source_settings.keep
+                    && !source_settings.next
+                    && style
+                        .and_then(|s| s.child("heading"))
+                        .is_none_or(|h| !matches!(h.a("type"), "NUMBER" | "BULLET"))
+                    && Self::items(source)
+                        .iter()
+                        .all(|i| !matches!(i.kind, ItemKind::Object(_)));
+                if !can_follow && !carry.is_empty() {
+                    if let Some((_, _, last_settings)) = plans.last_mut() {
+                        last_settings.after +=
+                            carry.iter().map(|(_, _, h)| *h).fold(0f64, f64::max);
+                    }
+                    carry.clear();
+                }
+                let mut source = source.clone();
+                source.attrs.insert("floatFlow".into(), "1".into());
+                for (_, _, remaining) in &mut carry {
+                    *remaining -= source_settings.before;
+                }
+                carry.retain(|(_, _, h)| *h > 0.);
+                if !carry.is_empty() {
+                    source
+                        .attrs
+                        .insert("floatCarryRegions".into(), serde_json::to_string(&carry)?);
+                }
+                let (p, lines, settings) = self.reflow_paragraph(&source, width, 0)?;
+                if p.n("reflowFloatHeight") > 0. {
+                    carry = serde_json::from_str(p.a("reflowFloatRegions"))?;
+                }
+                let consumed = lines.iter().map(|l| l.height).sum::<f64>() + settings.after;
+                for (_, _, remaining) in &mut carry {
+                    *remaining -= consumed;
+                }
+                carry.retain(|(_, _, h)| *h > 0.);
+                plans.push((p, lines, settings));
+            }
+            if let Some((_, _, settings)) = plans.last_mut() {
+                settings.after += carry.iter().map(|(_, _, h)| *h).fold(0f64, f64::max);
+            }
+
+            plans
+        };
         let mut col = 0;
         let mut y = self.top;
         let body = self.ph - self.top - self.bottom;
@@ -4310,6 +4696,11 @@ impl<'a> Engine<'a> {
         self.render_mode(false)
     }
     pub fn render_reflow_text(&mut self) -> Result<()> {
+        self.render_mode(true)
+    }
+    pub fn render_contours(&mut self) -> Result<()> {
+        self.contour_wrap = true;
+        self.report.warnings.insert("Opt-in geometric contour wrapping; largest free interval per line; images retain rectangular exclusions".into());
         self.render_mode(true)
     }
     pub fn render_reflow(&mut self) -> Result<()> {

@@ -12,6 +12,7 @@ mod pagination;
 pub mod pdf;
 pub mod qa;
 mod reflow;
+mod wrap_region;
 
 use anyhow::Result;
 use std::path::Path;
@@ -25,10 +26,22 @@ pub fn convert_with_reflow(
     font_dir: &Path,
     force: bool,
 ) -> Result<layout::Report> {
+    convert_with_options(input, output, font_dir, force, false)
+}
+/// Contour wrapping is an opt-in geometric approximation, independent of source SQUARE semantics.
+pub fn convert_with_options(
+    input: &Path,
+    output: &Path,
+    font_dir: &Path,
+    force: bool,
+    contours: bool,
+) -> Result<layout::Report> {
     anyhow::ensure!(input != output, "Input and output must differ");
     let document = model::Document::open(input)?;
     let mut engine = layout::Engine::new(&document, font_dir);
-    if force {
+    if contours {
+        engine.render_contours()?;
+    } else if force {
         engine.render_reflow()?;
     } else {
         engine.render()?;

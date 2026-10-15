@@ -94,7 +94,7 @@ pub(crate) fn wrap_around(
     s: &Settings,
     exclusion: Option<(f64, f64, f64)>,
 ) -> anyhow::Result<Vec<Line>> {
-    wrap_exclusion(units, width, s, exclusion.as_slice(), true)
+    wrap_exclusion(units, width, s, exclusion.as_slice(), true, &[])
 }
 pub(crate) fn wrap_flow(
     units: &[Unit],
@@ -102,7 +102,15 @@ pub(crate) fn wrap_flow(
     s: &Settings,
     exclusion: &[(f64, f64, f64)],
 ) -> anyhow::Result<Vec<Line>> {
-    wrap_exclusion(units, width, s, exclusion, false)
+    wrap_exclusion(units, width, s, exclusion, false, &[])
+}
+pub(crate) fn wrap_regions(
+    units: &[Unit],
+    width: f64,
+    s: &Settings,
+    regions: &[crate::wrap_region::Region],
+) -> anyhow::Result<Vec<Line>> {
+    wrap_exclusion(units, width, s, &[], false, regions)
 }
 fn wrap_exclusion(
     units: &[Unit],
@@ -110,6 +118,7 @@ fn wrap_exclusion(
     s: &Settings,
     exclusion: &[(f64, f64, f64)],
     reserve_height: bool,
+    regions: &[crate::wrap_region::Region],
 ) -> anyhow::Result<Vec<Line>> {
     let mut out = Vec::new();
     let mut begin = 0;
@@ -119,8 +128,45 @@ fn wrap_exclusion(
             .iter()
             .filter(|(_, _, h)| y < *h - 0.001)
             .fold((0f64, 0f64), |(l, r), (a, b, _)| (l.max(*a), r.max(*b)));
-        let left = (s.left + if out.is_empty() { s.indent } else { 0. }).max(cut_left);
-        let available = width - left - s.right.max(cut_right);
+        let mut left = (s.left + if out.is_empty() { s.indent } else { 0. }).max(cut_left);
+        let mut available = width - left - s.right.max(cut_right);
+        let mut skipped = 0.;
+        if !regions.is_empty() {
+            // Reserve the entire possible glyph/line band before selecting a gap.
+            let asc = units.iter().map(|u| u.ascent).fold(0f64, f64::max);
+            let desc = units.iter().map(|u| u.descent).fold(0f64, f64::max);
+            let em = units.iter().map(|u| u.em).fold(12f64, f64::max);
+            let ink = (asc + desc).max(em);
+            let band = match s.spacing.as_str() {
+                "FIXED" | "AT_LEAST" => s.value / 100.,
+                "BETWEEN_LINES" => ink + s.value / 100.,
+                _ => em * s.value / 100.,
+            }
+            .max(ink + 1.);
+            let right = width - s.right;
+            let required = units[begin..]
+                .iter()
+                .find(|u| u.width > 0.)
+                .map(|u| u.width)
+                .unwrap_or(1.)
+                .max(24.);
+            let mut found = None;
+            for _ in 0..10000 {
+                if let Some((a, b)) =
+                    crate::wrap_region::gap(regions, y + skipped, band, left, right)
+                        .filter(|(a, b)| b - a >= required)
+                {
+                    found = Some((a, b));
+                    break;
+                }
+                skipped += 1.;
+            }
+            let (a, b) = found.ok_or_else(|| {
+                anyhow::anyhow!("No usable text interval around floating objects")
+            })?;
+            left = a;
+            available = b - a;
+        }
         anyhow::ensure!(
             available > 1.,
             "Paragraph margins leave no usable line width"
@@ -194,15 +240,15 @@ fn wrap_exclusion(
                 .get(begin)
                 .map(|u| u.pos)
                 .unwrap_or_else(|| units.last().map(|u| u.pos + 1).unwrap_or(0)),
-            height,
-            baseline: if ascent > 0. { ascent } else { em * 0.8 } + (height - ink) / 2.,
+            height: height + skipped,
+            baseline: if ascent > 0. { ascent } else { em * 0.8 } + (height - ink) / 2. + skipped,
             left,
             width: available,
             hard,
             block,
         });
         begin = end;
-        y += height;
+        y += height + skipped;
         if begin >= units.len() {
             if hard {
                 out.push(Line {
