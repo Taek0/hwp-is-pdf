@@ -24,6 +24,31 @@ fn supplied_math_document_has_complete_object_coverage_and_repaired_box() {
     assert_eq!(engine.report.pages, 9);
     assert_eq!(engine.report.equations, 249);
     assert_eq!(engine.report.pictures, 22);
+    assert!(
+        engine
+            .report
+            .warnings
+            .iter()
+            .any(|s| s.contains("Rewrapped overflowing plain-text cells"))
+    );
+    let mut title_rows = std::collections::BTreeMap::<i64, String>::new();
+    for op in &engine.pages[0].ops {
+        if let hwp_engine::pdf::Op::Text { text, y, size, .. } = op
+            && *y < 150.
+            && (*size - 14.).abs() < 0.01
+        {
+            title_rows
+                .entry((y * 100.).round() as i64)
+                .or_default()
+                .push_str(text);
+        }
+    }
+    assert!(
+        title_rows
+            .values()
+            .any(|t| t.contains("내신 도깨비 (기말고사"))
+    );
+    assert!(title_rows.values().any(|t| t.contains("시험대비)")));
     let audit = hwp_engine::qa::inspect(&engine.pages, &engine.fonts, &engine.report.bounds);
     assert!(
         audit.border_crossings.is_empty(),

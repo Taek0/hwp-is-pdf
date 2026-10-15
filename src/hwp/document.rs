@@ -97,6 +97,9 @@ pub fn open(path: &Path) -> Result<Document> {
                     ch.children.push(n("bold"));
                 }
                 let props = u32(d, 46)?;
+                ch = ch
+                    .at("useFontSpace", (props >> 25) & 1)
+                    .at("useKerning", (props >> 30) & 1);
                 if props & 1 != 0 {
                     ch.children.push(n("italic"));
                 }
@@ -226,10 +229,12 @@ pub fn open(path: &Path) -> Result<Document> {
                                 .at("idRef", u16(d, 30)?),
                             n("border")
                                 .at("borderFillIDRef", u16(d, 32)?)
-                                .at("offsetLeft", u16(d, 34)?)
-                                .at("offsetRight", u16(d, 36)?)
-                                .at("offsetTop", u16(d, 38)?)
-                                .at("offsetBottom", u16(d, 40)?),
+                                .at("connect", (u32(d, 0)? >> 28) & 1)
+                                .at("ignoreMargin", (u32(d, 0)? >> 29) & 1)
+                                .at("offsetLeft", u16(d, 34)? as i16)
+                                .at("offsetRight", u16(d, 36)? as i16)
+                                .at("offsetTop", u16(d, 38)? as i16)
+                                .at("offsetBottom", u16(d, 40)? as i16),
                         ]),
                 );
             }

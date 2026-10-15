@@ -28,37 +28,7 @@ impl<'a> Engine<'a> {
             .unwrap_or("unknown");
         let bold = ch.child("bold").is_some();
         let italic = ch.child("italic").is_some();
-        let serif = name.contains("명조") || name.contains("바탕") || name.contains("Times");
-        let file = if name.eq_ignore_ascii_case("Wingdings") {
-            "wingding.ttf"
-        } else if name.eq_ignore_ascii_case("Symbol") {
-            "symbol.ttf"
-        } else if latin && serif {
-            match (bold, italic) {
-                (true, true) => "timesbi.ttf",
-                (false, true) => "timesi.ttf",
-                (true, false) => "timesbd.ttf",
-                _ => "times.ttf",
-            }
-        } else if latin {
-            match (bold, italic) {
-                (true, true) => "arialbi.ttf",
-                (false, true) => "ariali.ttf",
-                (true, false) => "arialbd.ttf",
-                _ => "arial.ttf",
-            }
-        } else if serif {
-            "batang.ttc"
-        } else if bold {
-            "malgunbd.ttf"
-        } else {
-            "malgun.ttf"
-        };
-        let file = override_font.unwrap_or(file);
-        self.report
-            .warnings
-            .insert(format!("Font substitution: {name} -> {file}"));
-        let mut font = self.fonts.get(file)?;
+        let mut font = self.document_font(name, bold, italic, override_font)?;
         if !self.fonts.has(font, c) {
             for fallback in [
                 "malgun.ttf",
@@ -113,7 +83,12 @@ impl<'a> Engine<'a> {
             .child("spacing")
             .map(|n| n.n(lang) / 100. * size)
             .unwrap_or(0.);
-        let width = self.fonts.width(font, &c.to_string(), size) * scale + spacing;
+        let advance = if c == ' ' && ch.a("useFontSpace") == "0" {
+            size * 0.5
+        } else {
+            self.fonts.width(font, &c.to_string(), size)
+        };
+        let width = advance * scale + spacing;
         let face = ttf_parser::Face::parse(&self.fonts.list[font].bytes, 0).unwrap();
         let shear = if italic && !face.is_italic() {
             12f64.to_radians().tan()
@@ -125,24 +100,27 @@ impl<'a> Engine<'a> {
         }
         let bb = crate::pdf::glyph_id(&face, c).and_then(|id| face.glyph_bounding_box(id));
         let unit = size / face.units_per_em() as f64;
+        let pad = self.fonts.ink_padding(font, size);
         let glyph = Glyph {
             font,
             size,
             scale,
             width,
             color: color(ch.a("textColor")),
-            ascent: (bb.map(|b| b.y_max as f64 * unit).unwrap_or(0.) - shift).max(0.),
-            descent: (bb.map(|b| -b.y_min as f64 * unit).unwrap_or(0.) + shift).max(0.),
+            ascent: (bb.map(|b| b.y_max as f64 * unit + pad).unwrap_or(0.) - shift).max(0.),
+            descent: (bb.map(|b| -b.y_min as f64 * unit + pad).unwrap_or(0.) + shift).max(0.),
             ink_left: bb
-                .map(|b| (b.x_min as f64 * scale + shear * b.y_min as f64) * unit)
+                .map(|b| (b.x_min as f64 * scale + shear * b.y_min as f64) * unit - pad)
                 .unwrap_or(0.),
             ink_right: bb
-                .map(|b| (b.x_max as f64 * scale + shear * b.y_max as f64) * unit)
+                .map(|b| (b.x_max as f64 * scale + shear * b.y_max as f64) * unit + pad)
                 .unwrap_or(0.),
             shift,
             shear,
-            raw_ascent: bb.map(|b| b.y_max as f64 * unit).unwrap_or(0.),
-            raw_descent: bb.map(|b| (-b.y_min as f64 * unit).max(0.)).unwrap_or(0.),
+            raw_ascent: bb.map(|b| b.y_max as f64 * unit + pad).unwrap_or(0.),
+            raw_descent: bb
+                .map(|b| (-b.y_min as f64 * unit + pad).max(0.))
+                .unwrap_or(0.),
         };
         self.glyph_cache.insert(key, glyph.clone());
         Ok(glyph)
@@ -175,7 +153,7 @@ impl<'a> Engine<'a> {
                                     });
                                     pos += 8;
                                 }
-                                "lineBreak" => pos += 1,
+                                "lineBreak" | "hwpParagraphEnd" => pos += 1,
                                 "hwpDisplay" => {
                                     for c in child.a("value").chars() {
                                         items.push(Item {

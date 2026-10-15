@@ -24,7 +24,7 @@ The module splits are internal; callers do not need to depend on implementation 
 | `layout/complex_text.rs`, `layout/local_flow.rs` | Bidi/OpenType shaping and nested-list flow |
 | `layout/column_*.rs` | Column geometry, source continuation, balancing and shared-note reservation |
 | `layout/text_*.rs`, `layout/object_paint.rs` | Text styling and drawing operations |
-| `layout/table_layout.rs` | Table and cell layout |
+| `layout/table_layout.rs`, `layout/table_measure.rs` | Table/cell rendering and shared grid measurement |
 | `layout/table_pagination.rs`, `layout/table_vectors.rs` | Table fragment transitions and measured-vector splitting |
 | `layout/notes.rs`, `layout/page_decorations.rs` | Notes, page furniture and finalization |
 | `layout/page_furniture.rs` | Header/footer cache recovery, measured space and page variant selection |
@@ -42,3 +42,10 @@ Keep internal helpers private or `pub(super)` unless a public caller actually ne
 Fixtures and generators belong in `samples/` and `examples/`, integration checks in `tests/`.
 Generated PDFs, page images and audit reports belong in ignored `output/`; build products belong
 in ignored `target/`. Do not move source documents into generated-output folders.
+
+Additional typography modules:
+- `pdf/fonts.rs`, `pdf/font_catalog.rs`: font bytes, TTC extraction, installed face catalog and weight selection.
+- `layout/font_selection.rs`: source-family matching and explicit substitution policy.
+- `layout/saved_cell_text.rs`: overflowing plain-text HWPX cell cache recovery and nested height propagation.
+- `layout/paragraph_borders.rs`, `layout/rectangles.rs`: connected paragraph borders/fills and rounded rectangle geometry.
+- `layout/text_decorations.rs`: underline and strike rendering.

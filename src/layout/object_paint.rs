@@ -385,31 +385,7 @@ impl<'a> Engine<'a> {
                 }
             }
             "rect" => {
-                if let Some(fill) = n
-                    .child("fillBrush")
-                    .and_then(|b| b.child("winBrush"))
-                    .or_else(|| n.child("winBrush"))
-                    .filter(|f| f.a("faceColor") != "none")
-                {
-                    self.current.ops.push(Op::Rect {
-                        x,
-                        y,
-                        w,
-                        h,
-                        fill: color(fill.a("faceColor")),
-                    });
-                }
-                let s = n.child("lineShape");
-                if s.is_none_or(|s| s.a("style") != "NONE") {
-                    self.box_lines(
-                        x,
-                        y,
-                        w,
-                        h,
-                        val(s, "width").max(0.1),
-                        color(s.map(|n| n.a("color")).unwrap_or("#000000")),
-                    );
-                }
+                self.paint_rectangle(n, x, y, w, h);
                 if let Some(draw) = n.child("drawText")
                     && let Some(list) = draw.child("subList")
                 {

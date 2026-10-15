@@ -4,7 +4,13 @@ impl<'a> Engine<'a> {
     pub(super) fn render_mode(&mut self, force_reflow: bool) -> Result<()> {
         let mut reflow_used = false;
         let mut note_start = (0., 0usize, 0., 0.);
-        let prepared = self.prepare_field_sections()?;
+        let mut prepared = self.prepare_field_sections()?;
+        if self.has_paragraph_borders() {
+            let sections = prepared.get_or_insert_with(|| self.doc.sections.clone());
+            for section in sections {
+                self.prepare_border_lists(section);
+            }
+        }
         let sections = prepared.as_deref().unwrap_or(&self.doc.sections);
         for (section_index, section) in sections.iter().enumerate() {
             self.active_section = section_index;

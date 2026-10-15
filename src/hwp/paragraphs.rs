@@ -82,6 +82,7 @@ pub(super) fn paragraph(r: &Record) -> Result<Node> {
         } else {
             run.children.push(n("t").with(vec![match code {
                 10 => n("lineBreak"),
+                13 => n("hwpParagraphEnd"),
                 30 | 31 => n("nbSpace"),
                 24 => txt("-"),
                 _ => n("lineBreak"),

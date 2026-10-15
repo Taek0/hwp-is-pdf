@@ -35,6 +35,7 @@ struct Ink {
     scale: f64,
     local_base: f64,
     inverse: crate::graphics::Matrix,
+    pad: f64,
 }
 #[derive(Default)]
 struct Outline {
@@ -84,6 +85,22 @@ impl ttf_parser::OutlineBuilder for Outline {
     }
 }
 impl Outline {
+    fn stroked(&self, x: f64, y: f64, rx: f64, ry: f64) -> bool {
+        self.contains(x, y)
+            || (rx > 0.
+                && [
+                    (1., 0.),
+                    (-1., 0.),
+                    (0., 1.),
+                    (0., -1.),
+                    (0.707, 0.707),
+                    (-0.707, 0.707),
+                    (0.707, -0.707),
+                    (-0.707, -0.707),
+                ]
+                .iter()
+                .any(|(dx, dy)| self.contains(x + dx * rx, y + dy * ry)))
+    }
     fn contains(&self, x: f64, y: f64) -> bool {
         let mut winding = 0;
         for path in &self.paths {
@@ -118,12 +135,16 @@ fn ink_intersects(a: &Ink, b: &Ink, faces: &[ttf_parser::Face]) -> bool {
             let y = y0 + (j as f64 + 0.5) * h / ny as f64;
             let ap = crate::graphics::point(a.inverse, x, y);
             let bp = crate::graphics::point(b.inverse, x, y);
-            if aa.contains(
+            if aa.stroked(
                 (ap.0 - a.x) / a.unit / a.scale,
                 (a.local_base - ap.1) / a.unit,
-            ) && bb.contains(
+                a.pad / a.unit / a.scale,
+                a.pad / a.unit,
+            ) && bb.stroked(
                 (bp.0 - b.x) / b.unit / b.scale,
                 (b.local_base - bp.1) / b.unit,
+                b.pad / b.unit / b.scale,
+                b.pad / b.unit,
             ) {
                 return true;
             }
@@ -188,20 +209,22 @@ pub fn inspect(pages: &[Page], fonts: &Fonts, bounds: &[Bounds]) -> Audit {
             {
                 let face = &faces[*font];
                 let unit = size / face.units_per_em() as f64;
+                let pad = fonts.ink_padding(*font, *size);
                 for shaped in positioned {
                     let g = ttf_parser::GlyphId(shaped.id);
                     let xx = x + shaped.x;
                     let yy = y + shaped.y;
                     if let Some(bb) = face.glyph_bounding_box(g) {
                         glyphs.push(Ink {
+                            pad,
                             shaped_group: Some(op_index),
                             r: crate::graphics::rect(
                                 transform,
                                 [
-                                    xx + bb.x_min as f64 * unit * scale,
-                                    yy - bb.y_max as f64 * unit,
-                                    xx + bb.x_max as f64 * unit * scale,
-                                    yy - bb.y_min as f64 * unit,
+                                    xx + bb.x_min as f64 * unit * scale - pad,
+                                    yy - bb.y_max as f64 * unit - pad,
+                                    xx + bb.x_max as f64 * unit * scale + pad,
+                                    yy - bb.y_min as f64 * unit + pad,
                                 ],
                             ),
                             base: crate::graphics::point(transform, xx, *y).1,
@@ -229,19 +252,21 @@ pub fn inspect(pages: &[Page], fonts: &Fonts, bounds: &[Bounds]) -> Audit {
             {
                 let face = &faces[*font];
                 let unit = *size / face.units_per_em() as f64;
+                let pad = fonts.ink_padding(*font, *size);
                 let mut x = *x;
                 for c in text.chars() {
                     if let Some(g) = crate::pdf::glyph_id(face, c) {
                         if let Some(bb) = face.glyph_bounding_box(g) {
                             glyphs.push(Ink {
+                                pad,
                                 shaped_group: None,
                                 r: crate::graphics::rect(
                                     transform,
                                     [
-                                        x + bb.x_min as f64 * unit * scale,
-                                        *y - bb.y_max as f64 * unit,
-                                        x + bb.x_max as f64 * unit * scale,
-                                        *y - bb.y_min as f64 * unit,
+                                        x + bb.x_min as f64 * unit * scale - pad,
+                                        *y - bb.y_max as f64 * unit - pad,
+                                        x + bb.x_max as f64 * unit * scale + pad,
+                                        *y - bb.y_min as f64 * unit + pad,
                                     ],
                                 ),
                                 base: crate::graphics::point(transform, x, *y).1,

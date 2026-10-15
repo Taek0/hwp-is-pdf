@@ -1,7 +1,7 @@
 use anyhow::{Context, Result, bail};
 use std::{collections::BTreeMap, fs::File, io::Read, path::Path};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Node {
     pub name: String,
     pub attrs: BTreeMap<String, String>,

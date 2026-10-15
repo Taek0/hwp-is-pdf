@@ -16,6 +16,7 @@ impl<'a> Engine<'a> {
                 }
             }
         }
+        self.paint_paragraph_border(p, li, ox, oy, width);
         if self.paint_complex_line(p, li, ox, oy, width)? {
             return Ok(());
         }
@@ -24,12 +25,20 @@ impl<'a> Engine<'a> {
             .get(li + 1)
             .map(|n| n.u("textpos"))
             .unwrap_or(usize::MAX);
-        let its: Vec<_> = Self::items(p)
+        let mut its: Vec<_> = Self::items(p)
             .into_iter()
             .filter(|i| i.pos >= start && i.pos < end)
             .filter(|i| !matches!(&i.kind,ItemKind::Object(n) if n.a("reflowGeneral")=="1" || n.a("reflowBehind")=="1"))
             .filter(|i| p.a("reflowed") != "1" || !matches!(i.kind, ItemKind::Char('\n' | '\r')))
             .collect();
+        if p.a("reflowed") == "1" && li + 1 < segs.len() && seg.a("hardBreak") != "1" {
+            while its
+                .last()
+                .is_some_and(|i| matches!(i.kind, ItemKind::Char(' ')))
+            {
+                its.pop();
+            }
+        }
         let mut line_y = oy + seg.n("vertpos") / 100.;
         let mut base = line_y + seg.n("baseline") / 100.;
         let mut x = ox + seg.n("horzpos") / 100.;
@@ -538,41 +547,7 @@ impl<'a> Engine<'a> {
                 },
             }
         }
-        for (style, x1, x2, size, descent, shift) in underlines {
-            let def = self.doc.chars[&style].child("underline").unwrap();
-            let Some(line_style) = crate::decoration::style(def) else {
-                if def.a("shape") != "NONE" {
-                    self.report.warnings.insert(format!(
-                        "Unsupported underline shape: {} {}",
-                        def.a("shape"),
-                        def.a("style")
-                    ));
-                }
-                continue;
-            };
-            let y = if def.a("type") == "TOP" {
-                base + shift - size
-            } else {
-                base + shift + descent + 0.9
-            };
-            self.current.ops.extend(crate::decoration::underline(
-                x1,
-                x2,
-                y,
-                line_style,
-                color(def.a("color")),
-            ));
-        }
-        for (style, x1, x2, size, shift) in strikes {
-            let def = self.doc.chars[&style].child("strikeout").unwrap();
-            self.current.ops.extend(crate::decoration::underline(
-                x1,
-                x2,
-                base + shift - size * 0.3,
-                crate::decoration::style(def).unwrap(),
-                color(def.a("color")),
-            ));
-        }
+        self.paint_line_decorations(base, underlines, strikes);
         if let Some((label, g, _)) = number_draw {
             let label_x = ox
                 + if p.a("reflowed") == "1" {

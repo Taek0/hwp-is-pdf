@@ -363,6 +363,11 @@ pub(super) fn control(r: &Record) -> Result<Node> {
                     );
                 }
             }
+            if name == "rect"
+                && let Some(rect) = comp.first(79)
+            {
+                out = out.at("cornerRatio", bytes(&rect.data, 0, 1)?[0]);
+            }
             if name == "pic" {
                 let pic = comp.first(85).context("Missing picture record")?;
                 let pd = &pic.data;

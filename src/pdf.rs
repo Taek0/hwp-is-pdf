@@ -10,144 +10,9 @@ use std::{
 pub(crate) mod navigation;
 mod operations;
 pub use operations::{Op, Page, PositionedGlyph};
-pub struct Font {
-    pub bytes: Vec<u8>,
-    pub name: String,
-    pub used: BTreeMap<u16, char>,
-}
-pub struct Fonts {
-    pub list: Vec<Font>,
-    pub root: PathBuf,
-}
-/// Unicode cmap first; Windows Symbol cmap (platform 3 / encoding 0) is not
-/// searched by ttf-parser's Unicode-only Face::glyph_index convenience method.
-pub fn glyph_id(face: &ttf_parser::Face<'_>, c: char) -> Option<ttf_parser::GlyphId> {
-    face.glyph_index(c).or_else(|| {
-        face.tables()
-            .cmap?
-            .subtables
-            .into_iter()
-            .filter(|t| t.platform_id == ttf_parser::PlatformId::Windows && t.encoding_id == 0)
-            .find_map(|t| {
-                t.glyph_index(c as u32).or_else(|| {
-                    if (c as u32) <= 0xff {
-                        t.glyph_index(0xf000 + c as u32)
-                    } else {
-                        None
-                    }
-                })
-            })
-    })
-}
-impl Fonts {
-    pub fn new(root: &Path) -> Self {
-        Self {
-            list: Vec::new(),
-            root: root.into(),
-        }
-    }
-    pub fn get(&mut self, name: &str) -> Result<usize> {
-        if let Some(i) = self.list.iter().position(|f| f.name == name) {
-            return Ok(i);
-        }
-        let bytes = std::fs::read(self.root.join(name))
-            .with_context(|| format!("Font {name} missing in {}", self.root.display()))?;
-        let bytes = if bytes.starts_with(b"ttcf") {
-            extract_ttc_face(&bytes)?
-        } else {
-            bytes
-        };
-        ttf_parser::Face::parse(&bytes, 0)
-            .map_err(|_| anyhow::anyhow!("Invalid TrueType font {name}"))?;
-        let id = self.list.len();
-        self.list.push(Font {
-            bytes,
-            name: name.into(),
-            used: BTreeMap::new(),
-        });
-        Ok(id)
-    }
-    pub fn width(&self, id: usize, text: &str, size: f64) -> f64 {
-        let f = ttf_parser::Face::parse(&self.list[id].bytes, 0).unwrap();
-        text.chars()
-            .map(|c| {
-                glyph_id(&f, c)
-                    .and_then(|g| f.glyph_hor_advance(g))
-                    .unwrap_or(f.units_per_em()) as f64
-                    / f.units_per_em() as f64
-                    * size
-            })
-            .sum()
-    }
-    pub fn has(&self, id: usize, c: char) -> bool {
-        glyph_id(
-            &ttf_parser::Face::parse(&self.list[id].bytes, 0).unwrap(),
-            c,
-        )
-        .is_some()
-    }
-    fn encode(&mut self, id: usize, text: &str) -> String {
-        let font = &mut self.list[id];
-        let f = ttf_parser::Face::parse(&font.bytes, 0).unwrap();
-        let mut result = String::new();
-        for c in text.chars() {
-            let gid = glyph_id(&f, c).map(|v| v.0).unwrap_or(0);
-            font.used.insert(gid, c);
-            result.push_str(&format!("{gid:04X}"));
-        }
-        result
-    }
-}
-// PDF FontFile2 embeds one sfnt, not a TTC collection. Rebase table offsets
-// and recompute checkSumAdjustment while leaving glyph data unmodified.
-fn extract_ttc_face(src: &[u8]) -> Result<Vec<u8>> {
-    fn be16(b: &[u8], o: usize) -> Result<u16> {
-        Ok(u16::from_be_bytes(
-            b.get(o..o + 2).context("Truncated TTC")?.try_into()?,
-        ))
-    }
-    fn be32(b: &[u8], o: usize) -> Result<u32> {
-        Ok(u32::from_be_bytes(
-            b.get(o..o + 4).context("Truncated TTC")?.try_into()?,
-        ))
-    }
-    let offset = be32(src, 12)? as usize;
-    let count = be16(src, offset + 4)? as usize;
-    anyhow::ensure!(count < 4096, "Invalid TTC table count");
-    let mut out = src
-        .get(offset..offset + 12 + count * 16)
-        .context("TTC directory")?
-        .to_vec();
-    let mut head = None;
-    for i in 0..count {
-        let dir = 12 + i * 16;
-        let from = be32(src, offset + dir + 8)? as usize;
-        let len = be32(src, offset + dir + 12)? as usize;
-        let to = out.len();
-        let bytes = src
-            .get(from..from + len)
-            .context("TTC table outside file")?;
-        out.extend_from_slice(bytes);
-        while out.len() % 4 != 0 {
-            out.push(0)
-        }
-        out[dir + 8..dir + 12].copy_from_slice(&(to as u32).to_be_bytes());
-        if &src[offset + dir..offset + dir + 4] == b"head" {
-            anyhow::ensure!(len >= 12, "Short head table");
-            head = Some(to);
-            out[to + 8..to + 12].fill(0);
-        }
-    }
-    let sum = out
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .fold(0u32, |sum, b| sum.wrapping_add(u32::from_be_bytes(*b)));
-    if let Some(head) = head {
-        out[head + 8..head + 12].copy_from_slice(&0xb1b0afbau32.wrapping_sub(sum).to_be_bytes());
-    }
-    Ok(out)
-}
+mod font_catalog;
+mod fonts;
+pub use fonts::{Font, Fonts, glyph_id};
 fn compress(b: &[u8]) -> Result<Vec<u8>> {
     let mut z = ZlibEncoder::new(Vec::new(), Compression::default());
     z.write_all(b)?;
@@ -248,9 +113,17 @@ pub fn save(
                         content.push_str(&format!("/Span << /ActualText <FEFF{actual}> >> BDC\n"));
                     }
                     content.push_str(&format!("q {} {} {} rg\n", color[0], color[1], color[2]));
+                    let stroke = fonts.ink_padding(*font, *size) * 2.;
+                    if stroke > 0. {
+                        content.push_str(&format!(
+                            "{} {} {} RG {stroke:.4} w\n",
+                            color[0], color[1], color[2]
+                        ));
+                    }
+                    let weight = if stroke > 0. { "2 Tr " } else { "" };
                     for glyph in glyphs {
                         fonts.list[*font].used.entry(glyph.id).or_insert('\u{fffd}');
-                        content.push_str(&format!("BT /F{font} {size:.4} Tf {:.4} Tz 1 0 0 1 {:.4} {:.4} Tm <{:04X}> Tj ET\n",scale*100.,x+glyph.x,page.height-y-glyph.y,glyph.id));
+                        content.push_str(&format!("BT {weight}/F{font} {size:.4} Tf {:.4} Tz 1 0 0 1 {:.4} {:.4} Tm <{:04X}> Tj ET\n",scale*100.,x+glyph.x,page.height-y-glyph.y,glyph.id));
                     }
                     content.push_str("Q\n");
                     if actual_depth == 0 {
@@ -299,9 +172,10 @@ pub fn save(
                         content.push_str("h\n");
                     }
                     if let Some(f) = fill {
-                        content.push_str(&format!("{} {} {} rg B Q\n", f[0], f[1], f[2]));
+                        let paint = if *width > 0. { "B" } else { "f" };
+                        content.push_str(&format!("{} {} {} rg {paint} Q\n", f[0], f[1], f[2]));
                     } else {
-                        content.push_str("S Q\n");
+                        content.push_str(if *width > 0. { "S Q\n" } else { "n Q\n" });
                     }
                 }
                 Op::Path {
@@ -342,7 +216,16 @@ pub fn save(
                     color,
                 } => {
                     let hex = fonts.encode(*font, text);
-                    content.push_str(&format!("q {} {} {} rg BT /F{} {size:0.4} Tf {:0.4} Tz 1 0 0 1 {x:0.4} {:0.4} Tm <{hex}> Tj ET Q\n",color[0],color[1],color[2],font,scale*100.,page.height-y));
+                    let stroke = fonts.ink_padding(*font, *size) * 2.;
+                    let weight = if stroke > 0. {
+                        format!(
+                            "{} {} {} RG {stroke:.4} w 2 Tr ",
+                            color[0], color[1], color[2]
+                        )
+                    } else {
+                        String::new()
+                    };
+                    content.push_str(&format!("q {} {} {} rg BT {weight}/F{} {size:0.4} Tf {:0.4} Tz 1 0 0 1 {x:0.4} {:0.4} Tm <{hex}> Tj ET Q\n",color[0],color[1],color[2],font,scale*100.,page.height-y));
                 }
                 Op::Line {
                     x,

@@ -34,6 +34,7 @@ pub(crate) struct Settings {
     pub page: bool,
     pub latin_char: bool,
     pub cjk_word: bool,
+    pub prefer_words: bool,
     pub tabs: Vec<crate::tabs::Stop>,
     pub tab_step: f64,
 }
@@ -72,6 +73,9 @@ pub(crate) fn settings(n: Option<&Node>) -> Settings {
         cjk_word: n
             .and_then(|n| n.find("breakSetting"))
             .is_some_and(|s| s.a("breakNonLatinWord") == "KEEP_WORD"),
+        prefer_words: n
+            .and_then(|n| n.child("align"))
+            .is_some_and(|a| a.a("horizontal") == "CENTER"),
     }
 }
 fn cjk(c: char) -> bool {
@@ -233,6 +237,7 @@ fn wrap_exclusion(
         let mut end = begin;
         let mut used = 0.;
         let mut last_break: Option<usize> = None;
+        let mut last_space: Option<usize> = None;
         let mut hard = false;
         let mut block = false;
         while end < units.len() {
@@ -267,6 +272,19 @@ fn wrap_exclusion(
                 units[end].width
             };
             if end > begin && used + advance > available + 0.001 {
+                if s.prefer_words
+                    && let Some(b) = last_space.filter(|b| *b > begin)
+                {
+                    let token_width: f64 = units[b..]
+                        .iter()
+                        .take_while(|u| !matches!(u.ch, Some(' ' | '\n' | '\t')) && !u.block)
+                        .map(|u| u.width)
+                        .sum();
+                    if token_width <= available {
+                        end = b;
+                        break;
+                    }
+                }
                 if let Some(b) = last_break {
                     let mut word_width = 0.;
                     let mut at = b;
@@ -287,6 +305,9 @@ fn wrap_exclusion(
             }
             used += advance;
             end += 1;
+            if units[end - 1].ch == Some(' ') {
+                last_space = Some(end);
+            }
             if opportunity(units[end - 1].ch, units.get(end).and_then(|u| u.ch), s) {
                 last_break = Some(end);
             }

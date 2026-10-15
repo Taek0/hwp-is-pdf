@@ -32,6 +32,18 @@ fn hwp_inputs_render_directly_with_no_unintended_geometry_collisions() {
         assert_eq!(engine.report.pages, pages);
         assert_eq!(engine.report.tables, tables);
         assert_eq!(engine.report.pictures, pictures);
+        if name == "21_언어_기출_편집가능본.hwp" {
+            let mut rectangles = Vec::new();
+            for s in &doc.sections {
+                s.all("rect", &mut rectangles);
+            }
+            assert!(rectangles.iter().any(|n| n.n("cornerRatio") > 0.));
+            assert!(
+                engine.pages[0].ops.iter().any(
+                    |op| matches!(op,Op::Bezier{segments,closed:true,..} if segments.len()==8)
+                )
+            );
+        }
         assert!(
             !engine
                 .report
