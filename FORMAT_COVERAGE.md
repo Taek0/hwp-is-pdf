@@ -505,3 +505,30 @@ picture. Other pages remain identical; both outputs have zero geometry findings.
 All 78 Rust tests and all-target Clippy pass. The baseline 43 documents / 210
 pages retain source hashes, page/object counts and pixel-identical default output,
 with zero findings in all four geometry QA classes.
+
+## Opposing float pair (2026-10-15)
+
+Up to two supported leading SQUARE objects in the same paragraph can wrap
+simultaneously, one aligned LEFT and one RIGHT. Each exclusion retains its own
+height through following paragraphs. The shorter object's side is released first,
+then the other side; the initial combined float band and its notes remain together
+through page/column transitions. Source margins and glyph clearance still apply.
+
+If the combined middle space is at most 24pt, both objects use the existing block
+fallback. If a following paragraph's margins/indent leave too little side space,
+it clears the active regions before wrapping. The same-side/more-than-two cases
+remain blocks. Objects introduced by later paragraphs still clear existing floats;
+this does not implement arbitrary multiple anchors, centered/contour wrapping,
+captioned floats, nonzero offsets or cell/textbox wrapping.
+
+Generated single/two-column pair fixtures retain all characters, pictures and notes
+and render 3/2 pages without geometry findings. Tests vary page height and check
+independent side restoration, shared note page, insufficient middle space and a
+large following-paragraph margin. Generator: examples/paired_float_fixture.rs;
+tests: tests/reflow_paired_floats.rs; report: output/reflow-paired-floats/SUMMARY.html.
+Controlled examples are not Hancom-reference exports.
+
+All 82 Rust tests and all-target Clippy pass. Baseline 43 documents / 210 pages
+retain source hashes, page/object counts and pixel-identical default output with
+zero geometry findings. The previous two cross-paragraph float examples / 5 pages
+also remain pixel-identical with zero findings.
