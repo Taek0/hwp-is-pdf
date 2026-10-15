@@ -1,4 +1,4 @@
-//! Width-based plain-paragraph line breaking. Positions are UTF-16 offsets.
+//! Paragraph line breaking with optional rectangular exclusion. Positions are UTF-16 offsets.
 use crate::model::Node;
 #[derive(Clone, Default)]
 pub(crate) struct Unit {
@@ -85,11 +85,25 @@ fn opportunity(a: Option<char>, b: Option<char>, s: &Settings) -> bool {
     a == ' ' || a == '-' || (!s.cjk_word && cjk(a)) || s.latin_char
 }
 pub(crate) fn wrap(units: &[Unit], width: f64, s: &Settings) -> anyhow::Result<Vec<Line>> {
+    wrap_around(units, width, s, None)
+}
+/// A paragraph-leading rectangular exclusion: left inset, right inset, height.
+pub(crate) fn wrap_around(
+    units: &[Unit],
+    width: f64,
+    s: &Settings,
+    exclusion: Option<(f64, f64, f64)>,
+) -> anyhow::Result<Vec<Line>> {
     let mut out = Vec::new();
     let mut begin = 0;
+    let mut y = 0.;
     loop {
-        let left = s.left + if out.is_empty() { s.indent } else { 0. };
-        let available = width - left - s.right;
+        let (cut_left, cut_right) = exclusion
+            .filter(|(_, _, h)| y < *h - 0.001)
+            .map(|(l, r, _)| (l, r))
+            .unwrap_or((0., 0.));
+        let left = (s.left + if out.is_empty() { s.indent } else { 0. }).max(cut_left);
+        let available = width - left - s.right.max(cut_right);
         anyhow::ensure!(
             available > 1.,
             "Paragraph margins leave no usable line width"
@@ -171,6 +185,7 @@ pub(crate) fn wrap(units: &[Unit], width: f64, s: &Settings) -> anyhow::Result<V
             block,
         });
         begin = end;
+        y += height;
         if begin >= units.len() {
             if hard {
                 out.push(Line {
@@ -184,6 +199,12 @@ pub(crate) fn wrap(units: &[Unit], width: f64, s: &Settings) -> anyhow::Result<V
                 });
             }
             break;
+        }
+    }
+    if let Some((_, _, height)) = exclusion {
+        let used: f64 = out.iter().map(|l| l.height).sum();
+        if let Some(last) = out.last_mut() {
+            last.height += (height - used).max(0.);
         }
     }
     Ok(out)
@@ -215,6 +236,26 @@ mod tests {
             value: 160.,
             ..Default::default()
         }
+    }
+    #[test]
+    fn rectangular_exclusion_ends_at_its_bottom_and_reserves_short_paragraph_height() {
+        for (left, right) in [(30., 0.), (0., 30.)] {
+            let lines = wrap_around(
+                &units(&"가".repeat(80)),
+                100.,
+                &config(),
+                Some((left, right, 30.)),
+            )
+            .unwrap();
+            assert_eq!(lines[0].width, 70.);
+            assert_eq!(lines[1].width, 70.);
+            assert_eq!(lines[2].width, 100.);
+            assert_eq!(lines[0].left, left);
+        }
+        let lines = wrap_around(&units("가"), 100., &config(), Some((30., 0., 90.))).unwrap();
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].height, 90.);
+        assert!(lines[0].baseline < 20.);
     }
     #[test]
     fn block_objects_are_separate_lines_without_font_leading() {

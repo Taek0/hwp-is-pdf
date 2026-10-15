@@ -3575,7 +3575,7 @@ impl<'a> Engine<'a> {
                                 }
                             }
                         }
-                        if block {
+                        if block && n.a("reflowFloat") != "1" {
                             n.attrs.insert("textWrap".into(), "TOP_AND_BOTTOM".into());
                             let pos = node_mut(n, "pos");
                             for (k, v) in [
@@ -3652,6 +3652,45 @@ impl<'a> Engine<'a> {
             settings.indent = 0.;
         }
         p.attrs.insert("reflowed".into(), "1".into());
+        let source_items = Self::items(&p);
+        let objects: Vec<_> = source_items
+            .iter()
+            .filter_map(|i| {
+                if let ItemKind::Object(n) = &i.kind {
+                    Some((i.pos, n))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if nesting == 0 && number.is_none() && objects.len() == 1 {
+            let (anchor, object) = objects[0];
+            let eligible = matches!(object.name.as_str(), "pic" | "rect")
+                && object.a("textWrap") == "SQUARE"
+                && object.child("caption").is_none()
+                && object.child("pos").is_some_and(|p| {
+                    p.a("treatAsChar") != "1"
+                        && p.a("vertRelTo") == "PARA"
+                        && matches!(p.a("horzRelTo"), "PARA" | "COLUMN")
+                        && matches!(p.a("horzAlign"), "LEFT" | "RIGHT")
+                        && matches!(p.a("vertAlign"), "" | "TOP")
+                        && p.signed("horzOffset") == 0.
+                        && p.signed("vertOffset") == 0.
+                })
+                && source_items
+                    .iter()
+                    .filter(|i| i.pos < anchor)
+                    .all(|i| matches!(i.kind, ItemKind::Control(_)));
+            if eligible {
+                for run in p.children.iter_mut().filter(|r| r.name == "run") {
+                    for n in &mut run.children {
+                        if n.a("id") == object.a("id") && n.name == object.name {
+                            n.attrs.insert("reflowFloat".into(), "1".into());
+                        }
+                    }
+                }
+            }
+        }
         self.reflow_children(&mut p, width, nesting + 1)?;
         fn normalize(n: &mut Node) {
             if n.name == "lineBreak" {
@@ -3667,6 +3706,49 @@ impl<'a> Engine<'a> {
             }
         }
         normalize(&mut p);
+        let mut exclusion = None;
+        for run in p.children.iter_mut().filter(|r| r.name == "run") {
+            for n in run
+                .children
+                .iter_mut()
+                .filter(|n| n.a("reflowFloat") == "1")
+            {
+                let m = margin(n, "outMargin").map(|v| v.max(0.));
+                let occupied = val(n.child("sz"), "width") + m[0] + m[1] + 1.;
+                let height = effective_height(n) + m[2] + m[3];
+                if width - occupied - settings.left - settings.right <= 24. {
+                    // A full-width float has no usable side. Clear below it,
+                    // retaining the established block layout instead of failing.
+                    n.attrs.remove("reflowFloat");
+                    n.attrs.insert("textWrap".into(), "TOP_AND_BOTTOM".into());
+                    let pos = node_mut(n, "pos");
+                    for (key, value) in [
+                        ("horzAlign", "LEFT"),
+                        ("horzOffset", "0"),
+                        ("vertOffset", "0"),
+                    ] {
+                        pos.attrs.insert(key.into(), value.into());
+                    }
+                    continue;
+                }
+                let right = n.child("pos").is_some_and(|p| p.a("horzAlign") == "RIGHT");
+                let pos = node_mut(n, "pos");
+                pos.attrs.insert(
+                    "horzOffset".into(),
+                    (if right { -m[1] } else { m[0] } * 100.).to_string(),
+                );
+                pos.attrs
+                    .insert("vertOffset".into(), (m[2] * 100.).to_string());
+                exclusion = Some(if right {
+                    (0., occupied, height)
+                } else {
+                    (occupied, 0., height)
+                });
+            }
+        }
+        if let Some((_, _, h)) = exclusion {
+            p.attrs.insert("reflowFloatHeight".into(), h.to_string());
+        }
         let items = Self::items(&p);
         let mut units = Vec::new();
         let mut glyphs = Vec::new();
@@ -3707,6 +3789,13 @@ impl<'a> Engine<'a> {
                         pos: item.pos,
                         width: *w,
                         ch: Some(' '),
+                        ..Default::default()
+                    },
+                    None,
+                ),
+                ItemKind::Object(n) if n.a("reflowFloat") == "1" => (
+                    crate::reflow::Unit {
+                        pos: item.pos,
                         ..Default::default()
                     },
                     None,
@@ -3827,7 +3916,11 @@ impl<'a> Engine<'a> {
             grouped[0].descent = grouped[0].descent.max(g.descent);
             grouped[0].em = grouped[0].em.max(g.size);
         }
-        let wrapped = crate::reflow::wrap(&grouped, width, &settings)?;
+        let wrapped = if exclusion.is_some() {
+            crate::reflow::wrap_around(&grouped, width, &settings, exclusion)?
+        } else {
+            crate::reflow::wrap(&grouped, width, &settings)?
+        };
         anyhow::ensure!(
             number.is_none() || !wrapped.first().is_some_and(|l| l.block),
             "List labels on leading block objects are not yet supported"
@@ -3933,6 +4026,28 @@ impl<'a> Engine<'a> {
             {
                 self.reflow_advance(section, &mut col, &mut y, cols, gap)?;
             }
+            if p.n("reflowFloatHeight") > 0. {
+                let mut span = 0.;
+                let mut notes = Vec::new();
+                for (index, line) in ls.iter().enumerate() {
+                    notes.extend(notes_for(index));
+                    span += line.height;
+                    if span >= p.n("reflowFloatHeight") {
+                        break;
+                    }
+                }
+                let reserve =
+                    self.footnote_reservation(&notes, self.left + col as f64 * (width + gap));
+                if y + s.before + span > self.ph - self.bottom - reserve && y > self.top + 0.01 {
+                    self.reflow_advance(section, &mut col, &mut y, cols, gap)?;
+                }
+                let reserve =
+                    self.footnote_reservation(&notes, self.left + col as f64 * (width + gap));
+                anyhow::ensure!(
+                    s.before + span + reserve <= body,
+                    "Floating object and anchored text exceed column capacity"
+                );
+            }
             y += s.before;
             let mut at = 0;
             while at < ls.len() {
@@ -4023,6 +4138,7 @@ impl<'a> Engine<'a> {
                     continue;
                 }
                 if s.widow
+                    && !(at == 0 && p.n("reflowFloatHeight") > 0.)
                     && at + count < ls.len()
                     && ls[at].height + ls.get(at + 1).map(|l| l.height).unwrap_or(0.) <= body
                 {
@@ -4060,7 +4176,7 @@ impl<'a> Engine<'a> {
             }
             y += s.after;
         }
-        self.report.warnings.insert("Reflow uses font metrics and recursively lays out table cells and footnotes; floating objects become document-order blocks; advanced wrapping and exact Hancom line breaking remain limited".into());
+        self.report.warnings.insert("Reflow uses font metrics and recursively lays out table cells and footnotes; leading left/right square pictures and rectangles wrap within their paragraph; other floating objects become blocks; advanced wrapping and exact Hancom line breaking remain limited".into());
         Ok((y, col, width, gap))
     }
     pub fn render(&mut self) -> Result<()> {
