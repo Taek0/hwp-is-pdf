@@ -2,6 +2,16 @@
 use super::*;
 
 impl<'a> Engine<'a> {
+    pub(super) fn item_footnotes(items: &[Item], start: usize, end: usize) -> Vec<&Node> {
+        let mut notes = Vec::new();
+        for item in items.iter().filter(|i| i.pos >= start && i.pos < end) {
+            match &item.kind {
+                ItemKind::Control(n) | ItemKind::Object(n) => n.all("footNote", &mut notes),
+                _ => {}
+            }
+        }
+        notes
+    }
     pub(super) fn note_spec(&self, end: bool) -> Option<&Node> {
         self.doc.sections[self.active_section]
             .find("secPr")

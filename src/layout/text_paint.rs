@@ -72,7 +72,15 @@ impl<'a> Engine<'a> {
                     (
                         None,
                         if inline {
-                            val(n.child("sz"), "width") + m[0] + m[1]
+                            val(n.child("sz"), "width")
+                                + m[0]
+                                + m[1]
+                                + if n.a("reflowCaptions") == "1" {
+                                    let c = caption_extent(n);
+                                    c[0] + c[1]
+                                } else {
+                                    0.
+                                }
                         } else {
                             0.
                         },

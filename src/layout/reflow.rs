@@ -261,14 +261,7 @@ impl<'a> Engine<'a> {
             let items = Self::items(p);
             let notes_for = |index: usize| {
                 let end = ls.get(index + 1).map(|l| l.pos).unwrap_or(usize::MAX);
-                items
-                    .iter()
-                    .filter(|i| i.pos >= ls[index].pos && i.pos < end)
-                    .filter_map(|i| match &i.kind {
-                        ItemKind::Control(n) if n.name == "footNote" => Some(n),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>()
+                Self::item_footnotes(&items, ls[index].pos, end)
             };
             if (p.a("pageBreak") == "1" || s.page) && (y > self.top + 0.01 || col > 0) {
                 self.finish()?;
@@ -380,7 +373,9 @@ impl<'a> Engine<'a> {
                         .context("Missing reflow block")?;
 
                     let ox = self.left + col as f64 * (width + gap);
-                    let reserve = self.footnote_reservation(&[], ox);
+                    let mut object_notes = Vec::new();
+                    object.all("footNote", &mut object_notes);
+                    let reserve = self.footnote_reservation(&object_notes, ox);
                     if (ls[at].height <= body || object.name != "tbl")
                         && y + ls[at].height.min(body) > self.ph - self.bottom - reserve
                         && y > self.top + 0.01
@@ -390,6 +385,7 @@ impl<'a> Engine<'a> {
                     let ox = self.left + col as f64 * (width + gap);
                     let cap = caption_extent(object);
                     let old_page = self.pages.len();
+                    let start_y = y;
                     let bounds_start = self.report.bounds.len();
                     if cols > 1 && object.name == "tbl" {
                         let placement = self
@@ -430,6 +426,12 @@ impl<'a> Engine<'a> {
                         col = 0;
                     }
                     self.flow_floor = None;
+                    if object.name != "tbl"
+                        && object.a("reflowCaptions") == "1"
+                        && self.pages.len() == old_page
+                    {
+                        y = y.max(start_y + ls[at].height);
+                    }
                     at += 1;
                     continue;
                 }

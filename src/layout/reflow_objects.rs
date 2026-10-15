@@ -14,6 +14,7 @@ impl<'a> Engine<'a> {
                 match n.name.as_str() {
                     "equation" => self.prepare_equation(n, width)?,
                     "tbl" | "pic" | "rect" | "ellipse" | "polygon" | "curve" | "group" => {
+                        let width = self.caption_body_width(n, width)?;
                         anyhow::ensure!(
                             n.a("textWrap") != "BEHIND_TEXT",
                             "Reflow of page-background objects is not supported"
@@ -136,19 +137,7 @@ impl<'a> Engine<'a> {
                                 pos.attrs.insert(k.into(), v.into());
                             }
                         }
-                        let w = val(n.child("sz"), "width");
-                        for caption in n.children.iter_mut().filter(|c| c.name == "caption") {
-                            anyhow::ensure!(
-                                matches!(caption.a("side"), "TOP" | "BOTTOM")
-                                    && caption.find("footNote").is_none(),
-                                "Reflow supports plain top/bottom captions only"
-                            );
-                            if let Some(list) =
-                                caption.children.iter_mut().find(|n| n.name == "subList")
-                            {
-                                self.reflow_list(list, w, nesting + 1)?;
-                            }
-                        }
+                        self.prepare_captions(n, nesting)?;
                     }
                     "ctrl" => {
                         for control in &mut n.children {
@@ -156,7 +145,15 @@ impl<'a> Engine<'a> {
                                 control.attrs.insert("reflowEndnote".into(), "1".into());
                             }
                             if control.name == "footNote" {
-                                let (_, w) = self.footnote_area(self.column_x(self.reflow_column));
+                                let (_, mut w) =
+                                    self.footnote_area(self.column_x(self.reflow_column));
+                                if self
+                                    .note_spec(false)
+                                    .and_then(|s| s.child("placement"))
+                                    .is_none_or(|p| p.a("place") == "EACH_COLUMN")
+                                {
+                                    w = self.column_widths.iter().copied().fold(w, f64::min);
+                                }
                                 if let Some(list) =
                                     control.children.iter_mut().find(|n| n.name == "subList")
                                 {

@@ -74,7 +74,14 @@ impl<'a> Engine<'a> {
                     _ => 0.,
                 }
         };
-        if !inline && n.child("caption").is_some() && n.a("binaryHwp") == "1" {
+        if n.a("reflowCaptions") == "1" {
+            x += caption_extent(n)[0];
+        }
+        if !inline
+            && n.child("caption").is_some()
+            && n.a("binaryHwp") == "1"
+            && n.a("reflowCaptions") != "1"
+        {
             let e = caption_extent(n);
             x += m[0] + e[0];
             y += m[2] + e[2];
@@ -488,32 +495,10 @@ impl<'a> Engine<'a> {
                 b.h = r[3] - r[1];
             }
         }
-        for caption in n.children_named("caption") {
-            if captions_handled {
-                continue;
-            }
-            if let Some(list) = caption.child("subList") {
-                let gap = caption.n("gap") / 100.;
-                let ch = content_height(list);
-                let cw = if matches!(caption.a("side"), "LEFT" | "RIGHT") {
-                    caption.n("width") / 100.
-                } else if caption.a("expandToMargin") == "1" {
-                    w + m[0] + m[1]
-                } else {
-                    w
-                };
-                let cy = y + match list.a("vertAlign") {
-                    "CENTER" => (h - ch) / 2.,
-                    "BOTTOM" => h - ch,
-                    _ => 0.,
-                };
-                let (cx, cy) = match caption.a("side") {
-                    "LEFT" => (x - gap - cw, cy),
-                    "RIGHT" => (x + w + gap, cy),
-                    "TOP" => (x - (cw - w) / 2., y - gap - ch),
-                    _ => (x - (cw - w) / 2., y + h + gap),
-                };
-                self.local(list, cx, cy, cw)?;
+        if !captions_handled {
+            self.paint_captions(n, x, y, w, h)?;
+            if n.name == "tbl" && n.a("reflowCaptions") == "1" {
+                self.last_table_end = self.last_table_end.max(y + side_caption_height(n));
             }
         }
         if let Some(matrix) = fit {

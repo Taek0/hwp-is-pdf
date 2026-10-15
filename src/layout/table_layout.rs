@@ -111,7 +111,10 @@ impl<'a> Engine<'a> {
         {
             *last += h - total;
         }
-        if self.depth == 0 && self.reflow_table_column.is_some() {
+        if self.depth == 0
+            && (self.reflow_table_column.is_some()
+                || (n.a("reflowTable") == "1" && n.child("caption").is_some()))
+        {
             anyhow::ensure!(
                 self.split_nested_vectors(n, x, y, w, total)?,
                 "This table structure cannot yet be split across reflow columns"

@@ -8,6 +8,7 @@ impl<'a> Engine<'a> {
         width: f64,
         nesting: usize,
     ) -> Result<()> {
+        n.attrs.insert("reflowTable".into(), "1".into());
         let width = self.column_widths.iter().copied().fold(width, f64::min);
         let rows = n.u("rowCnt");
         let cols = n.u("colCnt");

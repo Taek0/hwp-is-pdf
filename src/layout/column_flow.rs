@@ -104,14 +104,7 @@ impl<'a> Engine<'a> {
                         end += 1;
                     }
                     let stop = ls.get(end).map(|l| l.pos).unwrap_or(usize::MAX);
-                    let incoming: Vec<_> = items
-                        .iter()
-                        .filter(|i| i.pos >= ls[at].pos && i.pos < stop)
-                        .filter_map(|i| match &i.kind {
-                            ItemKind::Control(n) if n.name == "footNote" => Some(n),
-                            _ => None,
-                        })
-                        .collect();
+                    let incoming = Self::item_footnotes(&items, ls[at].pos, stop);
                     let row_height = ls[at..end].iter().map(|l| l.height).sum::<f64>();
                     let x = self.column_x(col);
                     let reserve = self.footnote_reservation(&incoming, x);

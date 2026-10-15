@@ -89,7 +89,9 @@ impl<'a> Engine<'a> {
                         n.name == "tbl" || n.child("pos").is_none_or(|p| p.a("treatAsChar") != "1");
                     let m = margin(n, "outMargin");
                     let cap = caption_extent(n);
-                    let h = effective_height(n) + m[2] + m[3] + cap[2] + cap[3];
+                    let native = effective_height(n);
+                    let side = side_caption_height(n).max(native);
+                    let h = side + m[2] + m[3] + cap[2] + cap[3];
                     (
                         crate::reflow::Unit {
                             pos: item.pos,
@@ -97,10 +99,22 @@ impl<'a> Engine<'a> {
                             width: if block {
                                 0.
                             } else {
-                                val(n.child("sz"), "width") + m[0] + m[1]
+                                val(n.child("sz"), "width") + m[0] + m[1] + cap[0] + cap[1]
                             },
-                            ascent: if block { h } else { h * 0.85 },
-                            descent: if block { 0. } else { h * 0.15 },
+                            ascent: if block {
+                                h
+                            } else if n.a("reflowCaptions") == "1" {
+                                native * 0.85 + cap[2] + m[2]
+                            } else {
+                                h * 0.85
+                            },
+                            descent: if block {
+                                0.
+                            } else if n.a("reflowCaptions") == "1" {
+                                native * 0.15 + (side - native) + cap[3] + m[2] + m[3]
+                            } else {
+                                h * 0.15
+                            },
                             block,
                             ..Default::default()
                         },

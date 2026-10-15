@@ -15,10 +15,11 @@ impl<'a> Engine<'a> {
         let captions: Vec<_> = n.children_named("caption").collect();
         let mut all_captions = Vec::new();
         n.all("caption", &mut all_captions);
-        if all_captions.len() != captions.len()
-            || captions
-                .iter()
-                .any(|c| !matches!(c.a("side"), "TOP" | "BOTTOM"))
+        if n.a("reflowTable") != "1"
+            && (all_captions.len() != captions.len()
+                || captions
+                    .iter()
+                    .any(|c| !matches!(c.a("side"), "TOP" | "BOTTOM")))
         {
             return Ok(false);
         }
@@ -31,6 +32,10 @@ impl<'a> Engine<'a> {
         };
         let above = caption_height("TOP");
         let below = caption_height("BOTTOM");
+        let mut bottom_notes = Vec::new();
+        for c in captions.iter().filter(|c| c.a("side") == "BOTTOM") {
+            c.all("footNote", &mut bottom_notes);
+        }
         if above + below > (self.ph - self.top - self.bottom) * 0.5 {
             return Ok(false);
         }
@@ -59,7 +64,15 @@ impl<'a> Engine<'a> {
         self.table_headers.clear();
         self.table_note_anchors.clear();
         self.depth += 1;
-        let rendered = self.table(n, x, 0., w, total);
+        let rendered = self.table(n, x, 0., w, total).and_then(|()| {
+            if n.a("reflowTable") == "1" {
+                let mut side = n.clone();
+                side.children
+                    .retain(|c| c.name != "caption" || matches!(c.a("side"), "LEFT" | "RIGHT"));
+                self.paint_captions(&side, x, 0., w, total)?;
+            }
+            Ok(())
+        });
         self.depth -= 1;
         self.capture_table_headers = false;
         let mut headers = std::mem::take(&mut self.table_headers);
@@ -68,6 +81,11 @@ impl<'a> Engine<'a> {
         let canvas = std::mem::replace(&mut self.current, previous);
         let bounds = self.report.bounds.split_off(bound_start);
         rendered?;
+        let total = if n.a("reflowTable") == "1" {
+            total.max(side_caption_height(n))
+        } else {
+            total
+        };
         let atoms = crate::pagination::atoms(&canvas.ops, &self.fonts)?;
         let supported = atoms.iter().all(|a| {
             a.bottom - a.top
@@ -188,7 +206,11 @@ impl<'a> Engine<'a> {
         let mut first = true;
         top = top.max(self.top + above);
         let first_min = headers.iter().map(|h| h.y + h.height).fold(0., f64::max) + 24.;
-        if top + first_min > self.ph - self.bottom {
+        let mut caption_notes = Vec::new();
+        for c in &captions {
+            c.all("footNote", &mut caption_notes);
+        }
+        if top + first_min > self.ph - self.bottom - self.footnote_reservation(&caption_notes, x) {
             self.advance_table_fragment(&mut x)?;
             top = self.column_top() + above;
         }
@@ -235,7 +257,8 @@ impl<'a> Engine<'a> {
                 header_height += group_height;
             }
             top += header_height;
-            let mut capacity = self.ph - self.bottom - top - self.footnote_reservation(&[], x);
+            let mut capacity =
+                self.ph - self.bottom - top - self.footnote_reservation(&bottom_notes, x);
             if start + capacity >= total {
                 capacity -= below;
             }
@@ -245,6 +268,7 @@ impl<'a> Engine<'a> {
                     .iter()
                     .filter(|n| n.y >= start - 0.01 && n.y < cut)
                     .map(|n| &n.node)
+                    .chain(bottom_notes.iter().copied())
                     .collect();
                 let reserve = self.footnote_reservation(&incoming, x);
                 let next = (start + self.ph
