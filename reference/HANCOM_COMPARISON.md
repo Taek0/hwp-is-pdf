@@ -95,3 +95,18 @@ Priorities from actual reference evidence:
 
 Local visual report: output/roadmap/11-hancom/SUMMARY.html.
 The earlier missing-reference blocker is now resolved by user-supplied exports.
+
+## Pagination repair validated — 2026-10-15
+
+The next implementation matches the reference page counts: 복학원서 2 pages and
+중간보고서 50 pages, from previous 1/56. Review artifacts and source-hash/object-count
+verification are in output/roadmap/12-pagination/. Full tests: 128 passing; Clippy
+passing; 43 baseline documents / 205 pages, zero geometric findings.
+
+The original PDFs in hancom/temp remain unchanged. Captured reference note placement
+in the report (18–39 collected after the floating table) informed the saved-layout
+policy. Receipt content is on page 2; all report text is retained by source-character
+checks, and the concluding section remains on page 50. Some intermediate page
+boundaries and typography still differ: page-count agreement alone is not visual
+identity. In particular, the final research table begins on Rust page 47 versus
+Hancom page 46. Remaining typography/border fidelity is tracked in FORMAT_COVERAGE.md.

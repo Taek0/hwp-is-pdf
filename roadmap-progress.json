@@ -122,5 +122,15 @@
     "reference_documents": 4,
     "reference_pages": 76,
     "engine_pages": 81
+  },
+  "post_comparison_pagination": {
+    "status": "complete",
+    "tests": 128,
+    "baseline_documents": 43,
+    "baseline_pages": 205,
+    "form_pages": 2,
+    "report_pages": 50,
+    "report": "output/roadmap/12-pagination/SUMMARY.html",
+    "remaining": "Intermediate page boundaries, typography and border fidelity differ from Hancom"
   }
 }

@@ -864,3 +864,46 @@ is 589 lines. Results: output/roadmap/10-fields/SUMMARY.html.
 References: Hancom HWP5 revision 1.3 tables 50–52/152 and hancom-io/hwpx-owpml-model
 fieldBegin.cpp, fieldEnd.cpp, bookmark.cpp and enumdef.h. The canonical enum spelling
 SUMMERY is accepted. These references do not establish universal field command syntax.
+
+## Hancom reference pagination repair — 2026-10-15
+
+The reinstatement form now produces 2 pages (previously 1), with the receipt on
+page 2. The 56-page report now produces 50 pages. These counts match the four-file
+Hancom reference set; the report conclusion is still on its final page.
+
+Saved inline, non-splitting tables reserve their trailing cached line spacing when
+the ink fits but the complete line slot does not. Oversized objects and ordinary
+cached text are not forced onto additional blank pages by this check.
+
+Native floating text tables use measured glyph-safe fragments rather than only
+whole-row breaks. Growing captioned tables can start on the current page. Narrow
+cell constraints precede larger row-span constraints; repeated-header-only tails
+keep the final content row with them. Fixed/inline/nested layouts retain their
+existing fallback paths when the fragment renderer cannot support the structure.
+Saved floating-table notes are collected on the final table fragment, matching the
+reference report; inline/reflow note-anchor placement remains separate.
+
+After an early table/note-driven page move, cached coordinate resets are treated
+as continuous source-line flow until an explicit page break or column transition.
+Following paragraphs use the actual last-fragment floor, including upward movement.
+Long-note available-space measurement accounts for transformed text positions.
+No page-count constant, document-name branch, text deletion or global page scaling
+is used in the engine. Fixture-specific counts appear only in tests.
+
+128 tests and Clippy pass. All 43 baseline inputs retain their SHA-256 hashes and
+picture/table/equation/chart counts. Output is 205 pages (previously 210): form +1,
+report -6, all other page counts unchanged. Every geometry audit has zero findings.
+39 PDFs are byte-identical. Besides the two targets, government-notice (30 pages)
+and government-faq (14 pages) repack some table/body content; their non-whitespace
+PDF text character multisets are identical. Changed pages were reviewed, including
+prevention of an empty repeated-header tail. The 50 report page thumbnails and
+selected full-size comparisons were reviewed. Tests retain report source characters
+and verify that notes 18–39 survive at/after the final table fragment.
+
+Matching page counts does not mean matching every page boundary or glyph. Fonts,
+weights, some table row boundaries, paragraph borders and the exact distribution
+of report body/notes still differ from Hancom. For example, the reference starts
+the final research table on page 46 while this renderer starts it on page 47; both
+end with the conclusion on page 50. These visual-fidelity gaps remain open.
+
+Results: output/roadmap/12-pagination/SUMMARY.html.
