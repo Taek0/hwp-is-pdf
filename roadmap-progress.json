@@ -132,5 +132,15 @@
     "report_pages": 50,
     "report": "output/roadmap/12-pagination/SUMMARY.html",
     "remaining": "Intermediate page boundaries, typography and border fidelity differ from Hancom"
+  },
+  "post_comparison_typography": {
+    "status": "complete",
+    "tests": 132,
+    "baseline_documents": 43,
+    "baseline_pages": 205,
+    "reference_documents": 4,
+    "reference_pages": 76,
+    "report": "output/roadmap/13-typography/SUMMARY.html",
+    "remaining": "Absolute positions, intermediate page boundaries, unavailable-font substitutions, watermark/symbol fidelity and math page-border offsets still differ from Hancom"
   }
 }

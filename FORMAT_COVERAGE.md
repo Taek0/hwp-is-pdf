@@ -907,3 +907,35 @@ the final research table on page 46 while this renderer starts it on page 47; bo
 end with the conclusion on page 50. These visual-fidelity gaps remain open.
 
 Results: output/roadmap/12-pagination/SUMMARY.html.
+
+## Typography and border repair validated — 2026-10-15
+
+Installed font family/face names now select the matching TTF/TTC face, including
+collection indices, normal width and native bold weights. Missing bold faces use
+a bounded synthetic stroke; unavailable families use explicit substitutions.
+The engine reads only its configured font directory and does not need the viewer.
+HWP useFontSpace, paragraph border flags/offsets and rectangle corner ratios are
+preserved. Native paragraph terminators no longer become extra reflow lines.
+
+Paragraph borders/fills now render and connect across equivalent border styles;
+rounded rectangles use curved paths. Plain-text HWPX BREAK cells with overflowing
+saved line caches are reflowed, with measured height propagated through nested
+tables. Centered headings prefer word boundaries; final cell height excludes
+unused trailing line leading. This restores the math heading's two-line layout.
+
+Validation: 132 tests and Clippy with warnings denied pass. All 43 baseline
+documents / 205 pages retain source hashes, page counts and picture/table/equation/
+chart counts; geometric checks report zero findings and no new missing glyphs.
+The four comparison PDFs remain 2 / 15 / 9 / 50 pages; their non-whitespace
+character multisets exactly match the previous engine outputs. This checks
+character preservation, not reading-order identity. All 76 target pages were
+rasterized and reviewed as contact sheets, with selected full-size paired views.
+
+Remaining differences include absolute object positions, intermediate page
+boundaries, receipt wrapping, watermark/symbol fidelity and math page-border
+offsets. Synthetic styles and unavailable-font substitutions are approximate.
+Kerning metadata is retained but general pair kerning is not added here. Cell
+cache repair is restricted to plain-text HWPX BREAK cells. These results do not
+establish pixel identity or a percentage of overall HWP compatibility.
+
+Local results: output/roadmap/13-typography/SUMMARY.html.

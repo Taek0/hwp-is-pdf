@@ -110,3 +110,32 @@ checks, and the concluding section remains on page 50. Some intermediate page
 boundaries and typography still differ: page-count agreement alone is not visual
 identity. In particular, the final research table begins on Rust page 47 versus
 Hancom page 46. Remaining typography/border fidelity is tracked in FORMAT_COVERAGE.md.
+
+## Typography and borders — 2026-10-15
+
+The next comparison uses output/roadmap/13-typography/. Font matching now respects
+installed family names, TTC face indices and native bold faces, with synthetic
+bold only when needed. Source font-space behavior and terminal paragraph controls
+are retained. The math title now wraps into two lines with corresponding nested
+cell height growth. Law passage borders and rounded heading boxes are restored.
+
+132 tests and Clippy pass. The 43-document baseline remains 205 pages, with source
+hashes and object/page counts unchanged, zero geometric findings and no new missing
+glyphs. Four targets retain 2/15/9/50 pages and the previous non-whitespace character
+multisets. All 76 target pages were rendered and their contact sheets reviewed;
+selected page pairs and enlarged details are in the local HTML report. Paired
+images are visual aids, not a pixel-error measurement (report previews may be
+resized to the reference preview size).
+
+Absolute positioning, some intermediate page boundaries, receipt wrapping,
+watermark/symbol rendering and math page-border offsets still differ. Font
+fallback and synthetic weight/italic styles remain approximations. Full source
+fonts are embedded, so PDF size is not optimized. Reference PDFs are unchanged.
+No missing content can be inferred solely from the different small form logo:
+the viewer previously warned of image blocking at its HIGH security setting.
+
+Format references:
+- [HWP 5.0 revision 1.3](https://cdn.hancom.com/link/docs/한글문서파일형식_5.0_revision1.3.pdf):
+  character space flags, paragraph border flags/offsets, rectangle corner ratio.
+- [Hancom paragraph border help](https://help.hancom.com/hoffice130/ko-KR/Hwp/format/paragraph/paragraph(border).htm):
+  column/text-area border extent and adjacent paragraph connections.
