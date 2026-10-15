@@ -28,7 +28,13 @@
     {
       "id": 3,
       "task": "Unequal columns, balancing, section transitions and shared notes",
-      "status": "pending"
+      "status": "complete",
+      "tests": 104,
+      "report": "output/roadmap/03-columns/SUMMARY.html",
+      "images": [
+        "output/roadmap/03-columns/balanced-1.png",
+        "output/roadmap/03-columns/merged-2.png"
+      ]
     },
     {
       "id": 4,

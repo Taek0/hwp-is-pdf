@@ -641,3 +641,32 @@ zero geometry findings and pixel-identical output. The two stage-1 PDFs remain
 byte-identical. New code resides primarily in src/layout/anchors.rs and the
 existing responsibility-specific layout modules.
 Results: output/roadmap/02-anchors/SUMMARY.html.
+
+## Roadmap stage 3 — columns and source structure (2026-10-15)
+
+HWPX colSz width/gap and HWP5 unequal-width column records now feed per-column
+origins and widths. Paragraph continuations retain original UTF-16 positions and
+rewrap at the next column width. RIGHT/MIRROR reading order, mid-section column
+definition changes, and plain-text single-page balanced sets are supported.
+Merged/rightmost notes use conservative look-ahead reservation; definitions change
+on a fresh page when pending notes require the previous column geometry.
+Tables use the narrowest column width so fragments fit every destination column.
+
+Limits: mixed-content balancing uses sequential flow with a warning; changing-width
+float flow uses measured blocks instead of carried contours. Shared-note look-ahead
+can reserve unused space. Exact Hancom balancing, parallel-column synchronization,
+and all divider styles are not claimed. Saved-layout conversion remains unchanged.
+
+Five fixtures (13 pages), binary column decoding, source-order checks, balancing,
+shared notes, and a mixed unequal-column table test pass. All 104 tests and Clippy
+pass. The baseline 43 documents / 210 pages preserve source hashes, page/object
+counts and pixels, with zero geometry findings. Hancom comparison remains deferred.
+
+The HWP parser is split into src/hwp/; column responsibilities, saved-section
+rendering and table-vector pagination have separate src/layout/ modules.
+No Rust source file currently exceeds 600 lines. Public APIs remain unchanged.
+Module ownership and artifact locations are documented in src/README.md.
+Results: output/roadmap/03-columns/SUMMARY.html.
+
+Column references: Hancom HWP5 revision 1.3 tables 138–139 and
+https://github.com/hancom-io/hwpx-owpml-model/tree/main/OWPML/Class/Para
