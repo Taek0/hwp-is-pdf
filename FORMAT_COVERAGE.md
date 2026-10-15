@@ -670,3 +670,28 @@ Results: output/roadmap/03-columns/SUMMARY.html.
 
 Column references: Hancom HWP5 revision 1.3 tables 138–139 and
 https://github.com/hancom-io/hwpx-owpml-model/tree/main/OWPML/Class/Para
+
+## Roadmap stage 4 — equations and endnotes in reflow (2026-10-15)
+
+Inline/block equations contribute their box width, margins and baseline to line
+measurement. Missing boxes are measured from the equation script; oversized boxes
+fit the column. Reflow painting preserves equation proportions inside the box.
+Malformed equations without a script produce an error. Saved-equation painting
+is unchanged; equation-language coverage is still the existing subset.
+
+Endnote references now survive forced reflow. Their text and inline equations are
+rebuilt at the destination column width and continue across columns/pages. All
+three notes and 54 marked note paragraphs survive the synthetic fixtures, including
+unequal columns. Block tables/pictures inside an endnote still require further
+mixed-note work; these are explicit errors, not silently omitted content.
+
+Three generated fixtures (13 pages) and two existing public HWP files (9 pages)
+were converted and visually reviewed with zero geometry findings. Public endnote
+source-character counts are preserved; forced pagination changes from 5 to 8 pages,
+so identical Hancom pagination is not claimed. All 106 tests and Clippy pass.
+Baseline 43 documents / 210 pages have unchanged source hashes, object/page counts,
+zero geometry findings, and byte-identical PDFs. Hancom comparison remains deferred.
+
+Equation preparation/painting, endnote flow and wrapping-unit measurement have
+separate modules; the largest Rust file remains below 600 lines.
+Results: output/roadmap/04-equation-notes/SUMMARY.html.

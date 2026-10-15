@@ -39,7 +39,13 @@
     {
       "id": 4,
       "task": "Equation and endnote integration with forced reflow",
-      "status": "pending"
+      "status": "complete",
+      "tests": 106,
+      "report": "output/roadmap/04-equation-notes/SUMMARY.html",
+      "images": [
+        "output/roadmap/04-equation-notes/single-1.png",
+        "output/roadmap/04-equation-notes/unequal-3.png"
+      ]
     },
     {
       "id": 5,

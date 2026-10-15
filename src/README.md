@@ -14,6 +14,8 @@ The module splits are internal; callers do not need to depend on implementation 
 | `layout.rs` | Engine state, shared layout types and public rendering entry points |
 | `layout/section_render.rs` | Section dispatch and saved-layout rendering |
 | `layout/reflow*.rs` | Paragraph, object and table measurement and ordinary flow |
+| `layout/reflow_units.rs` | Styled text/control/object metrics passed to the line breaker |
+| `layout/equation_layout.rs`, `layout/endnote_flow.rs` | Equation sizing/painting and source-based endnote continuation |
 | `layout/column_*.rs` | Column geometry, source continuation, balancing and shared-note reservation |
 | `layout/text_*.rs`, `layout/object_paint.rs` | Text styling and drawing operations |
 | `layout/table_layout.rs` | Table and cell layout |
