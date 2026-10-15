@@ -63,3 +63,4 @@ Page coordinate modules:
 - `pdf/font_subset.rs`: stable-ID TrueType glyph closure, sfnt reconstruction and embedding fallback.
 
 - `layout/saved_float_order.rs`: preserve text-before-table order for cached paragraph-below native floats.
+- `layout/table_cell_split.rs`: independent carry of staggered native cell lines, merged-rule extension and fragment closing rules; complex vectors retain the shared-ink paginator.

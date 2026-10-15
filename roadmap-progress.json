@@ -208,5 +208,17 @@
     "geometry_findings": 0,
     "report": "output/roadmap/21-cell-flow/SUMMARY.html",
     "remaining": "Research table now starts on page 46, but row distribution spans 46–48 versus Hancom 46–47"
+  },
+  "post_final_table_fragments": {
+    "status": "complete",
+    "date": "2026-10-16",
+    "tests": 158,
+    "documents": 43,
+    "pages": 205,
+    "byte_identical_pdfs": 41,
+    "geometry_findings": 0,
+    "text_unchanged": true,
+    "report": "output/roadmap/22-table-fragments/SUMMARY.html",
+    "remaining": "Research table remains 46-48 versus Hancom 46-47; exact row and note distribution requires further work"
   }
 }
