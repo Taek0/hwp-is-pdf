@@ -1,0 +1,66 @@
+{
+  "updated": "2026-10-15",
+  "workflow": "For each stage: implement, validate examples and regression corpus, save and inspect page images, commit and push, then continue. Compare Hancom output after stage 10.",
+  "stages": [
+    {
+      "id": 1,
+      "task": "Wrapping precision: image alpha, curves/groups/holes and multiple line intervals",
+      "status": "complete",
+      "tests": 96,
+      "report": "output/roadmap/01-wrapping/SUMMARY.html",
+      "images": [
+        "output/roadmap/01-wrapping/single-1.png",
+        "output/roadmap/01-wrapping/columns-1.png"
+      ]
+    },
+    {
+      "id": 2,
+      "task": "Negative/absolute anchors and oversized connected object pagination",
+      "status": "pending"
+    },
+    {
+      "id": 3,
+      "task": "Unequal columns, balancing, section transitions and shared notes",
+      "status": "pending"
+    },
+    {
+      "id": 4,
+      "task": "Equation and endnote integration with forced reflow",
+      "status": "pending"
+    },
+    {
+      "id": 5,
+      "task": "Complex cell, textbox and caption reflow",
+      "status": "pending"
+    },
+    {
+      "id": 6,
+      "task": "Extended list formats, restarts, image bullets and label geometry",
+      "status": "pending"
+    },
+    {
+      "id": 7,
+      "task": "Header/footer reflow and partial-cache recovery",
+      "status": "pending"
+    },
+    {
+      "id": 8,
+      "task": "Typography, tabs, line breaking, shaping and RTL",
+      "status": "pending"
+    },
+    {
+      "id": 9,
+      "task": "Remaining graphics, equation and chart compatibility",
+      "status": "pending"
+    },
+    {
+      "id": 10,
+      "task": "Fields/TOC evaluation and PDF links/bookmark destinations",
+      "status": "pending"
+    }
+  ],
+  "hancom_comparison": {
+    "status": "pending",
+    "after_stage": 10
+  }
+}

@@ -584,3 +584,33 @@ All 91 Rust tests and all-target Clippy pass, including enlarged polygon source-
 coordinate scaling. The baseline 43 documents / 210 pages retain original hashes,
 page/object counts and pixel-identical default output; previous paired-float
 examples / 5 pages also remain identical. All geometry QA classes are empty.
+
+## Roadmap stage 1 — wrapping precision (2026-10-15)
+
+PDF image alpha is preserved with soft masks. Contour mode uses conservative
+alpha-cell spans (up to 128 cells per axis), including crop and rotation, and QA
+checks opaque regions rather than treating transparent pixels as foreground.
+Nonzero-winding polygon holes and separated group members can expose inner gaps.
+Closed cubic contours use adaptive subdivision with a 0.1pt tolerance; complex
+contours retain conservative projections. Group members use conservative component
+bounds and preserve normalized child anchors. Complex affine/group import remains
+part of stage 9.
+
+BOTH_SIDES uses multiple left-to-right fragments at the same baseline. A complete
+row remains atomic at page boundaries; Latin tokens move to a later wider interval
+when possible. LARGEST_ONLY and directional restrictions remain available.
+Generated alpha-ring/curve/group examples render 2 pages and 1 page, with exact
+source-text preservation and zero geometry findings. Cropped/rotated alpha and
+winding holes are covered by tests. All 96 tests and all-target Clippy pass.
+
+All baseline 43 documents / 210 pages retain source hashes and page/object counts,
+with zero geometry findings. 209 rasters are unchanged; government-faq page 1
+intentionally changes because its transparent logo no longer has a black box.
+The previous two contour examples / 3 pages remain identical. No Hancom-output
+comparison has been performed at this stage; it is deferred until stage 10.
+
+Layout code was mechanically split by responsibility into src/layout/ modules.
+The root layout.rs decreased from 5,159 to 565 lines; child modules range from
+roughly 100 to 650 lines. Public API paths are unchanged. All tests/Clippy pass
+and the two stage-1 PDF outputs are byte-identical before/after the refactor.
+Results: output/roadmap/01-wrapping/SUMMARY.html.

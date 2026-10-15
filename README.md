@@ -83,11 +83,19 @@
 이동하고 경고를 기록합니다. `LEFT_ONLY`·`RIGHT_ONLY`도 반영합니다.
 `--contour-wrap` 옵션은 재배치를 켜고 타원·다각형·회전 사각형의 기하 윤곽을
 따라 본문을 배치합니다. 기본 `--reflow`는 원본의 사각 감싸기를 유지합니다.
-한 줄에서는 가장 넓은 연속 공간을 사용하며, 그림은 사각 영역으로 보호합니다.
+BOTH_SIDES는 같은 줄의 여러 구간을 사용하고, LARGEST_ONLY는 가장 넓은 구간을 선택합니다.
+투명 그림은 PDF 마스크로 보존하며 자르기·회전을 반영한 불투명 영역을 사용합니다.
 음수 세로 앵커, PAGE/PAPER 기준의 절대 위치, 연결된 개체 영역이 한 단보다 큰 경우,
-투명 그림 윤곽·곡선·내부 구멍 감싸기와 셀 내부 감싸기는 남아 있습니다.
+복잡한 그룹 변환과 셀 내부 감싸기는 남아 있습니다.
 최신 결과: `output/reflow-contours/SUMMARY.html` (91개 테스트·Clippy 통과,
 기존 43개 문서 210쪽과 이전 감싸기 예제 5쪽 픽셀 동일).
+
+현재 10단계 개선을 순서대로 진행 중이며 `roadmap-progress.json`에 상태를 기록합니다.
+1단계는 투명 그림, 닫힌 베지어 곡선, 그룹 내부 빈 공간, 다각형의 내부 구멍,
+같은 줄의 여러 구간을 구현했습니다. 96개 테스트와 Clippy가 통과했습니다.
+기존 210쪽 중 209쪽은 동일하며 1쪽은 투명 로고의 검은 배경을 수정한 결과입니다.
+이미지·검증 보고서: `output/roadmap/01-wrapping/SUMMARY.html`.
+한컴 출력과의 비교는 요청대로 10단계 완료 후에 진행합니다.
 
 ## 실행
 
@@ -129,7 +137,12 @@ hwp_engine::convert_with_options(input_path, output_path, font_directory, true, 
 - `src/model.rs`: 크기 제한을 적용한 HWPX ZIP/XML 로딩, 문자·문단·테두리 정의와 이미지 참조.
 - `src/hwp.rs`: 읽기 전용 CFB 저장소, HWP 압축 스트림/CRC, 길이·중첩 제한이 있는 레코드 파서,
   문단/글꼴/표/바탕쪽/그림 정규화, PCX 해독, 한컴 전용 표시 문자 처리.
-- `src/layout.rs`: UTF-16 기준 위치, 8칸 제어 요소, 다단·중첩 표·그림·글상자·번호·미주 배치.
+- `src/layout.rs`: 공개 Engine API, 상태 및 변환 흐름 조정(565줄).
+- `src/layout/text_style.rs`, `text_paint.rs`: 글자 측정·서식과 텍스트 출력.
+- `src/layout/object_paint.rs`: 개체 출력, `table_layout.rs`·`table_pagination.rs`: 표 배치·분할.
+- `src/layout/notes.rs`, `page_decorations.rs`: 각주·미주와 머리말·꼬리말.
+- `src/layout/reflow*.rs`: 페이지·단 흐름, 문단, 표 셀, 개체 감싸기 준비를 역할별 분리.
+- `src/reflow.rs`, `wrap_region.rs`, `image_layout.rs`: 줄 구간 선택, 윤곽선 교차, 이미지 불투명 영역.
 - `src/math.rs`: 제공된 시험지의 숫자, 변수, π, 각도, 괄호, 위첨자, 분수, 단위, 선분 표시.
 - `src/pdf.rs`: PDF 객체/스트림, TrueType 글꼴 포함, CID/ToUnicode, 벡터 글자/선과 이미지 출력.
 - `src/lib.rs`: 변환 API. `src/main.rs`: 개발·검증용 CLI.
