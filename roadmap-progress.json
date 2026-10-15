@@ -115,7 +115,9 @@
     }
   ],
   "hancom_comparison": {
-    "status": "pending",
-    "after_stage": 10
+    "status": "awaiting_reference_output",
+    "after_stage": 10,
+    "report": "reference/HANCOM_COMPARISON.md",
+    "reason": "Viewer PDF print action failed to activate captured window after recovery; no Hancom PDF produced"
   }
 }
