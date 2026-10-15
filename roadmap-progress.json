@@ -94,7 +94,13 @@
     {
       "id": 9,
       "task": "Remaining graphics, equation and chart compatibility",
-      "status": "pending"
+      "status": "complete",
+      "tests": 121,
+      "report": "output/roadmap/09-graphics/SUMMARY.html",
+      "images": [
+        "output/roadmap/09-graphics/accents-1.png",
+        "output/roadmap/09-graphics/background-arcs-1.png"
+      ]
     },
     {
       "id": 10,

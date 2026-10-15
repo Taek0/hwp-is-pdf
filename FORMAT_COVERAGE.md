@@ -804,3 +804,29 @@ Results: output/roadmap/08-typography/SUMMARY.html.
 
 API references: https://docs.rs/rustybuzz/0.20.1/rustybuzz/ and
 https://docs.rs/unicode-bidi/0.3.18/unicode_bidi/struct.BidiInfo.html.
+
+## Roadmap stage 9 — graphics and equation compatibility (2026-10-15)
+
+Line, arc and decoded legacy chart objects now participate in reflow. Horizontal
+rules reserve stroke height. Background shapes/images preserve source geometry
+without consuming text-flow space, including a shaped RTL paragraph. Background
+tables/captions remain explicitly unsupported. HWPX ax1/ax2 arc coordinates and
+NORMAL/PIE/CHORD closures are recognized; HWP arc type is retained. Transparent
+fill names no longer become black, and nested fills do not leak into parent shapes.
+
+Equation HAT/CHECK/TILDE/ACUTE/GRAVE/DOT/DDOT/BAR/VEC/DYAD/UNDER are scoped to their
+operand. ATOP, infix CHOOSE and prefix BINOM have structured geometry; OVER accepts
+uppercase too. Image review caught missing Bézier translation/scaling, which was
+fixed with position assertions. Exact equation typography, arbitrary arc sweeps,
+advanced brushes and unsupported native chart styles remain approximate/limited.
+
+Two synthetic files plus two public HWP files produce four reviewed pages. Tests
+cover 14 equations, scoped bars, actual curve positions, background/RTL integration,
+arc variants and a native chart. All 121 tests and Clippy pass. Baseline 43 documents
+/ 210 pages retain hashes, counts, zero findings and identical PDFs. No baseline
+document uses the newly added equation Bézier operations; the corrected paths are
+verified in the new examples. Hancom-output comparison remains deferred.
+Results: output/roadmap/09-graphics/SUMMARY.html.
+
+References: reference/한글문서파일형식_수식_revision1.3.pdf and Hancom's
+OWPML/Class/Para/ArcType.cpp / Class/enumdef.h definitions.

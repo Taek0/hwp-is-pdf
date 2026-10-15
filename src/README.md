@@ -19,6 +19,7 @@ The module splits are internal; callers do not need to depend on implementation 
 | `layout/reflow_units.rs` | Styled text/control/object metrics passed to the line breaker |
 | `layout/equation_layout.rs`, `layout/endnote_flow.rs` | Equation sizing/painting and source-based endnote continuation |
 | `layout/caption_layout.rs` | Caption width budgets, nested measurement and painting |
+| `layout/shape_paths.rs`, `math_accents.rs`, `math_stacks.rs` | Shape paths and structured equation decorations/stacks |
 | `number_format.rs`, `layout/list_labels.rs` | Number sequences, list counters, label geometry and image bullets |
 | `layout/complex_text.rs`, `layout/local_flow.rs` | Bidi/OpenType shaping and nested-list flow |
 | `layout/column_*.rs` | Column geometry, source continuation, balancing and shared-note reservation |
