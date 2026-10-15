@@ -3706,7 +3706,14 @@ impl<'a> Engine<'a> {
             }
         }
         normalize(&mut p);
-        let mut exclusion = None;
+        let inherited = source.n("floatCarryHeight") > 0.;
+        let mut exclusion = inherited.then(|| {
+            (
+                source.n("floatCarryLeft"),
+                source.n("floatCarryRight"),
+                source.n("floatCarryHeight"),
+            )
+        });
         for run in p.children.iter_mut().filter(|r| r.name == "run") {
             for n in run
                 .children
@@ -3746,8 +3753,18 @@ impl<'a> Engine<'a> {
                 });
             }
         }
-        if let Some((_, _, h)) = exclusion {
-            p.attrs.insert("reflowFloatHeight".into(), h.to_string());
+        if let Some((l, r, h)) = exclusion {
+            p.attrs.insert(
+                if inherited {
+                    "reflowFloatCarry"
+                } else {
+                    "reflowFloatHeight"
+                }
+                .into(),
+                h.to_string(),
+            );
+            p.attrs.insert("reflowFloatLeft".into(), l.to_string());
+            p.attrs.insert("reflowFloatRight".into(), r.to_string());
         }
         let items = Self::items(&p);
         let mut units = Vec::new();
@@ -3917,7 +3934,11 @@ impl<'a> Engine<'a> {
             grouped[0].em = grouped[0].em.max(g.size);
         }
         let wrapped = if exclusion.is_some() {
-            crate::reflow::wrap_around(&grouped, width, &settings, exclusion)?
+            if source.a("floatFlow") == "1" {
+                crate::reflow::wrap_flow(&grouped, width, &settings, exclusion)?
+            } else {
+                crate::reflow::wrap_around(&grouped, width, &settings, exclusion)?
+            }
         } else {
             crate::reflow::wrap(&grouped, width, &settings)?
         };
@@ -3962,7 +3983,8 @@ impl<'a> Engine<'a> {
         cols: usize,
         gap: f64,
     ) -> Result<(f64, usize, f64, f64)> {
-        let mut plans = Vec::new();
+        let mut plans: Vec<(Node, Vec<crate::reflow::Line>, crate::reflow::Settings)> = Vec::new();
+        let mut carry: Option<(f64, f64, f64)> = None;
         for source in section.children_named("p") {
             if let Some(c) = paragraph_columns(source) {
                 anyhow::ensure!(
@@ -3970,7 +3992,58 @@ impl<'a> Engine<'a> {
                     "Reflow with mid-section column changes is not supported"
                 );
             }
-            plans.push(self.reflow_paragraph(source, width, 0)?);
+            let style = self.doc.paras.get(source.a("paraPrIDRef"));
+            let source_settings = crate::reflow::settings(style);
+            let can_follow = source.a("pageBreak") != "1"
+                && !source_settings.page
+                && !source_settings.keep
+                && !source_settings.next
+                && style
+                    .and_then(|s| s.child("heading"))
+                    .is_none_or(|h| !matches!(h.a("type"), "NUMBER" | "BULLET"))
+                && Self::items(source)
+                    .iter()
+                    .all(|i| !matches!(i.kind, ItemKind::Object(_)));
+            if !can_follow
+                && let Some((_, _, remaining)) = carry.take()
+                && let Some((_, _, last_settings)) = plans.last_mut()
+            {
+                last_settings.after += remaining;
+            }
+            let mut source = source.clone();
+            source.attrs.insert("floatFlow".into(), "1".into());
+            if let Some((left, right, remaining)) = carry {
+                let remaining = (remaining - source_settings.before).max(0.);
+                carry = (remaining > 0.).then_some((left, right, remaining));
+                if remaining > 0. {
+                    for (key, value) in [
+                        ("floatCarryLeft", left),
+                        ("floatCarryRight", right),
+                        ("floatCarryHeight", remaining),
+                    ] {
+                        source.attrs.insert(key.into(), value.to_string());
+                    }
+                }
+            }
+            let (p, lines, settings) = self.reflow_paragraph(&source, width, 0)?;
+            if p.n("reflowFloatHeight") > 0. {
+                carry = Some((
+                    p.n("reflowFloatLeft"),
+                    p.n("reflowFloatRight"),
+                    p.n("reflowFloatHeight"),
+                ));
+            }
+            if let Some((left, right, remaining)) = carry {
+                let remaining =
+                    remaining - lines.iter().map(|l| l.height).sum::<f64>() - settings.after;
+                carry = (remaining > 0.).then_some((left, right, remaining));
+            }
+            plans.push((p, lines, settings));
+        }
+        if let Some((_, _, remaining)) = carry
+            && let Some((_, _, settings)) = plans.last_mut()
+        {
+            settings.after += remaining;
         }
         let mut col = 0;
         let mut y = self.top;
@@ -4028,14 +4101,43 @@ impl<'a> Engine<'a> {
             }
             if p.n("reflowFloatHeight") > 0. {
                 let mut span = 0.;
-                let mut notes = Vec::new();
-                for (index, line) in ls.iter().enumerate() {
-                    notes.extend(notes_for(index));
-                    span += line.height;
+                let mut owned_notes = Vec::new();
+                'float_band: for (j, (part, part_lines, part_settings)) in
+                    plans.iter().enumerate().skip(pi)
+                {
+                    if j > pi {
+                        span = (span + part_settings.before).min(p.n("reflowFloatHeight"));
+                        if span >= p.n("reflowFloatHeight") {
+                            break;
+                        }
+                    }
+                    let part_items = Self::items(part);
+                    for (index, line) in part_lines.iter().enumerate() {
+                        let end = part_lines
+                            .get(index + 1)
+                            .map(|l| l.pos)
+                            .unwrap_or(usize::MAX);
+                        for item in part_items
+                            .iter()
+                            .filter(|i| i.pos >= line.pos && i.pos < end)
+                        {
+                            if let ItemKind::Control(note) = &item.kind
+                                && note.name == "footNote"
+                            {
+                                owned_notes.push(note.clone());
+                            }
+                        }
+                        span += line.height;
+                        if span >= p.n("reflowFloatHeight") {
+                            break 'float_band;
+                        }
+                    }
+                    span = (span + part_settings.after).min(p.n("reflowFloatHeight"));
                     if span >= p.n("reflowFloatHeight") {
                         break;
                     }
                 }
+                let notes: Vec<_> = owned_notes.iter().collect();
                 let reserve =
                     self.footnote_reservation(&notes, self.left + col as f64 * (width + gap));
                 if y + s.before + span > self.ph - self.bottom - reserve && y > self.top + 0.01 {
@@ -4138,7 +4240,7 @@ impl<'a> Engine<'a> {
                     continue;
                 }
                 if s.widow
-                    && !(at == 0 && p.n("reflowFloatHeight") > 0.)
+                    && !(at == 0 && (p.n("reflowFloatHeight") > 0. || p.n("reflowFloatCarry") > 0.))
                     && at + count < ls.len()
                     && ls[at].height + ls.get(at + 1).map(|l| l.height).unwrap_or(0.) <= body
                 {
@@ -4176,7 +4278,7 @@ impl<'a> Engine<'a> {
             }
             y += s.after;
         }
-        self.report.warnings.insert("Reflow uses font metrics and recursively lays out table cells and footnotes; leading left/right square pictures and rectangles wrap within their paragraph; other floating objects become blocks; advanced wrapping and exact Hancom line breaking remain limited".into());
+        self.report.warnings.insert("Reflow uses font metrics and recursively lays out table cells and footnotes; leading left/right square pictures and rectangles wrap across following ordinary paragraphs; other floating objects become blocks; advanced wrapping and exact Hancom line breaking remain limited".into());
         Ok((y, col, width, gap))
     }
     pub fn render(&mut self) -> Result<()> {

@@ -94,6 +94,23 @@ pub(crate) fn wrap_around(
     s: &Settings,
     exclusion: Option<(f64, f64, f64)>,
 ) -> anyhow::Result<Vec<Line>> {
+    wrap_exclusion(units, width, s, exclusion, true)
+}
+pub(crate) fn wrap_flow(
+    units: &[Unit],
+    width: f64,
+    s: &Settings,
+    exclusion: Option<(f64, f64, f64)>,
+) -> anyhow::Result<Vec<Line>> {
+    wrap_exclusion(units, width, s, exclusion, false)
+}
+fn wrap_exclusion(
+    units: &[Unit],
+    width: f64,
+    s: &Settings,
+    exclusion: Option<(f64, f64, f64)>,
+    reserve_height: bool,
+) -> anyhow::Result<Vec<Line>> {
     let mut out = Vec::new();
     let mut begin = 0;
     let mut y = 0.;
@@ -201,7 +218,7 @@ pub(crate) fn wrap_around(
             break;
         }
     }
-    if let Some((_, _, height)) = exclusion {
+    if reserve_height && let Some((_, _, height)) = exclusion {
         let used: f64 = out.iter().map(|l| l.height).sum();
         if let Some(last) = out.last_mut() {
             last.height += (height - used).max(0.);
