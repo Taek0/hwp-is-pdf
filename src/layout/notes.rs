@@ -1,6 +1,15 @@
 //! Layout responsibility: notes.
 use super::*;
 
+fn note_row_advance(flow: &[(&Node, usize, f64)], idx: usize) -> f64 {
+    let (p, line, y) = flow[idx];
+    flow.get(idx + 1)
+        .map(|next| next.2 - y)
+        .unwrap_or_else(|| lines(p)[line].n("vertsize") / 100.)
+        .max(lines(p)[line].n("vertsize") / 100.)
+        .max(0.1)
+}
+
 impl<'a> Engine<'a> {
     pub(super) fn item_footnotes(items: &[Item], start: usize, end: usize) -> Vec<&Node> {
         let mut notes = Vec::new();
@@ -358,7 +367,7 @@ impl<'a> Engine<'a> {
         self.pages.push(std::mem::take(&mut self.current));
         Ok(())
     }
-    /// Drain long notes onto dedicated continuation pages before resuming body flow.
+    /// Continue long notes in bounded shared-page areas, draining any section-end tail.
     /// Lines are indivisible; numbering is already present in their first line.
     pub(super) fn finish_long_notes(&mut self) -> Result<()> {
         let mut groups = std::mem::take(&mut self.continued_notes);
@@ -370,21 +379,18 @@ impl<'a> Engine<'a> {
                     w,
                     std::collections::VecDeque::new(),
                 ));
-                for (idx, (p, line, y)) in flow.iter().enumerate() {
-                    let height = flow
-                        .get(idx + 1)
-                        .map(|next| next.2 - y)
-                        .unwrap_or_else(|| {
-                            (lines(p)[*line].n("vertsize") + lines(p)[*line].n("spacing")) / 100.
-                        })
-                        .max(lines(p)[*line].n("vertsize") / 100.)
-                        .max(0.1);
+                // Spacing separates notes; it is not a trailing margin after
+                // the last note in a continuation queue.
+                if !flow.is_empty()
+                    && let Some(last) = entry.2.back_mut()
+                {
+                    last.2 += self.note_gap(false, "betweenNotes", 4.);
+                }
+                for (idx, (p, line, _)) in flow.iter().enumerate() {
+                    let height = note_row_advance(&flow, idx);
                     entry
                         .2
                         .push_back(((*p).clone(), *line, height, note.a("number").into()));
-                }
-                if let Some(last) = entry.2.back_mut() {
-                    last.2 += self.note_gap(false, "betweenNotes", 4.);
                 }
             }
         }
@@ -497,5 +503,23 @@ impl<'a> Engine<'a> {
         let result = self.finish_long_notes();
         self.draining_notes = false;
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn continued_note_height_omits_final_line_leading_like_normal_notes() {
+        let list=crate::model::xml(br#"<subList><p><linesegarray><lineseg vertpos="0" vertsize="1000" spacing="800"/><lineseg vertpos="1800" vertsize="1000" spacing="800"/></linesegarray></p></subList>"#).unwrap();
+        let flow = flowing_lines(&list);
+        assert_eq!(note_row_advance(&flow, 0), 18.);
+        assert_eq!(note_row_advance(&flow, 1), 10.);
+        assert_eq!(
+            (0..flow.len())
+                .map(|i| note_row_advance(&flow, i))
+                .sum::<f64>(),
+            content_height(&list)
+        );
     }
 }

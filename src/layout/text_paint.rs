@@ -25,8 +25,15 @@ impl<'a> Engine<'a> {
             .get(li + 1)
             .map(|n| n.u("textpos"))
             .unwrap_or(usize::MAX);
-        let mut its: Vec<_> = Self::items(p)
+        let all_items = Self::items(p);
+        let deferred = if self.depth == 0 {
+            saved_float_order::trailing_table(p, &all_items)
+        } else {
+            None
+        };
+        let mut its: Vec<_> = all_items
             .into_iter()
+            .filter(|i|deferred.as_ref().is_none_or(|(pos,_)| i.pos!=*pos || !matches!(i.kind,ItemKind::Object(_))))
             .filter(|i| i.pos >= start && i.pos < end)
             .filter(|i| !matches!(&i.kind,ItemKind::Object(n) if n.a("reflowGeneral")=="1" || n.a("reflowBehind")=="1"))
             .filter(|i| p.a("reflowed") != "1" || !matches!(i.kind, ItemKind::Char('\n' | '\r')))
@@ -571,6 +578,11 @@ impl<'a> Engine<'a> {
             w: (x - origin).max(0.),
             h: seg.n("vertsize") / 100.,
         });
+        if li + 1 == segs.len()
+            && let Some((_, n)) = deferred
+        {
+            self.paint_trailing_saved_table(&n, p, ox, oy, width)?;
+        }
         Ok(())
     }
 }

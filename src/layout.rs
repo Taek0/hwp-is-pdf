@@ -329,6 +329,7 @@ mod reflow_paragraph;
 mod reflow_table;
 mod reflow_units;
 mod saved_cell_text;
+mod saved_float_order;
 mod section_render;
 mod shape_paths;
 mod tab_layout;
