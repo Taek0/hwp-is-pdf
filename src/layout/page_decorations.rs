@@ -1,6 +1,17 @@
 //! Layout responsibility: page decorations.
 use super::*;
 
+fn page_label(number: &Node, page: usize) -> String {
+    if number.a("prefix").is_empty()
+        && number.a("suffix").is_empty()
+        && !number.a("sideChar").is_empty()
+    {
+        format!("{} {page} {}", number.a("sideChar"), number.a("sideChar"))
+    } else {
+        format!("{}{page}{}", number.a("prefix"), number.a("suffix"))
+    }
+}
+
 impl<'a> Engine<'a> {
     pub(super) fn decorations(
         &mut self,
@@ -22,7 +33,7 @@ impl<'a> Engine<'a> {
             if pos > 0 {
                 let page = (self.pages.len() as i64 + self.page_base).max(1) as usize;
                 let font = self.fonts.get("times.ttf")?;
-                let label = format!("{}{}{}", number.a("prefix"), page, number.a("suffix"));
+                let label = page_label(number, page);
                 let w = self.fonts.width(font, &label, 10.);
                 let right = match pos {
                     3 | 6 => true,
@@ -104,5 +115,18 @@ impl<'a> Engine<'a> {
         self.paint_furniture(section, first, hiding)?;
         let _ = gap;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn page_number_side_character_and_explicit_affixes_are_distinct() {
+        let n = crate::model::xml(br#"<pageNumPos sideChar="-"/>"#).unwrap();
+        assert_eq!(page_label(&n, 50), "- 50 -");
+        let n = crate::model::xml(br#"<pageNumPos sideChar="-" prefix="[" suffix="]"/>"#).unwrap();
+        assert_eq!(page_label(&n, 2), "[2]");
+        assert_eq!(page_label(&Node::default(), 2), "2");
     }
 }

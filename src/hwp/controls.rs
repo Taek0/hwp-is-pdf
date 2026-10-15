@@ -108,6 +108,17 @@ pub(super) fn control(r: &Record) -> Result<Node> {
                 .at("position", (u32(d, 4)? >> 8) & 15)
                 .at("format", u32(d, 4)? & 255)
                 .at(
+                    "sideChar",
+                    if d.len() >= 16 {
+                        char::from_u32(u16(d, 14)? as u32)
+                            .filter(|c| *c != '\0')
+                            .map(|c| c.to_string())
+                            .unwrap_or_default()
+                    } else {
+                        String::new()
+                    },
+                )
+                .at(
                     "prefix",
                     char::from_u32(u16(d, 10)? as u32)
                         .filter(|c| *c != '\0')

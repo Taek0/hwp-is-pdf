@@ -66,6 +66,11 @@ impl<'a> Engine<'a> {
                 }
             }
         }
+        let automatic: Vec<_> = rh
+            .iter()
+            .enumerate()
+            .filter_map(|(i, h)| (*h == 0.).then_some(i))
+            .collect();
         let mut measured_cells = cells.clone();
         measured_cells.sort_by_key(|c| c.child("cellSpan").unwrap().u("rowSpan"));
         for c in &measured_cells {
@@ -111,10 +116,16 @@ impl<'a> Engine<'a> {
             }
             total = h;
         }
-        if total < h
-            && let Some(last) = rh.last_mut()
-        {
-            *last += h - total;
+        if total < h && !rh.is_empty() {
+            // A single zero-height native row is auto-sized (commonly a merged
+            // heading). It owns the remaining declared height, not the last
+            // fixed-height row. Multiple ambiguous auto rows retain the fallback.
+            let row = if n.a("binaryHwp") == "1" && automatic.len() == 1 {
+                automatic[0]
+            } else {
+                rh.len() - 1
+            };
+            rh[row] += h - total;
             total = h;
         }
         Ok((cw, rh, total))
@@ -135,5 +146,18 @@ mod tests {
         let (_, rows, total) = e.measure_table_grid(&n, 300.).unwrap();
         assert_eq!(rows, vec![300.]);
         assert_eq!(total, rows.iter().sum::<f64>());
+    }
+
+    #[test]
+    fn native_auto_header_receives_spare_height_without_stretching_fixed_body_row() {
+        let d = Document::open(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("samples/reflow/contour-single.hwpx"),
+        )
+        .unwrap();
+        let n=crate::model::xml(br#"<tbl binaryHwp="1" rowCnt="2" colCnt="1"><tr><tc><cellAddr rowAddr="0" colAddr="0"/><cellSpan rowSpan="1" colSpan="1"/><cellSz width="9000" height="0"/></tc></tr><tr><tc><cellAddr rowAddr="1" colAddr="0"/><cellSpan rowSpan="1" colSpan="1"/><cellSz width="9000" height="10000"/></tc></tr></tbl>"#).unwrap();
+        let mut e = Engine::new(&d, Path::new("."));
+        let (_, rows, total) = e.measure_table_grid(&n, 200.).unwrap();
+        assert_eq!(rows, vec![100., 100.]);
+        assert_eq!(total, 200.);
     }
 }
