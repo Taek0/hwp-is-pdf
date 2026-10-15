@@ -34,3 +34,64 @@ were fabricated. Once exports are available, compare page counts, text order,
 object geometry and raster overlays and record font/security differences.
 
 Local evidence: output/roadmap/11-hancom/viewer-print-dialog.png.
+
+## User-supplied reference PDFs received — 2026-10-15
+
+The user exported four PDFs into output/roadmap/11-hancom/hancom/temp/.
+중간보고서.pdf initially had zero bytes while printing; the completed file is
+651,051 bytes and parses successfully as 50 pages. All four files parse and all
+157 combined reference/engine pages rasterize successfully with Poppler.
+
+| Reference PDF | Original | Hancom pages | Rust pages |
+|---|---|---:|---:|
+| 복학원서.pdf | 복학원서.hwp | 2 | 1 |
+| 법학적성시험.pdf | 21_언어_기출_편집가능본.hwp | 15 | 15 |
+| 내신도깨비.pdf | 2단_수학시험지_변환검증_7826.hwpx | 9 | 9 |
+| 중간보고서.pdf | samples/tables-notes/issue1937_rowbreak_footnote_overpagination.hwp | 50 | 56 |
+
+Reference identities were matched using first/last-page text. Original PDFs remain
+unchanged. Hashes, PDF paths and every page's dimensions are in the local
+output/roadmap/11-hancom/comparison.json. Reference and engine page PNGs and text
+are in compare/{form,law,math,report}/. No new converter behavior was changed.
+
+### Findings from inspected pages
+
+- Reinstatement form: Hancom places the filing receipt on page 2; Rust keeps it
+  below the main form on page 1. The receipt text exists in both. Font weights,
+  receiving-official cell wrapping, watermark geometry and signature-line/symbol
+  appearance differ. The small upper-left logo is absent from the reference;
+  the prior viewer run reported restricted image formats, so that absence alone
+  is not attributed to an engine defect.
+- Law exam, page 1: page count and broad two-column content placement agree, but
+  the title weight/spacing, header-box geometry and rounded corners differ.
+  Hancom shows passage-box borders missing in the Rust output. A zero geometry-QA
+  result cannot detect a missing source border or establish visual fidelity.
+- Math exam, page 1: page count agrees; the top header's title wraps differently,
+  with different row heights and page-border offsets. Text font weights, line
+  spacing and subsequent table/figure vertical positions differ.
+- Report: page 2 is a genuinely empty TOC placeholder in the Hancom export too
+  (only the TOC title and footer). Rust's absence of entries there is not a lost
+  rendered TOC. Footer dashes and text weight still differ.
+- Report table continuation differs substantially: page 10 contains different
+  row ranges in each output. The final Hancom page 50 corresponds to Rust page 56
+  and contains the same concluding section, with different line spacing/weight.
+  The six-page increase must be investigated in table/paragraph measurement and
+  continuation; it is not evidence by itself of extra or missing source content.
+
+### Comparison scope and next priorities
+
+All page counts, dimensions, parsing and rasterization were checked. Visual review
+covered the form's two reference pages and single Rust page; first pages of both
+exams; report page 2, paired pages 10/25/50 and Rust page 56. This is an initial
+reference comparison, not an exhaustive semantic audit of every line or a measured
+compatibility percentage. Text-extraction alignment is only a navigation aid;
+private-use math glyphs, reading order and sparse pages limit its reliability.
+
+Priorities from actual reference evidence:
+1. Correct form page-break/receipt placement and report table height/continuation.
+2. Restore paragraph/passage borders and rounded header-box geometry.
+3. Match Korean/Latin font face, bold weight, spacing, and header wrapping.
+4. Recompare affected and baseline documents against these reference PDFs.
+
+Local visual report: output/roadmap/11-hancom/SUMMARY.html.
+The earlier missing-reference blocker is now resolved by user-supplied exports.

@@ -115,9 +115,12 @@
     }
   ],
   "hancom_comparison": {
-    "status": "awaiting_reference_output",
+    "status": "initial_reference_comparison_complete",
     "after_stage": 10,
     "report": "reference/HANCOM_COMPARISON.md",
-    "reason": "Viewer PDF print action failed to activate captured window after recovery; no Hancom PDF produced"
+    "reason": "Four user-supplied PDFs parsed and rasterized; initial visual comparison found pagination, borders and typography differences",
+    "reference_documents": 4,
+    "reference_pages": 76,
+    "engine_pages": 81
   }
 }
