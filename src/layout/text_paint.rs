@@ -330,6 +330,13 @@ impl<'a> Engine<'a> {
                         let m = margin(n, "outMargin");
                         let extent = effective_height(n) + e[2] + e[3] + m[2] + m[3];
                         if self.depth == 0
+                            && !(n.name == "tbl"
+                                && n.a("binaryHwp") == "1"
+                                && n.a("pageBreak") == "TABLE"
+                                && n.children_named("tr")
+                                    .flat_map(|r| r.children_named("tc"))
+                                    .filter_map(|c| c.child("subList"))
+                                    .any(|l| content_height(l) > effective_height(n)))
                             && caption_cursor + extent > self.ph - self.bottom
                             && extent < self.ph - self.top - self.bottom
                         {

@@ -24,15 +24,19 @@ fn counts(s: &str) -> BTreeMap<char, usize> {
 }
 #[test]
 fn reserved_underline_value_does_not_decorate_table_or_footnote_text() {
-    let d = Document::open(&root().join(
-        "samples/tables-notes/issue1937_rowbreak_footnote_overpagination.hwp",
-    )).unwrap();
+    let d = Document::open(
+        &root().join("samples/tables-notes/issue1937_rowbreak_footnote_overpagination.hwp"),
+    )
+    .unwrap();
     // Footnote 20 uses shape 6. These shapes contain reserved type 2,
     // whereas shape 16 explicitly requests a real bottom underline.
     for id in ["6", "10", "93"] {
         assert!(d.chars[id].child("underline").is_none(), "shape {id}");
     }
-    assert_eq!(d.chars["16"].child("underline").unwrap().a("type"), "BOTTOM");
+    assert_eq!(
+        d.chars["16"].child("underline").unwrap().a("type"),
+        "BOTTOM"
+    );
 }
 #[test]
 fn public_tables_and_notes_keep_text_and_avoid_collisions() {
@@ -48,7 +52,38 @@ fn public_tables_and_notes_keep_text_and_avoid_collisions() {
         let source = d.sections.iter().map(text).collect::<String>();
         let mut e = Engine::new(&d, &fonts());
         e.render().unwrap();
-        if name == "inner-table-01" { assert_eq!(e.pages.len(),3,"Ordinary nested tables must retain row-based pagination"); }
+        if name == "issue1937_rowbreak_footnote_overpagination" {
+            // Match the user-exported Hancom reference without losing source text.
+            assert_eq!(e.pages.len(), 50);
+            let tail = e
+                .report
+                .bounds
+                .iter()
+                .filter(|b| b.kind == "tbl" && b.id == "hwp-44c83")
+                .map(|b| b.page)
+                .max()
+                .unwrap();
+            for number in 18..=39 {
+                let notes: Vec<_> = e
+                    .report
+                    .bounds
+                    .iter()
+                    .filter(|b| b.kind.starts_with("footnote") && b.id == number.to_string())
+                    .collect();
+                assert!(!notes.is_empty(), "missing table note {number}");
+                assert!(
+                    notes.iter().all(|b| b.page >= tail),
+                    "note {number} precedes table end"
+                );
+            }
+        }
+        if name == "inner-table-01" {
+            assert_eq!(
+                e.pages.len(),
+                3,
+                "Ordinary nested tables must retain row-based pagination"
+            );
+        }
         let q = qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
         assert!(
             q.outside_page.is_empty(),

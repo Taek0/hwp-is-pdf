@@ -77,6 +77,11 @@ impl<'a> Engine<'a> {
         self.capture_table_headers = false;
         let mut headers = std::mem::take(&mut self.table_headers);
         let mut planned_notes = std::mem::take(&mut self.table_note_anchors);
+        // Native saved floating-table notes belong to the table's final fragment.
+        // Reflowed and inline tables retain anchor-fragment note placement.
+        let notes_at_end = n.a("binaryHwp") == "1"
+            && n.a("reflowTable") != "1"
+            && n.child("pos").is_some_and(|p| p.a("treatAsChar") == "0");
         headers.sort_by(|a, b| a.y.total_cmp(&b.y));
         let canvas = std::mem::replace(&mut self.current, previous);
         let bounds = self.report.bounds.split_off(bound_start);
@@ -266,7 +271,13 @@ impl<'a> Engine<'a> {
             for _ in 0..planned_notes.len() + 2 {
                 let incoming: Vec<_> = planned_notes
                     .iter()
-                    .filter(|n| n.y >= start - 0.01 && n.y < cut)
+                    .filter(|n| {
+                        if notes_at_end {
+                            cut >= total - 0.01
+                        } else {
+                            n.y >= start - 0.01 && n.y < cut
+                        }
+                    })
                     .map(|n| &n.node)
                     .chain(bottom_notes.iter().copied())
                     .collect();
@@ -286,7 +297,14 @@ impl<'a> Engine<'a> {
                 if let Some(row) = boundaries
                     .iter()
                     .copied()
-                    .filter(|v| *v > start + capacity * 0.5 && *v <= cut && safe(*v))
+                    .filter(|v| {
+                        !(n.a("binaryHwp") == "1"
+                            && n.a("reflowTable") != "1"
+                            && n.a("pageBreak") == "TABLE")
+                            && *v > start + capacity * 0.5
+                            && *v <= cut
+                            && safe(*v)
+                    })
                     .max_by(f64::total_cmp)
                 {
                     cut = row;
@@ -304,8 +322,9 @@ impl<'a> Engine<'a> {
                     }
                 }
             }
-            if below > 0.
-                && cut < total - 0.01
+            // Do not orphan a repeated header and an empty row-height tail.
+            // Keep the last content row with the final table fragment.
+            if cut < total - 0.01
                 && !ink.iter().any(|(a, _)| *a >= cut)
                 && let Some(last) = ink.iter().map(|(a, _)| *a).max_by(f64::total_cmp)
             {
@@ -337,10 +356,13 @@ impl<'a> Engine<'a> {
                 continue;
             }
             let shift = top - start;
-            for note in planned_notes
-                .iter()
-                .filter(|n| n.y >= start - 0.01 && n.y < cut - 0.01)
-            {
+            for note in planned_notes.iter().filter(|n| {
+                if notes_at_end {
+                    cut >= total - 0.01
+                } else {
+                    n.y >= start - 0.01 && n.y < cut - 0.01
+                }
+            }) {
                 let (nx, nw) = if self.reflow_table_column.is_some() {
                     self.footnote_area(x)
                 } else {

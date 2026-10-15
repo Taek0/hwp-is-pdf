@@ -63,7 +63,9 @@ impl<'a> Engine<'a> {
                 }
             }
         }
-        for c in &cells {
+        let mut measured_cells = cells.clone();
+        measured_cells.sort_by_key(|c| c.child("cellSpan").unwrap().u("rowSpan"));
+        for c in &measured_cells {
             let a = c.child("cellAddr").unwrap();
             let span = c.child("cellSpan").unwrap();
             let row = a.u("rowAddr");
@@ -119,6 +121,30 @@ impl<'a> Engine<'a> {
                 self.split_nested_vectors(n, x, y, w, total)?,
                 "This table structure cannot yet be split across reflow columns"
             );
+            return Ok(());
+        }
+        // Saved text tables can cross a page within a cell. Measure their actual
+        // ink and note anchors, as for mixed tables, instead of moving whole rows.
+        if self.depth == 0
+            && n.a("binaryHwp") == "1"
+            && n.a("pageBreak") == "TABLE"
+            && n.child("pos").is_some_and(|p| {
+                p.a("treatAsChar") == "0"
+                    && p.a("vertRelTo") == "PARA"
+                    && p.a("vertAlign") != "BOTTOM"
+            })
+            && total > self.ph - self.bottom - y
+            && cells
+                .iter()
+                .filter_map(|c| c.child("subList"))
+                .flat_map(|l| l.children_named("p"))
+                .all(|p| {
+                    Self::items(p)
+                        .iter()
+                        .all(|i| !matches!(i.kind, ItemKind::Object(_)))
+                })
+            && self.split_nested_vectors(n, x, y, w, total)?
+        {
             return Ok(());
         }
         let fixed_bottom = n.child("pos").is_some_and(|p| p.a("vertAlign") == "BOTTOM");

@@ -127,6 +127,26 @@ fn public_documents_keep_negative_tracking_from_colliding() {
         let mut engine = Engine::new(&doc, &fonts());
         engine.render().unwrap();
         assert_eq!(engine.report.pages, pages);
+        if name == "government-notice" {
+            let tail: String = engine.pages[15]
+                .ops
+                .iter()
+                .filter_map(|op| {
+                    if let hwp_engine::pdf::Op::Text { text, .. } = op {
+                        Some(text.as_str())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            assert!(
+                tail.chars()
+                    .filter(|c| !c.is_whitespace())
+                    .collect::<String>()
+                    .contains("중소벤처기업부"),
+                "Last table fragment must contain its final row, not only a repeated header: {tail:?}"
+            );
+        }
         let audit = qa::inspect(&engine.pages, &engine.fonts, &engine.report.bounds);
         assert!(
             audit.text_overlaps.is_empty(),
