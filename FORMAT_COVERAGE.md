@@ -775,3 +775,32 @@ missing nested cache. Automatic recovery equals forced reflow and preserves all
 documents / 210 pages remain byte-identical with unchanged hashes/counts and zero
 geometry findings. Images were reviewed; Hancom comparison is still deferred.
 Results: output/roadmap/07-furniture/SUMMARY.html.
+
+## Roadmap stage 8 — tabs and complex text (2026-10-15)
+
+Explicit left/right/center/decimal tab stops are recomputed after rewrapping;
+leaders are painted in the resulting gap. HWP tab records include ordinary counted
+records and the flag-only empty form found in the existing synthetic public fixture.
+Paragraph tab references are retained; absent stops use a 40pt fallback interval.
+
+Arabic/Hebrew and combining-mark paragraphs use unicode-bidi 0.3.18 and rustybuzz
+0.20.1. Shaped glyph IDs/positions are embedded directly in PDF, with logical
+ActualText spans. Shaped lines remain indivisible through mixed-table pagination.
+QA checks their actual glyph bounds against pages/other content; natural cursive
+joins and attached marks inside a shaped run are intentional contacts.
+
+Three fixtures / 4 pages verify tab anchors, ligatures, marks, source text and RTL
+table continuation. The RTL sample intentionally underlines only its first paragraph.
+PDF ActualText preserves the original Arabic, Hebrew and combining characters.
+PDFium plain-text extraction still reorders mixed RTL runs; identical extractor
+reading order is not claimed. No Python engine or persistent Python files were added.
+
+All 118 tests and Clippy pass. Baseline 43 documents / 210 pages retain source hashes,
+counts, zero geometry findings and identical PDFs. General vertical writing,
+complex-script justification/tracking, and RTL paragraphs mixing inline objects,
+tabs or display controls remain limited. New modules keep source files below 600
+lines. Hancom comparison remains deferred.
+Results: output/roadmap/08-typography/SUMMARY.html.
+
+API references: https://docs.rs/rustybuzz/0.20.1/rustybuzz/ and
+https://docs.rs/unicode-bidi/0.3.18/unicode_bidi/struct.BidiInfo.html.

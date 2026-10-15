@@ -9,6 +9,7 @@ The module splits are internal; callers do not need to depend on implementation 
 | `hwp/document.rs` | Compound-document streams, DocInfo and document assembly |
 | `hwp/controls.rs`, `hwp/columns.rs` | Control records and column definitions |
 | `hwp/list_records.rs` | Numbering starts/extended levels and binary bullet records |
+| `hwp/tab_records.rs`, `tabs.rs`, `layout/tab_layout.rs` | Tab records, destination advances and leaders |
 | `hwp/paragraphs.rs`, `hwp/section.rs` | Paragraph and section records |
 | `hwp/object_properties.rs`, `hwp/images.rs` | Object placement and embedded-image decoding |
 | `model.rs` | Shared document/node model and HWPX package loading |
@@ -19,6 +20,7 @@ The module splits are internal; callers do not need to depend on implementation 
 | `layout/equation_layout.rs`, `layout/endnote_flow.rs` | Equation sizing/painting and source-based endnote continuation |
 | `layout/caption_layout.rs` | Caption width budgets, nested measurement and painting |
 | `number_format.rs`, `layout/list_labels.rs` | Number sequences, list counters, label geometry and image bullets |
+| `layout/complex_text.rs`, `layout/local_flow.rs` | Bidi/OpenType shaping and nested-list flow |
 | `layout/column_*.rs` | Column geometry, source continuation, balancing and shared-note reservation |
 | `layout/text_*.rs`, `layout/object_paint.rs` | Text styling and drawing operations |
 | `layout/table_layout.rs` | Table and cell layout |
@@ -27,6 +29,7 @@ The module splits are internal; callers do not need to depend on implementation 
 | `layout/page_furniture.rs` | Header/footer cache recovery, measured space and page variant selection |
 | `reflow.rs`, `pagination.rs`, `wrap_region.rs` | Layout algorithms without engine orchestration |
 | `pdf.rs`, `qa.rs` | PDF emission/font metrics and geometric output checks |
+| `pdf/operations.rs` | Shared drawing operations and logical text spans |
 
 Add behavior to its owning module. Split by responsibility when a file acquires a second concern;
 do not create numbered file fragments or duplicate implementations to meet a line limit.

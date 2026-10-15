@@ -83,7 +83,13 @@
     {
       "id": 8,
       "task": "Typography, tabs, line breaking, shaping and RTL",
-      "status": "pending"
+      "status": "complete",
+      "tests": 118,
+      "report": "output/roadmap/08-typography/SUMMARY.html",
+      "images": [
+        "output/roadmap/08-typography/tabs-1.png",
+        "output/roadmap/08-typography/rtl-1.png"
+      ]
     },
     {
       "id": 9,
