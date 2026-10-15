@@ -105,7 +105,13 @@
     {
       "id": 10,
       "task": "Fields/TOC evaluation and PDF links/bookmark destinations",
-      "status": "pending"
+      "status": "complete",
+      "tests": 126,
+      "report": "output/roadmap/10-fields/SUMMARY.html",
+      "images": [
+        "output/roadmap/10-fields/toc-1.png",
+        "output/roadmap/10-fields/cached-1.png"
+      ]
     }
   ],
   "hancom_comparison": {

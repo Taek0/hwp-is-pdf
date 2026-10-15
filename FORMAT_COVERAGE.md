@@ -830,3 +830,37 @@ Results: output/roadmap/09-graphics/SUMMARY.html.
 
 References: reference/한글문서파일형식_수식_revision1.3.pdf and Hancom's
 OWPML/Class/Para/ArcType.cpp / Class/enumdef.h definitions.
+
+## Roadmap stage 10 — fields, TOC and PDF navigation (2026-10-15)
+
+HWP5 field commands and bookmark parameter strings are decoded separately from
+cached display text. HWPX fieldBegin/fieldEnd and bookmarks share the same logical
+scope. Empty closed PAGE/NUMPAGES/PAGEREF fields in recognized CROSSREF/SUMMERY
+commands resolve after pagination. Existing populated fields remain authoritative;
+this is not a general field expression evaluator or a forced refresh of cached values.
+
+Empty, same-paragraph TABLEOFCONTENTS placeholders can be populated from outline
+headings. Entries reserve page-number width before flow and resolve destinations
+after all pages are finalized. Cached TOC text/subList results are retained/recovered.
+Custom filters/styles, cross-paragraph regeneration, date/formula/mail-merge
+commands and complex-script TOC tabs remain limited. Native HWP field-command
+variants beyond the explicit whitelist are retained rather than guessed.
+
+PDF output includes bounded link annotations, named destinations and hierarchical
+outlines. HTTP(S), mailto and existing internal destinations are supported; missing
+or unsupported targets are omitted with warnings. Metadata follows nested transforms
+and table fragments. No remote URLs are fetched while converting.
+
+Two new HWPX fixtures (6 pages) plus the public fields.hwp (1 reflow page) were
+rendered and reviewed. Independent PDF parsing verified 8 named destinations,
+9 links, Korean bookmark strings and 3 nested outline groups in the TOC fixture.
+All 126 tests and Clippy pass. Baseline 43 documents / 210 pages retain source hashes,
+object counts and zero geometry findings: 42 PDFs are byte-identical, while the
+header/footer fixture gains navigation metadata with both raster pages identical.
+Source responsibilities are split into hwp/field_records.rs, layout/field_values.rs,
+layout/field_navigation.rs, layout/toc.rs and pdf/navigation.rs; largest source file
+is 589 lines. Results: output/roadmap/10-fields/SUMMARY.html.
+
+References: Hancom HWP5 revision 1.3 tables 50–52/152 and hancom-io/hwpx-owpml-model
+fieldBegin.cpp, fieldEnd.cpp, bookmark.cpp and enumdef.h. The canonical enum spelling
+SUMMERY is accepted. These references do not establish universal field command syntax.

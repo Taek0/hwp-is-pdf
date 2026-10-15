@@ -31,6 +31,9 @@ The module splits are internal; callers do not need to depend on implementation 
 | `reflow.rs`, `pagination.rs`, `wrap_region.rs` | Layout algorithms without engine orchestration |
 | `pdf.rs`, `qa.rs` | PDF emission/font metrics and geometric output checks |
 | `pdf/operations.rs` | Shared drawing operations and logical text spans |
+| `hwp/field_records.rs` | Native field commands and bookmark parameter decoding |
+| `layout/field_values.rs`, `layout/field_navigation.rs`, `layout/toc.rs` | Deferred values, logical link scopes and outline TOC generation |
+| `pdf/navigation.rs` | Link annotations, named destinations and hierarchical outlines |
 
 Add behavior to its owning module. Split by responsibility when a file acquires a second concern;
 do not create numbered file fragments or duplicate implementations to meet a line limit.
