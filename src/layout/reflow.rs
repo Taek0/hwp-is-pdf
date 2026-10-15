@@ -49,7 +49,7 @@ impl<'a> Engine<'a> {
                     .and_then(|s| s.child("heading"))
                     .is_none_or(|h| !matches!(h.a("type"), "NUMBER" | "BULLET"))
                 && supported
-                && !source_items.iter().any(|i|matches!(&i.kind,ItemKind::Object(n) if n.child("pos").is_some_and(|p|matches!(p.a("horzRelTo"),"PAGE"|"PAPER") || matches!(p.a("vertRelTo"),"PAGE"|"PAPER"))));
+                && !source_items.iter().any(|i|matches!(&i.kind,ItemKind::Object(n) if n.a("textWrap")!="BEHIND_TEXT" && n.child("pos").is_some_and(|p|matches!(p.a("horzRelTo"),"PAGE"|"PAPER") || matches!(p.a("vertRelTo"),"PAGE"|"PAPER"))));
             if !follow && !carry.is_empty() {
                 if let Some((_, _, s)) = plans.last_mut() {
                     s.after += carry.iter().map(|r| r.bounds()[3]).fold(0f64, f64::max);
@@ -427,7 +427,7 @@ impl<'a> Engine<'a> {
                     }
                     self.flow_floor = None;
                     if object.name != "tbl"
-                        && object.a("reflowCaptions") == "1"
+                        && (object.a("reflowCaptions") == "1" || object.name == "line")
                         && self.pages.len() == old_page
                     {
                         y = y.max(start_y + ls[at].height);

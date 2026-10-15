@@ -55,6 +55,7 @@ impl<'a> Engine<'a> {
                     if object
                         .child("pos")
                         .is_some_and(|p| p.a("treatAsChar") != "1")
+                        && object.a("textWrap") != "BEHIND_TEXT"
                     {
                         object
                             .attrs

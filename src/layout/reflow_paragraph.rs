@@ -44,6 +44,16 @@ impl<'a> Engine<'a> {
             .and_then(|s| s.child("heading"))
             .is_some_and(|h| matches!(h.a("type"), "NUMBER" | "BULLET"));
         let mut p = source.clone();
+        for n in p
+            .children
+            .iter_mut()
+            .filter(|r| r.name == "run")
+            .flat_map(|r| &mut r.children)
+            .filter(|n| n.a("textWrap") == "BEHIND_TEXT")
+        {
+            n.attrs.insert("reflowBehind".into(), "1".into());
+            n.attrs.insert("reflowFloat".into(), "1".into());
+        }
         let number = self.paragraph_number(source, true)?;
         anyhow::ensure!(
             !numbered || number.is_some(),
@@ -61,7 +71,9 @@ impl<'a> Engine<'a> {
         let objects: Vec<_> = source_items
             .iter()
             .filter_map(|i| {
-                if let ItemKind::Object(n) = &i.kind {
+                if let ItemKind::Object(n) = &i.kind
+                    && n.a("reflowBehind") != "1"
+                {
                     Some((i.pos, n))
                 } else {
                     None
@@ -100,9 +112,10 @@ impl<'a> Engine<'a> {
             if eligible {
                 for run in p.children.iter_mut().filter(|r| r.name == "run") {
                     for n in &mut run.children {
-                        if objects
-                            .iter()
-                            .any(|(_, object)| n.a("id") == object.a("id") && n.name == object.name)
+                        if n.a("reflowBehind") != "1"
+                            && objects.iter().any(|(_, object)| {
+                                n.a("id") == object.a("id") && n.name == object.name
+                            })
                         {
                             n.attrs.insert("reflowFloat".into(), "1".into());
                         }
@@ -156,7 +169,9 @@ impl<'a> Engine<'a> {
         let inherited = !exclusions.is_empty();
         let (mut occupied_left, mut occupied_right) = (0f64, 0f64);
         for object in Self::items(&p).iter().filter_map(|i| match &i.kind {
-            ItemKind::Object(n) if n.a("reflowFloat") == "1" => Some(n),
+            ItemKind::Object(n) if n.a("reflowFloat") == "1" && n.a("reflowBehind") != "1" => {
+                Some(n)
+            }
             _ => None,
         }) {
             let m = margin(object, "outMargin").map(|v| v.max(0.));
@@ -172,11 +187,11 @@ impl<'a> Engine<'a> {
         }
         let side_space = width - occupied_left - occupied_right - settings.left - settings.right;
         for run in p.children.iter_mut().filter(|r| r.name == "run") {
-            for n in run
-                .children
-                .iter_mut()
-                .filter(|n| n.a("reflowFloat") == "1" && n.a("reflowGeneral") != "1")
-            {
+            for n in run.children.iter_mut().filter(|n| {
+                n.a("reflowFloat") == "1"
+                    && n.a("reflowGeneral") != "1"
+                    && n.a("reflowBehind") != "1"
+            }) {
                 let m = margin(n, "outMargin").map(|v| v.max(0.));
                 let occupied = val(n.child("sz"), "width") + m[0] + m[1] + 1.;
                 let height = effective_height(n) + m[2] + m[3];

@@ -320,6 +320,7 @@ mod reflow_paragraph;
 mod reflow_table;
 mod reflow_units;
 mod section_render;
+mod shape_paths;
 mod tab_layout;
 mod table_layout;
 mod table_pagination;

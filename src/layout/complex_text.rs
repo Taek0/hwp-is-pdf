@@ -45,6 +45,7 @@ impl<'a> Engine<'a> {
         for item in items {
             let c = match &item.kind {
                 ItemKind::Char(c) => *c,
+                ItemKind::Object(n) if n.a("reflowBehind") == "1" => continue,
                 ItemKind::Control(n)
                     if matches!(
                         n.name.as_str(),

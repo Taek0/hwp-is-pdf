@@ -13,14 +13,21 @@ impl<'a> Engine<'a> {
             for n in &mut run.children {
                 match n.name.as_str() {
                     "equation" => self.prepare_equation(n, width)?,
-                    "tbl" | "pic" | "rect" | "ellipse" | "polygon" | "curve" | "group" => {
-                        let width = self.caption_body_width(n, width)?;
+                    "tbl" | "pic" | "rect" | "ellipse" | "polygon" | "curve" | "group" | "line"
+                    | "arc" | "chart" => {
+                        let behind = n.a("textWrap") == "BEHIND_TEXT";
                         anyhow::ensure!(
-                            n.a("textWrap") != "BEHIND_TEXT",
-                            "Reflow of page-background objects is not supported"
+                            !behind || (n.name != "tbl" && n.child("caption").is_none()),
+                            "Background tables/captions require separate placement"
                         );
-                        let block = n.name == "tbl"
-                            || n.child("pos").is_none_or(|p| p.a("treatAsChar") != "1");
+                        let width = if behind {
+                            val(n.child("sz"), "width").max(1.)
+                        } else {
+                            self.caption_body_width(n, width)?
+                        };
+                        let block = !behind
+                            && (n.name == "tbl"
+                                || n.child("pos").is_none_or(|p| p.a("treatAsChar") != "1"));
                         if n.name == "tbl" {
                             self.reflow_table_contents(n, width, nesting)?;
                         } else {
@@ -53,10 +60,18 @@ impl<'a> Engine<'a> {
                                 }
                             }
                             let old_w = val(n.child("sz"), "width");
-                            let ratio = if n.name == "group" {
+                            let ratio = if n.name == "group" || behind {
                                 1.
                             } else {
-                                (width / old_w.max(0.1)).min(1.)
+                                let horizontal = (width / old_w.max(0.1)).min(1.);
+                                if matches!(n.name.as_str(), "line" | "arc" | "chart") {
+                                    horizontal.min(
+                                        (self.ph - self.top - self.bottom - 24.)
+                                            / effective_height(n).max(1.),
+                                    )
+                                } else {
+                                    horizontal
+                                }
                             };
                             for key in ["sz", "curSz"] {
                                 if let Some(sz) = n.children.iter_mut().find(|s| s.name == key) {
@@ -172,7 +187,7 @@ impl<'a> Engine<'a> {
         let objects: Vec<_> = items
             .iter()
             .filter_map(|i| match &i.kind {
-                ItemKind::Object(n) => Some((i.pos, n)),
+                ItemKind::Object(n) if n.a("textWrap") != "BEHIND_TEXT" => Some((i.pos, n)),
                 _ => None,
             })
             .collect();

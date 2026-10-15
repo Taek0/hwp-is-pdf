@@ -348,6 +348,14 @@ pub(super) fn control(r: &Record) -> Result<Node> {
             if name == "arc" {
                 let arc = comp.first(81).context("Missing arc record")?;
                 let sd = &arc.data;
+                out = out.at(
+                    "type",
+                    match bytes(sd, 0, 1)?[0] {
+                        1 => "PIE",
+                        2 => "CHORD",
+                        _ => "NORMAL",
+                    },
+                );
                 let start = if sd.len() == 25 { 1 } else { 4 };
                 for (i, label) in ["center", "axis1", "axis2"].iter().enumerate() {
                     out.children.push(

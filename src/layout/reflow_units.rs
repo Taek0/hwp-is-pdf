@@ -82,14 +82,27 @@ impl<'a> Engine<'a> {
                 ItemKind::Object(n)
                     if matches!(
                         n.name.as_str(),
-                        "tbl" | "pic" | "rect" | "ellipse" | "polygon" | "curve" | "group"
+                        "tbl"
+                            | "pic"
+                            | "rect"
+                            | "ellipse"
+                            | "polygon"
+                            | "curve"
+                            | "group"
+                            | "line"
+                            | "arc"
+                            | "chart"
                     ) =>
                 {
                     let block =
                         n.name == "tbl" || n.child("pos").is_none_or(|p| p.a("treatAsChar") != "1");
                     let m = margin(n, "outMargin");
                     let cap = caption_extent(n);
-                    let native = effective_height(n);
+                    let native = effective_height(n).max(if n.name == "line" {
+                        val(n.child("lineShape"), "width").max(1.)
+                    } else {
+                        0.
+                    });
                     let side = side_caption_height(n).max(native);
                     let h = side + m[2] + m[3] + cap[2] + cap[3];
                     (

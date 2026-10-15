@@ -3,20 +3,21 @@ use super::*;
 
 impl<'a> Engine<'a> {
     pub(super) fn line(&mut self, p: &Node, li: usize, ox: f64, oy: f64, width: f64) -> Result<()> {
-        if self.paint_complex_line(p, li, ox, oy, width)? {
-            return Ok(());
-        }
         let segs = lines(p);
         let seg = segs[li];
         if li == 0 {
             for item in Self::items(p) {
                 if let ItemKind::Object(n) = item.kind
-                    && n.a("reflowGeneral") == "1"
+                    && (n.a("reflowGeneral") == "1" || n.a("reflowBehind") == "1")
+                    && (p.u("reflowStart") == 0 || n.a("reflowBehind") != "1")
                 {
                     let anchor_y = oy + seg.n("vertpos") / 100.;
                     self.object(&n, ox, anchor_y, anchor_y, ox, width)?;
                 }
             }
+        }
+        if self.paint_complex_line(p, li, ox, oy, width)? {
+            return Ok(());
         }
         let start = seg.u("textpos");
         let end = segs
@@ -26,7 +27,7 @@ impl<'a> Engine<'a> {
         let its: Vec<_> = Self::items(p)
             .into_iter()
             .filter(|i| i.pos >= start && i.pos < end)
-            .filter(|i| !matches!(&i.kind,ItemKind::Object(n) if n.a("reflowGeneral")=="1"))
+            .filter(|i| !matches!(&i.kind,ItemKind::Object(n) if n.a("reflowGeneral")=="1" || n.a("reflowBehind")=="1"))
             .filter(|i| p.a("reflowed") != "1" || !matches!(i.kind, ItemKind::Char('\n' | '\r')))
             .collect();
         let mut line_y = oy + seg.n("vertpos") / 100.;
