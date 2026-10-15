@@ -24,6 +24,7 @@ The module splits are internal; callers do not need to depend on implementation 
 | `layout/table_layout.rs` | Table and cell layout |
 | `layout/table_pagination.rs`, `layout/table_vectors.rs` | Table fragment transitions and measured-vector splitting |
 | `layout/notes.rs`, `layout/page_decorations.rs` | Notes, page furniture and finalization |
+| `layout/page_furniture.rs` | Header/footer cache recovery, measured space and page variant selection |
 | `reflow.rs`, `pagination.rs`, `wrap_region.rs` | Layout algorithms without engine orchestration |
 | `pdf.rs`, `qa.rs` | PDF emission/font metrics and geometric output checks |
 

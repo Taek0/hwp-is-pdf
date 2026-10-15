@@ -72,7 +72,13 @@
     {
       "id": 7,
       "task": "Header/footer reflow and partial-cache recovery",
-      "status": "pending"
+      "status": "complete",
+      "tests": 114,
+      "report": "output/roadmap/07-furniture/SUMMARY.html",
+      "images": [
+        "output/roadmap/07-furniture/parity-2.png",
+        "output/roadmap/07-furniture/partial-nested-1.png"
+      ]
     },
     {
       "id": 8,

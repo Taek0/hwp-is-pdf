@@ -752,3 +752,26 @@ Results: output/roadmap/06-lists/SUMMARY.html.
 References: HWP5 revision 1.3 tables 38–42;
 https://github.com/hancom-io/hwpx-owpml-model/blob/main/OWPML/Class/Head/ParaHeadType.cpp
 and https://github.com/hancom-io/hwpx-owpml-model/blob/main/OWPML/Class/Head/BulletType.cpp.
+
+## Roadmap stage 7 — page furniture and nested-cache recovery (2026-10-15)
+
+Missing visible paragraph caches are detected recursively inside body objects,
+cells and notes. The supported section is rebuilt as one flow; complete body-cache
+sections remain on the saved-layout path. This avoids dropping a cell's text merely
+because its parent paragraph has a valid cache. Empty nested paragraphs are not
+treated as proof of corruption; truncated-but-nonempty caches remain a separate limit.
+
+Headers/footers are measured when reflowing or when their own cache is missing.
+The largest variant height is reserved before body pagination. Selection respects
+odd/even/both and first-page hiding, and HWPX headers can appear on the first page.
+Repeated page furniture uses isolated numbering state. Page-number controls update
+for each rendered page. Section-level variants choose the last matching definition;
+precise activation of new definitions partway through a section remains limited.
+Notes inside reflow page furniture produce an explicit error.
+
+Three fixtures / 11 pages cover parity, hiding, expanded header space and a single
+missing nested cache. Automatic recovery equals forced reflow and preserves all
+42 rows and nested textbox content. All 114 tests and Clippy pass. Baseline 43
+documents / 210 pages remain byte-identical with unchanged hashes/counts and zero
+geometry findings. Images were reviewed; Hancom comparison is still deferred.
+Results: output/roadmap/07-furniture/SUMMARY.html.
