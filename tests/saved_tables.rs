@@ -52,3 +52,88 @@ fn saved_floating_hwpx_table_uses_outer_margin_box_origin() {
     let b = e.report.bounds.iter().find(|b| b.id == "table").unwrap();
     assert_eq!((b.x, b.y), (55., 57.));
 }
+
+#[test]
+fn centered_latin_word_labels_wrap_small_overflow_only_when_break_is_enabled() {
+    let mut f = hwp_engine::pdf::Fonts::new(fonts());
+    let id = f.get("arial.ttf").unwrap();
+    let available = f.width(id, "Receiving Official long label", 12.) - 0.5;
+    for wrap in ["BREAK", "SQUEEZE", "KEEP"] {
+        let mut d = document(true, wrap);
+        let style = d.paras.get_mut("0").unwrap();
+        style
+            .children
+            .iter_mut()
+            .find(|n| n.name == "align")
+            .unwrap()
+            .attrs
+            .insert("horizontal".into(), "CENTER".into());
+        style
+            .children
+            .push(xml(br#"<breakSetting breakLatinWord="KEEP_WORD"/>"#).unwrap());
+        fn widths(n: &mut hwp_engine::model::Node, w: f64) {
+            if matches!(n.name.as_str(), "cellSz" | "sz") {
+                n.attrs
+                    .insert("width".into(), ((w + 2.) * 100.).to_string());
+            }
+            if n.name == "lineseg" && n.n("horzsize") == 8800. {
+                n.attrs.insert("horzsize".into(), (w * 100.).to_string());
+            }
+            for child in &mut n.children {
+                widths(child, w);
+            }
+        }
+        widths(&mut d.sections[0], available);
+        let mut e = Engine::new(&d, fonts());
+        e.render().unwrap();
+        let rows: std::collections::BTreeSet<_> = e.pages[0]
+            .ops
+            .iter()
+            .filter_map(|o| {
+                if let Op::Text { y, .. } = o {
+                    Some((y * 100.).round() as i64)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        assert_eq!(rows.len() > 1, wrap == "BREAK");
+        let q = qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
+        assert!(q.text_overlaps.is_empty());
+        assert!(q.border_crossings.is_empty());
+    }
+}
+
+#[test]
+fn supplied_form_receiving_label_uses_two_english_rows_without_losing_text() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("복학원서.hwp");
+    if !path.exists() {
+        return;
+    }
+    let d = Document::open(&path).unwrap();
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    assert_eq!(e.pages.len(), 2);
+    let mut rows = std::collections::BTreeMap::<i64, String>::new();
+    for op in &e.pages[0].ops {
+        if let Op::Text { text, y, .. } = op {
+            rows.entry((y * 100.).round() as i64)
+                .or_default()
+                .push_str(text);
+        }
+    }
+    assert!(
+        rows.values()
+            .any(|r| r.contains("(Receiving") && !r.contains("Official)"))
+    );
+    assert!(
+        rows.values()
+            .any(|r| r.contains("Official)") && !r.contains("Receiving"))
+    );
+    let q = qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
+    assert!(q.text_overlaps.is_empty());
+    assert!(q.border_crossings.is_empty());
+}

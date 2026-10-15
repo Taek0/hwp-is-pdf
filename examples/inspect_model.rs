@@ -24,6 +24,68 @@ fn dump(n: &Node) {
 fn main() -> Result<()> {
     let a: Vec<_> = std::env::args().collect();
     let d = Document::open(std::path::Path::new(&a[1]))?;
+    if let Some(query) = a.get(3) {
+        for section in &d.sections {
+            for p in section.children_named("p") {
+                let plain = p
+                    .children_named("run")
+                    .flat_map(|r| &r.children)
+                    .filter(|n| n.name == "t")
+                    .map(hwp_engine::model::text)
+                    .collect::<String>();
+                if plain.contains(query) {
+                    println!(
+                        "ROOT {:?} TEXT {:?} LINES {:?}",
+                        p.attrs,
+                        plain,
+                        p.child("linesegarray")
+                    );
+                    for o in p
+                        .children_named("run")
+                        .flat_map(|r| &r.children)
+                        .filter(|n| n.child("pos").is_some())
+                    {
+                        println!(
+                            "OBJECT {:?} POS {:?} SIZE {:?} CAPTION {:?}",
+                            o.attrs,
+                            o.child("pos"),
+                            o.child("sz"),
+                            o.child("caption").map(|c| &c.attrs)
+                        );
+                    }
+                }
+            }
+            let mut cells = Vec::new();
+            section.all("tc", &mut cells);
+            for cell in cells
+                .into_iter()
+                .filter(|c| hwp_engine::model::text(c).contains(query))
+            {
+                println!(
+                    "CELL {:?} LIST {:?}",
+                    cell.child("cellSz"),
+                    cell.child("subList").map(|n| &n.attrs)
+                );
+                let mut paras = Vec::new();
+                cell.all("p", &mut paras);
+                for p in paras {
+                    println!(
+                        "PARA {:?} STYLE {:?}",
+                        hwp_engine::model::text(p),
+                        d.paras.get(p.a("paraPrIDRef"))
+                    );
+                    let mut seen = std::collections::BTreeSet::new();
+                    for r in p.children_named("run") {
+                        if seen.insert(r.a("charPrIDRef")) {
+                            println!("CHAR {:?}", d.chars.get(r.a("charPrIDRef")));
+                        }
+                    }
+                }
+            }
+        }
+        println!("FONTS {:?}", d.fonts);
+        return Ok(());
+    }
     let mut tables = vec![];
     for s in &d.sections {
         s.all("tbl", &mut tables)

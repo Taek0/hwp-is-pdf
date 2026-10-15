@@ -79,7 +79,28 @@ impl<'a> Engine<'a> {
                         // Native caches often deliberately fit slightly wider
                         // replacement fonts. Rebuild only a materially stale
                         // line there; small changes must retain saved pagination.
-                        let tolerance = if n.a("binaryHwp") == "1" { 1.20 } else { 1.02 };
+                        // A centered Latin label with explicit word wrapping
+                        // should wrap even a small overflow, not be squeezed to
+                        // the cached width. Keep the native tolerance for body
+                        // prose/negative tracking where saved fitting is common.
+                        let word_label = ls.len() == 1
+                            && self.doc.paras.get(p.a("paraPrIDRef")).is_some_and(|s| {
+                                s.child("align")
+                                    .is_some_and(|a| a.a("horizontal") == "CENTER")
+                                    && s.child("breakSetting")
+                                        .is_some_and(|b| b.a("breakLatinWord") == "KEEP_WORD")
+                            })
+                            && items
+                                .iter()
+                                .all(|i| matches!(i.kind,ItemKind::Char(c) if c.is_ascii()))
+                            && items.iter().any(|i| matches!(i.kind, ItemKind::Char(' ')));
+                        let tolerance = if word_label {
+                            1.0
+                        } else if n.a("binaryHwp") == "1" {
+                            1.20
+                        } else {
+                            1.02
+                        };
                         overflow |= measured > available * tolerance + 0.1;
                     }
                 }
