@@ -109,8 +109,8 @@ fn leading_floats_wrap_restore_width_and_stay_with_their_text() {
             .iter()
             .find(|b| b.kind == "line" && b.id == "after")
             .unwrap();
-        if last.page == after.page && (last.x - after.x).abs() < 200. {
-            assert!(after.y >= last.y + last.h);
+        if last.page == after.page && after.y < last.y + last.h {
+            assert!(after.x + after.w <= last.x || after.x >= last.x + last.w);
         }
         let counts = |s: &str| {
             let mut m = std::collections::BTreeMap::new();
