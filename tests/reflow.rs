@@ -119,7 +119,7 @@ fn explicit_reflow_ignores_stale_cached_lines() {
     );
 }
 #[test]
-fn unsupported_reflow_is_rejected_instead_of_dropping_objects() {
+fn malformed_equation_is_rejected_instead_of_dropping_objects() {
     let mut d = Document::open(
         &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("samples/overflow/nested-mixed.hwpx"),
@@ -136,7 +136,7 @@ fn unsupported_reflow_is_rejected_instead_of_dropping_objects() {
     unsupported(&mut d.sections[0]);
     let mut e = Engine::new(&d, fonts());
     let error = e.render_reflow_text().unwrap_err().to_string();
-    assert!(error.contains("objects/notes/control"), "{error}");
+    assert!(error.contains("Missing equation script"), "{error}");
 }
 #[test]
 fn changing_font_size_recalculates_line_and_page_counts() {
