@@ -55,6 +55,10 @@ pub fn open(path: &Path) -> Result<Document> {
     for r in &all {
         let d = &r.data;
         match r.tag {
+            22 => {
+                let id = header.children_named("tabPr").count();
+                header.children.push(tab_records::tabs(d, id)?);
+            }
             23 => {
                 let id = header.children_named("numbering").count() + 1;
                 header.children.push(list_records::numbering(d, id)?);
@@ -150,80 +154,83 @@ pub fn open(path: &Path) -> Result<Document> {
                 ][((u32(d, 0)? >> 2) & 7) as usize];
                 paras.insert(
                     id.clone(),
-                    n("paraPr").at("id", id).with(vec![
-                        n("align").at("horizontal", align),
-                        n("margin").with(
-                            [
-                                ("left", 4),
-                                ("right", 8),
-                                ("intent", 12),
-                                ("prev", 16),
-                                ("next", 20),
-                            ]
-                            .into_iter()
-                            .map(|(key, off)| {
-                                Ok(n(key).at("value", i32(d, off)?).at("unit", "HWPUNIT"))
-                            })
-                            .collect::<Result<Vec<_>>>()?,
-                        ),
-                        n("lineSpacing")
-                            .at(
-                                "type",
-                                match if d.len() >= 54 {
-                                    u32(d, 46)? & 31
-                                } else {
-                                    u32(d, 0)? & 3
-                                } {
-                                    1 => "FIXED",
-                                    2 => "BETWEEN_LINES",
-                                    3 => "AT_LEAST",
-                                    _ => "PERCENT",
-                                },
-                            )
-                            .at(
-                                "value",
-                                if d.len() >= 54 {
-                                    u32(d, 50)?
-                                } else {
-                                    u32(d, 24)?
-                                },
+                    n("paraPr")
+                        .at("id", id)
+                        .at("tabPrIDRef", u16(d, 28)?)
+                        .with(vec![
+                            n("align").at("horizontal", align),
+                            n("margin").with(
+                                [
+                                    ("left", 4),
+                                    ("right", 8),
+                                    ("intent", 12),
+                                    ("prev", 16),
+                                    ("next", 20),
+                                ]
+                                .into_iter()
+                                .map(|(key, off)| {
+                                    Ok(n(key).at("value", i32(d, off)?).at("unit", "HWPUNIT"))
+                                })
+                                .collect::<Result<Vec<_>>>()?,
                             ),
-                        n("breakSetting")
-                            .at("widowOrphan", (u32(d, 0)? >> 16) & 1)
-                            .at("keepWithNext", (u32(d, 0)? >> 17) & 1)
-                            .at("keepLines", (u32(d, 0)? >> 18) & 1)
-                            .at("pageBreakBefore", (u32(d, 0)? >> 19) & 1)
-                            .at(
-                                "breakLatinWord",
-                                if (u32(d, 0)? >> 5) & 3 == 2 {
-                                    "BREAK_WORD"
-                                } else {
-                                    "KEEP_WORD"
-                                },
-                            )
-                            .at(
-                                "breakNonLatinWord",
-                                if u32(d, 0)? & 128 != 0 {
-                                    "BREAK_WORD"
-                                } else {
-                                    "KEEP_WORD"
-                                },
-                            ),
-                        n("heading")
-                            .at(
-                                "type",
-                                ["NONE", "OUTLINE", "NUMBER", "BULLET"]
-                                    [((u32(d, 0)? >> 23) & 3) as usize],
-                            )
-                            .at("level", (u32(d, 0)? >> 25) & 7)
-                            .at("idRef", u16(d, 30)?),
-                        n("border")
-                            .at("borderFillIDRef", u16(d, 32)?)
-                            .at("offsetLeft", u16(d, 34)?)
-                            .at("offsetRight", u16(d, 36)?)
-                            .at("offsetTop", u16(d, 38)?)
-                            .at("offsetBottom", u16(d, 40)?),
-                    ]),
+                            n("lineSpacing")
+                                .at(
+                                    "type",
+                                    match if d.len() >= 54 {
+                                        u32(d, 46)? & 31
+                                    } else {
+                                        u32(d, 0)? & 3
+                                    } {
+                                        1 => "FIXED",
+                                        2 => "BETWEEN_LINES",
+                                        3 => "AT_LEAST",
+                                        _ => "PERCENT",
+                                    },
+                                )
+                                .at(
+                                    "value",
+                                    if d.len() >= 54 {
+                                        u32(d, 50)?
+                                    } else {
+                                        u32(d, 24)?
+                                    },
+                                ),
+                            n("breakSetting")
+                                .at("widowOrphan", (u32(d, 0)? >> 16) & 1)
+                                .at("keepWithNext", (u32(d, 0)? >> 17) & 1)
+                                .at("keepLines", (u32(d, 0)? >> 18) & 1)
+                                .at("pageBreakBefore", (u32(d, 0)? >> 19) & 1)
+                                .at(
+                                    "breakLatinWord",
+                                    if (u32(d, 0)? >> 5) & 3 == 2 {
+                                        "BREAK_WORD"
+                                    } else {
+                                        "KEEP_WORD"
+                                    },
+                                )
+                                .at(
+                                    "breakNonLatinWord",
+                                    if u32(d, 0)? & 128 != 0 {
+                                        "BREAK_WORD"
+                                    } else {
+                                        "KEEP_WORD"
+                                    },
+                                ),
+                            n("heading")
+                                .at(
+                                    "type",
+                                    ["NONE", "OUTLINE", "NUMBER", "BULLET"]
+                                        [((u32(d, 0)? >> 23) & 3) as usize],
+                                )
+                                .at("level", (u32(d, 0)? >> 25) & 7)
+                                .at("idRef", u16(d, 30)?),
+                            n("border")
+                                .at("borderFillIDRef", u16(d, 32)?)
+                                .at("offsetLeft", u16(d, 34)?)
+                                .at("offsetRight", u16(d, 36)?)
+                                .at("offsetTop", u16(d, 38)?)
+                                .at("offsetBottom", u16(d, 40)?),
+                        ]),
                 );
             }
             20 => {

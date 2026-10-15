@@ -219,6 +219,7 @@ mod list_records;
 mod object_properties;
 mod paragraphs;
 mod section;
+mod tab_records;
 use controls::control;
 pub use document::open;
 use images::decode_pcx;
