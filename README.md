@@ -59,9 +59,7 @@
 개체 아래에서 원래 줄 폭으로 복구하고, 짧은 문단 뒤의 일반 문단도 감싸기를 이어갑니다.
 개체와 옆 본문은 같은 단·페이지에 두며, 각주 공간도 반영합니다. 옆 공간이 부족한
 그림은 본문을 아래로 보내는 기존 블록 배치로 처리합니다.
-현재 범위는 본문 문단 앞의 개체(좌우 각각 하나까지), SQUARE, 문단 기준 위쪽 고정,
-왼쪽·오른쪽 정렬 및 위치 오프셋 0입니다. 캡션·번호 문단·셀 내부·복잡한 다중
-개체 배치·중앙 및 윤곽선 감싸기는 남아 있습니다.
+일반 위치 및 윤곽선 옵션의 최신 지원 조건은 아래 설명을 확인하세요.
 최신 검증: `output/reflow-floats/SUMMARY.html` (75개 테스트·Clippy 통과,
 기존 43개 문서 210쪽 픽셀 동일).
 
@@ -76,8 +74,19 @@
 따로 추적해 짧은 개체 아래에서는 한쪽 폭을 먼저 되찾고, 긴 개체 아래에서는
 전체 폭으로 복구합니다. 후속 문단에도 두 영역을 전달합니다. 가운데 공간이
 부족하면 블록으로 배치하고, 후속 문단의 여백이 크면 개체 아래로 이동합니다.
-같은 쪽에 겹친 개체나 뒤 문단에서 추가되는 개체의 동시 감싸기는 아직 남아 있습니다.
+이후 일반 위치 배치로 같은 쪽과 후속 문단의 개체 처리도 확장했습니다.
 최신 검증: `output/reflow-paired-floats/SUMMARY.html` (82개 테스트·Clippy 통과,
+기존 43개 문서 210쪽과 이전 감싸기 예제 5쪽 픽셀 동일).
+
+문단·단 내부에서 가로·세로 오프셋, 중앙 정렬, 같은 쪽의 여러 개체와 후속 문단의
+새 개체를 배치합니다. 한 문단 최대 32개를 처리하며 겹침 금지 개체는 충돌 시 아래로
+이동하고 경고를 기록합니다. `LEFT_ONLY`·`RIGHT_ONLY`도 반영합니다.
+`--contour-wrap` 옵션은 재배치를 켜고 타원·다각형·회전 사각형의 기하 윤곽을
+따라 본문을 배치합니다. 기본 `--reflow`는 원본의 사각 감싸기를 유지합니다.
+한 줄에서는 가장 넓은 연속 공간을 사용하며, 그림은 사각 영역으로 보호합니다.
+음수 세로 앵커, PAGE/PAPER 기준의 절대 위치, 연결된 개체 영역이 한 단보다 큰 경우,
+투명 그림 윤곽·곡선·내부 구멍 감싸기와 셀 내부 감싸기는 남아 있습니다.
+최신 결과: `output/reflow-contours/SUMMARY.html` (91개 테스트·Clippy 통과,
 기존 43개 문서 210쪽과 이전 감싸기 예제 5쪽 픽셀 동일).
 
 ## 실행
@@ -88,6 +97,7 @@ Rust stable / edition 2024 환경에서:
 cargo run -- input.hwpx output.pdf /path/to/fonts
 cargo run -- input.hwp output.pdf /path/to/fonts
 cargo run -- input.hwpx output.pdf /path/to/fonts --reflow
+cargo run -- input.hwpx output.pdf /path/to/fonts --contour-wrap
 cargo test
 cargo clippy --all-targets -- -D warnings
 ```
@@ -107,6 +117,8 @@ Windows에서는 기본값 `C:/Windows/Fonts`, 현재 WSL 검증 환경에서는
 hwp_engine::convert(input_path, output_path, font_directory)?;
 // 지원되는 혼합 구역의 저장된 줄 배치를 무시하고 다시 계산:
 hwp_engine::convert_with_reflow(input_path, output_path, font_directory, true)?;
+// 기하 윤곽선 감싸기를 명시적으로 선택:
+hwp_engine::convert_with_options(input_path, output_path, font_directory, true, true)?;
 ```
 
 `run-cargo.sh`는 이 작업 공간의 격리된 WSL Rust 도구 체인을 사용하는 편의 스크립트입니다.

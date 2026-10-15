@@ -532,3 +532,55 @@ All 82 Rust tests and all-target Clippy pass. Baseline 43 documents / 210 pages
 retain source hashes, page/object counts and pixel-identical default output with
 zero geometry findings. The previous two cross-paragraph float examples / 5 pages
 also remain pixel-identical with zero findings.
+
+## General float positions and opt-in contours (2026-10-15)
+
+The general reflow path supports pictures, rectangles, ellipses and polygons at
+paragraph-relative vertical offsets and paragraph/column-relative horizontal
+LEFT/CENTER/RIGHT offsets. Up to 32 objects per paragraph are accepted; anchors
+can occur after text or in a later paragraph while older regions remain active.
+Connected float/text/note bands move together. If overlap is disabled, intersecting
+object bounding boxes are separated vertically with a report warning. Horizontal
+positions outside a printable column are clamped with a warning; negative vertical
+anchors fail explicitly. PAGE/PAPER absolute anchors remain saved-layout territory.
+
+Source SQUARE semantics remain rectangular by default. The explicit
+--contour-wrap / Engine::render_contours() /
+convert_with_options(input, output, fonts, force, contours) option enables
+geometric contour approximation and forces reflow. Ellipses use 128 segments;
+polygons use source vertices; rectangles use transformed corners. Every candidate
+line band is conservatively projected through the regions with margins and stroke
+clearance. The largest free interval is selected; a fully blocked band advances
+below obstacles. LEFT_ONLY/RIGHT_ONLY restrict selection. BOTH_SIDES currently
+uses one largest interval, not multiple fragments on the same baseline.
+
+Official references: Hancom's
+[shape serialization](https://github.com/hancom-io/hwpx-owpml-model/blob/main/OWPML/Class/Para/AbstractShapeObjectType.cpp)
+and [enum definitions](https://github.com/hancom-io/hwpx-owpml-model/blob/main/OWPML/Class/enumdef.h).
+The checked model exposes SQUARE/TOP_AND_BOTTOM/BEHIND_TEXT/IN_FRONT_OF_TEXT and
+four textFlow directions. Thus geometric contours are an engine option, not an
+invented source-format enum or an assertion of Hancom-identical contour semantics.
+Binary HWP textFlow decoding is unchanged; direction selection uses available
+normalized metadata.
+
+Limits: images retain rectangular exclusion (no alpha contour); Bezier/arc/group
+contours, internal holes/THROUGH behavior, captioned and cell/textbox floats,
+negative vertical and page/paper anchors remain work. A connected float region
+larger than one usable column fails rather than clipping content. Existing list,
+equation/endnote and complex section reflow limits still apply. Geometry QA checks
+are supplemented by polygon-band tests and page images; they do not establish
+universal exact Hancom fidelity.
+
+Generated examples contain four independent offset objects, including a centered
+rotated rectangle, with body continuation and a footnote. Both square and contour
+modes render 2 pages (single column) / 1 page (two columns) with zero geometry
+findings. Tests cover source text, late anchors, overlapping anchor separation,
+fully blocked bands, outline projection, flow direction and contour-vs-square
+layout differences. Generator: examples/contour_fixture.rs; tests:
+tests/reflow_contours.rs and src/wrap_region.rs.
+Local results: output/reflow-contours/SUMMARY.html.
+
+All 91 Rust tests and all-target Clippy pass, including enlarged polygon source-
+coordinate scaling. The baseline 43 documents / 210 pages retain original hashes,
+page/object counts and pixel-identical default output; previous paired-float
+examples / 5 pages also remain identical. All geometry QA classes are empty.
