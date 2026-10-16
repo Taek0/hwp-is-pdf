@@ -1,6 +1,6 @@
 # Empty-paragraph column-cache probes — 2026-10-16
 
-Status: first two Hancom exports received; isolating the remaining blank-line
+Status: all three Hancom exports received; isolating the remaining blank-line
 pagination difference. No layout correction is enabled by this diagnostic stage.
 
 The math document contains repeated final empty-line coordinates followed by a
@@ -32,7 +32,13 @@ The unchanged forced-reflow engine places B at about 121.779pt and C at about
 is therefore insufficient. `--bottom-margin-probe` creates only
 bottom-margin-80.hwpx, with the normal probe's bottom margin changed from 40pt
 to 80pt. XML comparison confirms no other section change. Its Hancom export is
-needed to distinguish empty-paragraph fitting from cached-coordinate recovery.
+used to distinguish empty-paragraph fitting from cached-coordinate recovery.
+The returned bottom-margin-80 export also has two pages: A at (39.96,39.925),
+B at page 1 (210,119.965), C at page 2 (39.96,103.885). Relative to the 40pt
+bottom-margin reference, B moves down 48pt and C down 63.96pt. Thus the bottom
+margin affects the logical column/page break; treating the repeated cache
+coordinates alone cannot establish the correct flow. These observations do not
+yet establish a general rule for carrying or discarding empty paragraphs.
 No speculative rule to discard empty paragraphs is enabled.
 
 Current unchanged engine: normal-cache produces 2 pages, stalled-cache 1 page.
