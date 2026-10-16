@@ -88,11 +88,11 @@ fn main() -> Result<()> {
                         .filter(|n| n.child("pos").is_some())
                     {
                         println!(
-                            "OBJECT {:?} POS {:?} SIZE {:?} CAPTION {:?}",
+                            "OBJECT {:?} POS {:?} SIZE {:?} CAPTION {:?} OUT {:?} IMAGE {:?}",
                             o.attrs,
                             o.child("pos"),
                             o.child("sz"),
-                            o.child("caption").map(|c| &c.attrs)
+                            o.child("caption").map(|c| &c.attrs), o.child("outMargin"), o.child("img")
                         );
                     }
                 }

@@ -66,3 +66,4 @@ Page coordinate modules:
 - `layout/table_cell_split.rs`: independent carry of staggered native cell lines, merged-rule extension and fragment closing rules; complex vectors retain the shared-ink paginator.
 - `layout/note_space.rs`: minimum short-note reservation and actual printable-body clearance, shared with note continuation painting.
 - `layout/text_marks.rs`: vector emphasis geometry and font-relative extent; ordinary glyph/mark pairs share a pagination transform group, while shaped text preserves its logical cluster content.
+- `layout/table_headers.rs`: explicit complete header bands, merged-cell boundaries and legacy first-row fallback shared by table pagination paths.

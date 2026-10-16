@@ -28,7 +28,14 @@ impl<'a> Engine<'a> {
             } else {
                 0.85
             };
-            base - declared_h * baseline + m[2]
+            let baseline_height =
+                if n.name == "tbl" && n.a("binaryHwp") == "1" && n.a("reflowTable") != "1" {
+                    // Native cached line baselines include the table's outside box.
+                    declared_h + m[2] + m[3]
+                } else {
+                    declared_h
+                };
+            base - baseline_height * baseline + m[2]
         } else {
             let hr = pos.a("horzRelTo");
             let vr = pos.a("vertRelTo");
@@ -399,7 +406,14 @@ impl<'a> Engine<'a> {
                     && let Some(list) = draw.child("subList")
                 {
                     let tm = margin(draw, "textMargin");
-                    self.local(list, x + tm[0], y + tm[2], w - tm[0] - tm[1])?;
+                    let content = self.measured_height(list)?.max(content_height(list));
+                    let spare = (h - tm[2] - tm[3] - content).max(0.);
+                    let align = match list.a("vertAlign") {
+                        "CENTER" => spare / 2.,
+                        "BOTTOM" => spare,
+                        _ => 0.,
+                    };
+                    self.local(list, x + tm[0], y + tm[2] + align, w - tm[0] - tm[1])?;
                 }
             }
             _ => {}

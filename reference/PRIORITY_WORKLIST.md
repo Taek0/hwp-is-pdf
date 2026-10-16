@@ -7,9 +7,9 @@ regression set, rendered images, a commit and a push.
 | Priority | Scope | Current state / next concrete work |
 |---|---|---|
 | 1 | Math document paragraph and column flow | In progress. Default saved output still has the measured origin mismatch. Full reflow table rejection is being corrected; a different reflow page count must not replace the reference-matched default silently. |
-| 2 | Font metrics, title and baseline positions | Next: native inline-table outer margins and drawing-text CENTER/BOTTOM alignment. Source evidence explains the form and law title offsets without document-specific corrections. |
+| 2 | Font metrics, title and baseline positions | Inline-table outside margins and drawing-text CENTER/BOTTOM alignment corrected. Selected form/law title Y errors are now 0.033/0.008pt. Remaining work includes trailing tracking and generated italic labels. |
 | 3 | General paragraph line wrapping | Pending: distinguish stale saved line breaks from authored breaks and verify rebuilt line widths/spacing against reference outputs. |
-| 4 | Complex table row splitting and vertical alignment | In progress. Independent cell continuation exists; merged repeated headers require explicit header-cell designation to avoid repeating body rows. |
+| 4 | Complex table row splitting and vertical alignment | Explicit merged header bands implemented and tested. Independent cell continuation exists; exact reference row-fragment distribution remains. |
 | 5 | Watermarks, logos and borders | Pending: source-driven placement, visibility/print behavior, tone and compound-rule fidelity. |
 | 6 | Additional formats | In progress. Emphasis marks implemented. Outline/shadow/emboss, vertical typography, broader equation/chart and WMF/EMF/OLE support remain. |
 

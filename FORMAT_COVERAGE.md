@@ -22,9 +22,9 @@ Hancom are not achieved.**
 
 ## Final validation
 
-164 Rust tests and all-target Clippy pass. 43 baseline documents / 205 pages retain
+171 Rust tests and all-target Clippy pass. 43 baseline documents / 205 pages retain
 their source hashes and page/picture/table/equation/chart counts, with zero findings
-in the four geometry audit classes. All 43 PDFs are byte-identical to stage 25;
+in the four geometry audit classes. 33 PDFs are byte-identical to stage 27;
 all 43 extracted character multisets are unchanged. The report's research table
 fits pages 46–47, matching the reference range. Its note 44 now matches Hancom's
 three-plus-one line split, with note 41–44 first-line top errors of 0.02–0.11pt.
@@ -42,14 +42,15 @@ comparisons. Font subsetting alone preserves every
 pixel at 1000px while reducing target PDF sizes by 96.4–98.1%.
 Subsequent layout corrections are verified separately from font subsetting.
 
-Centered Latin receipt-label wrapping is corrected. Known differences include approximately 2.5pt
-remaining form frame offset, internal report table/footnote page boundaries, some typography,
+Centered Latin receipt-label wrapping, native inline-table outside-margin baselines
+and text-box vertical alignment are corrected. Selected form/law title Y errors are
+0.033/0.008pt. Known differences include internal report table/footnote page boundaries, some typography,
 watermark tone/geometry and border pattern details. The empty report TOC page is
 also empty in Hancom. QA zero is not a compatibility percentage or proof of reading order.
 
-Latest feature evidence: output/roadmap/26-emphasis-marks/SUMMARY.html and
-[EMPHASIS_MARKS.md](reference/EMPHASIS_MARKS.md). Four-document reference comparison:
-[LINE_NOTE_DETAIL_COMPARISON.md](reference/LINE_NOTE_DETAIL_COMPARISON.md).
+Latest comparison: output/roadmap/28-alignment/SUMMARY.html and
+[OBJECT_ALIGNMENT.md](reference/OBJECT_ALIGNMENT.md). Feature additions:
+[MERGED_HEADERS.md](reference/MERGED_HEADERS.md) and [EMPHASIS_MARKS.md](reference/EMPHASIS_MARKS.md).
 Historical increments, fixture restrictions and earlier measurements are preserved
 in [IMPLEMENTATION_HISTORY.md](reference/IMPLEMENTATION_HISTORY.md); their old
 "current"/"remaining" statements describe those earlier versions.

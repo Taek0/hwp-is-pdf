@@ -261,5 +261,15 @@
     "byte_identical_pdfs": 43,
     "report": "output/roadmap/26-emphasis-marks/SUMMARY.html",
     "remaining": "Saved math column origin, form/law title metrics, outline/shadow/vertical text and broader graphics support"
+  },
+  "object_alignment": {
+    "date": "2026-10-16",
+    "status": "complete",
+    "tests": 171,
+    "documents": 43,
+    "pages": 205,
+    "byte_identical_pdfs": 33,
+    "report": "output/roadmap/28-alignment/SUMMARY.html",
+    "worklist": "reference/PRIORITY_WORKLIST.md"
   }
 }
