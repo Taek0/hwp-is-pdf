@@ -412,12 +412,20 @@ impl<'a> Engine<'a> {
                 let mut batch = Vec::new();
                 let mut height = 0.;
                 while let Some(row) = rows.front() {
-                    if height + row.2 > capacity + 0.01 {
+                    // A fragment needs the last line's ink box, not leading
+                    // intended for a following line or a following note.
+                    let last_height = lines(&row.0)[row.1].n("vertsize") / 100.;
+                    if height + last_height > capacity + 0.01 {
                         break;
                     }
                     let row = rows.pop_front().unwrap();
                     height += row.2;
                     batch.push(row);
+                }
+                if let Some(last) = batch.last_mut() {
+                    let ink_height = lines(&last.0)[last.1].n("vertsize") / 100.;
+                    height -= (last.2 - ink_height).max(0.);
+                    last.2 = ink_height;
                 }
                 if batch.is_empty() && !rows.is_empty() {
                     anyhow::ensure!(first, "A single footnote line exceeds a printable page");

@@ -29,6 +29,7 @@ fn main() -> anyhow::Result<()> {
             dump(p, &d);
         }
         if args.iter().any(|a| a == "--notes") {
+            println!("NOTE SETTINGS {:?}", s.find("footNotePr"));
             let mut notes = Vec::new();
             s.all("footNote", &mut notes);
             for note in notes {

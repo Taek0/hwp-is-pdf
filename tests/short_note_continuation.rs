@@ -8,7 +8,10 @@ use std::path::Path;
 
 #[test]
 fn short_note_keeps_anchor_only_when_first_note_line_fits() {
-    for (origin, expected_page) in [(14500, 1), (19000, 2)] {
+    // Boundary cases fit the final ink box but not its unused trailing leading.
+    for (origin, expected_page, first_page_lines) in
+        [(14500, 1, 2), (14800, 1, 2), (16400, 1, 1), (19000, 2, 0)]
+    {
         let mut d = Document::open(
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("samples/reflow/contour-single.hwpx"),
         )
@@ -34,6 +37,14 @@ fn short_note_keeps_anchor_only_when_first_note_line_fits() {
             .find(|b| b.id == "anchor" && b.kind == "line")
             .unwrap();
         assert_eq!(anchor.page, expected_page);
+        assert_eq!(
+            e.report
+                .bounds
+                .iter()
+                .filter(|b| b.kind == "footnote-fragment" && b.page == 1)
+                .count(),
+            first_page_lines
+        );
         let note_pages: std::collections::BTreeSet<_> = e
             .report
             .bounds

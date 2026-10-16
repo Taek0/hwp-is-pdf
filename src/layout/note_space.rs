@@ -33,8 +33,8 @@ impl<'a> Engine<'a> {
             if let Some(l) = n.child("subList") {
                 complete += content_height(l);
                 let flow = flowing_lines(l);
-                if !flow.is_empty() {
-                    minimum += notes::note_row_advance(&flow, 0);
+                if let Some((p, i, _)) = flow.first() {
+                    minimum += lines(p)[*i].n("vertsize") / 100.;
                     count += 1;
                 }
             }

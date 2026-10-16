@@ -105,6 +105,16 @@ fn report_anchor_precedes_table_and_research_table_returns_to_reference_page() {
         .map(|b| b.page)
         .collect();
     assert_eq!(note_pages, [44, 45].into_iter().collect());
+    for (page, count) in [(44, 3), (45, 1)] {
+        assert_eq!(
+            e.report
+                .bounds
+                .iter()
+                .filter(|b| b.kind == "footnote-fragment" && b.id == "44" && b.page == page)
+                .count(),
+            count
+        );
+    }
     let tail = e
         .report
         .bounds
