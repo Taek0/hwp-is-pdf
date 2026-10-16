@@ -1,6 +1,35 @@
 //! List counters, formatted labels and image bullets.
 use super::*;
 impl<'a> Engine<'a> {
+    pub(super) fn list_auto_indent(&self, p: &Node) -> bool {
+        let Some(heading) = self
+            .doc
+            .paras
+            .get(p.a("paraPrIDRef"))
+            .and_then(|s| s.child("heading"))
+        else {
+            return false;
+        };
+        if !matches!(heading.a("type"), "NUMBER" | "BULLET") {
+            return false;
+        }
+        let bullet = heading.a("type") == "BULLET";
+        let mut defs = Vec::new();
+        self.doc
+            .header
+            .all(if bullet { "bullet" } else { "numbering" }, &mut defs);
+        defs.into_iter()
+            .find(|n| n.a("id") == heading.a("idRef"))
+            .and_then(|n| {
+                if bullet {
+                    n.child("paraHead").or(Some(n))
+                } else {
+                    n.children_named("paraHead")
+                        .find(|h| h.u("level") == heading.u("level") + 1)
+                }
+            })
+            .is_some_and(|h| matches!(h.a("autoIndent"), "1" | "true"))
+    }
     fn list_image(&self, p: &Node, g: &Glyph) -> Result<Option<(String, f64, f64)>> {
         let Some(heading) = self
             .doc
@@ -261,7 +290,7 @@ impl<'a> Engine<'a> {
                 let reserved = if reflow {
                     nw * if image.is_some() { 1. } else { g.scale } + offset.max(0.) + adjust
                 } else {
-                    nw + offset
+                    nw * if image.is_some() { 1. } else { g.scale } + offset
                 };
                 return Ok(Some((label, g, reserved)));
             }

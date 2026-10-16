@@ -6,12 +6,12 @@ regression set, rendered images, a commit and a push.
 
 | Priority | Scope | Current state / next concrete work |
 |---|---|---|
-| 1 | Math document paragraph and column flow | Blank-column continuation and hideFirstEmptyLine are implemented against four Hancom probes; cached rectangle height is no longer counted twice. 19/26 question starts match within 0.1pt. Questions 14–20 remain about 16pt early, beginning with question 13's five-versus-four-line wrapping difference (BLANK_COLUMN_FLOW.md). |
+| 1 | Math document paragraph and column flow | All 26 question starts now match reference pages and text tops within 0.058pt after note-anchor and hanging-indent/cache repair. Within-paragraph word boundaries still differ. New native column-layout reference exposes same-page column-band transitions and nested column layout (NUMBERED_PARAGRAPH_FLOW.md). |
 | 2 | Font metrics, title and baseline positions | Inline-table margins, drawing-text CENTER/BOTTOM and final-character tracking corrected. Selected form/law title Y errors are 0.033/0.008pt; law title X error is 0.032pt. Generated italic labels remain. |
-| 3 | General paragraph line wrapping | Pending: distinguish stale saved line breaks from authored breaks and verify rebuilt line widths/spacing against reference outputs. |
+| 3 | General paragraph line wrapping | Numbered HWPX caches with omitted autoIndent can gain required lines within logical blank-column recovery; explicit breaks and complex objects are excluded. Broader stale-cache recovery, Korean word boundaries and exact justification remain. |
 | 4 | Complex table row splitting and vertical alignment | Explicit merged header bands implemented and tested. Independent cell continuation exists; exact reference row-fragment distribution remains. |
 | 5 | Watermarks, logos and borders | Grayscale/tone calibrated against four exports; native floating picture margins corrected. Optional PCX visibility compatibility reproduces the form's omitted logo while default conversion preserves it (PICTURE_PLACEMENT.md). Remaining: broader visibility/effects, wider tone parameter coverage and compound-rule fidelity. |
-| 6 | Additional formats | In progress. Emphasis marks implemented. Outline/shadow/emboss, vertical typography, broader equation/chart and WMF/EMF/OLE support remain. |
+| 6 | Additional formats | BinData index/storage-ID mapping fixed. New WMF reference fails decoding; modern mixed chart uses an unfaithful dense data-table fallback. EMF/OLE preview fixture converts but does not prove general vector support. Outline/shadow/emboss, vertical typography and broader equations remain. |
 
 Keep excluded: password-encrypted documents, HWP 2.x/3.x and original-file editing.
 Do not substitute per-file coordinates or page-number conditions for format rules.

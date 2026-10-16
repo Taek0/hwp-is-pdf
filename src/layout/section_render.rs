@@ -91,6 +91,14 @@ impl<'a> Engine<'a> {
                     );
                 }
                 for p in section.children_named("p") {
+                    // Logical blank-column recovery can propagate the changed
+                    // line count without trusting the following stale origins.
+                    let repaired = if blank_flow.is_some() {
+                        self.repair_numbered_cache(p)?
+                    } else {
+                        None
+                    };
+                    let p = repaired.as_ref().unwrap_or(p);
                     let ls = lines(p);
                     if ls.is_empty() {
                         bail!("Missing saved layout cache in paragraph {}", p.a("id"))

@@ -344,6 +344,7 @@ mod reflow_units;
 mod saved_blank_flow;
 mod saved_cell_text;
 mod saved_float_order;
+mod saved_numbering;
 mod section_render;
 mod shape_paths;
 mod tab_layout;

@@ -67,17 +67,23 @@ impl<'a> Engine<'a> {
         } else {
             "LEFT"
         };
-        let number_draw = if li == 0 && p.u("reflowStart") == 0 {
+        let numbered = if (li == 0 || self.list_auto_indent(p)) && p.u("reflowStart") == 0 {
             self.paragraph_number(p, p.a("reflowed") == "1")?
         } else {
             None
         };
         if p.a("reflowed") != "1"
-            && let Some((_, _, reserved)) = &number_draw
+            && let Some((_, _, reserved)) = &numbered
         {
-            x += reserved;
-            avail -= reserved;
+            let inset = if li == 0 {
+                *reserved
+            } else {
+                (segs[0].n("horzpos") / 100. + reserved - seg.n("horzpos") / 100.).max(0.)
+            };
+            x += inset;
+            avail -= inset;
         }
+        let number_draw = if li == 0 { numbered } else { None };
         let mut widths = Vec::new();
         let mut gs = Vec::new();
         for i in &its {
