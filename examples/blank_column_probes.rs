@@ -7,7 +7,11 @@ use std::{
 };
 fn main() -> Result<()> {
     let a: Vec<_> = std::env::args().skip(1).collect();
-    ensure!(a.len() == 4, "INPUT.hwpx OUTPUT_DIR PARA_ID CHAR_ID");
+    ensure!(
+        a.len() == 4 || (a.len() == 5 && a[4] == "--bottom-margin-probe"),
+        "INPUT.hwpx OUTPUT_DIR PARA_ID CHAR_ID [--bottom-margin-probe]"
+    );
+    let vary_bottom = a.len() == 5;
     let original = std::fs::read(&a[0])?;
     let mut zip = zip::ZipArchive::new(std::io::Cursor::new(&original))?;
     let mut files = Vec::new();
@@ -57,7 +61,7 @@ fn main() -> Result<()> {
         ("left", "4000"),
         ("right", "4000"),
         ("top", "4000"),
-        ("bottom", "4000"),
+        ("bottom", if vary_bottom { "8000" } else { "4000" }),
         ("header", "0"),
         ("footer", "0"),
     ] {
@@ -74,7 +78,12 @@ fn main() -> Result<()> {
     let dir = Path::new(&a[1]);
     std::fs::create_dir_all(dir)?;
     for stalled in [false, true] {
-        let name = if stalled {
+        if vary_bottom && stalled {
+            continue;
+        }
+        let name = if vary_bottom {
+            "bottom-margin-80"
+        } else if stalled {
             "stalled-cache"
         } else {
             "normal-cache"

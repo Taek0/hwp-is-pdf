@@ -1,7 +1,7 @@
 # Empty-paragraph column-cache probes — 2026-10-16
 
-Status: waiting for independent Hancom exports; no layout correction is enabled
-by this diagnostic stage.
+Status: first two Hancom exports received; isolating the remaining blank-line
+pagination difference. No layout correction is enabled by this diagnostic stage.
 
 The math document contains repeated final empty-line coordinates followed by a
 column-origin reset. A simple overflow carry can improve early columns while
@@ -22,8 +22,18 @@ existing probes, removes stale preview entries and verifies source immutability.
 
 Local inputs: output/hancom-blank-column-probes/normal-cache.hwpx and
 stalled-cache.hwpx. Export both in Hancom to corresponding PDFs in that folder.
-Whether Hancom preserves or reconstructs those different caches is the evidence
-needed before selecting a recovery rule. Do not assume the expected result.
+Both user exports contain two pages, with identical label positions: A at
+page 1 (39.96,39.925), B at page 1 (210,71.965), C at page 2 (39.96,39.925).
+PDF titles identify the two different inputs. This establishes identical results
+for this pair despite different line caches, not a rule for all document caches.
+
+The unchanged forced-reflow engine places B at about 121.779pt and C at about
+105.779pt; even the normal saved-cache result differs. Cache invalidation alone
+is therefore insufficient. `--bottom-margin-probe` creates only
+bottom-margin-80.hwpx, with the normal probe's bottom margin changed from 40pt
+to 80pt. XML comparison confirms no other section change. Its Hancom export is
+needed to distinguish empty-paragraph fitting from cached-coordinate recovery.
+No speculative rule to discard empty paragraphs is enabled.
 
 Current unchanged engine: normal-cache produces 2 pages, stalled-cache 1 page.
 Both preserve A START, B AFTER BLANKS and C NEXT PAGE. Logical XML was compared
