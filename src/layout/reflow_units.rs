@@ -3,6 +3,18 @@ use super::*;
 impl<'a> Engine<'a> {
     pub(super) fn paragraph_units(&mut self, p: &Node) -> Result<Vec<crate::reflow::Unit>> {
         let items = Self::items(p);
+        if items.is_empty()
+            && let Some(run) = p.child("run")
+            && self.doc.chars.contains_key(run.a("charPrIDRef"))
+        {
+            let g = self.glyph(' ', run.a("charPrIDRef"))?;
+            return Ok(vec![crate::reflow::Unit {
+                ascent: g.ascent,
+                descent: g.descent,
+                em: g.size,
+                ..Default::default()
+            }]);
+        }
         let mut units = Vec::new();
         let mut glyphs = Vec::new();
         for item in &items {
