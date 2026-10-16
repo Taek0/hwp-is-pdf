@@ -1,6 +1,15 @@
 //! HWP binary adapter: images.
 use super::*;
 
+pub(super) fn mark_pcx(nodes: &mut [Node], ids: &BTreeSet<String>) {
+    for node in nodes {
+        if node.name == "img" && ids.contains(node.a("binaryItemIDRef")) {
+            node.attrs.insert("sourceFormat".into(), "PCX".into());
+        }
+        mark_pcx(&mut node.children, ids);
+    }
+}
+
 pub(super) fn decode_pcx(d: &[u8]) -> Result<Vec<u8>> {
     ensure!(d.len() >= 128 && d[0] == 10, "Invalid PCX");
     let bits = d[3] as usize;

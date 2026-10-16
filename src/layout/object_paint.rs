@@ -11,6 +11,16 @@ impl<'a> Engine<'a> {
         anchor: f64,
         container: f64,
     ) -> Result<()> {
+        if self.hancom_hide_pcx
+            && n.name == "pic"
+            && n.child("img").is_some_and(|i| i.a("sourceFormat") == "PCX")
+        {
+            self.report.warnings.insert(format!(
+                "PCX picture {} omitted by explicit Hancom image-visibility compatibility option; source image retained",
+                n.a("id")
+            ));
+            return Ok(());
+        }
         let pos = n.child("pos").context("Missing object position")?;
         let sz = n.child("sz").context("Missing object size")?;
         let mut w = sz.n("width") / 100.;
@@ -81,6 +91,24 @@ impl<'a> Engine<'a> {
         };
         if n.a("reflowCaptions") == "1" {
             x += caption_extent(n)[0];
+        }
+        if !inline
+            && n.name == "pic"
+            && n.a("binaryHwp") == "1"
+            && n.a("reflowGeneral") != "1"
+            && n.child("caption").is_none()
+        {
+            // Native saved picture anchors locate the outside margin box.
+            x += object_position::outside_inset(pos.a("horzAlign"), m[0], m[1]);
+            y += object_position::outside_inset(
+                if matches!(pos.a("vertRelTo"), "PAPER" | "PAGE") {
+                    pos.a("vertAlign")
+                } else {
+                    "TOP"
+                },
+                m[2],
+                m[3],
+            );
         }
         // Saved HWPX floating tables position the outside margin box at the
         // anchor. Rebuilt tables already incorporate this spacing in flow.

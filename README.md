@@ -8,17 +8,17 @@ DLL을 호출하지 않습니다. 글꼴은 지정한 디렉터리에서 읽으�
 
 ## 현재 검증 결과 — 2026-10-16
 
-- Rust 테스트 171개 및 all-target Clippy 통과.
+- Rust 테스트 179개 및 all-target Clippy 통과.
 - 기존 43개 문서·205쪽 재변환: 원본 해시와 페이지·개체 수 유지, 네 종류의 기하 검사 0건.
 - 한컴 비교 문서 4개의 페이지 수 일치: 복학원서 2, 법학적성시험 15, 수학 시험지 9, 중간보고서 50.
 - 글꼴 부분 포함 전후 76쪽의 1000px 렌더링 픽셀 동일. 비교 PDF 용량 약 96.4~98.1% 감소.
-- 최신 수정: 병합 머리행 반복, 표 바깥 여백 기준선, 글상자 세로 정렬. 복학원서·법학적성시험 제목의 세로 위치 오차는 각각 0.033pt·0.008pt로 감소했습니다.
+- 최신 수정: 끝 글자 자간, 그림 흑백·밝기·대비, 떠 있는 그림의 바깥 여백. 복학원서 워터마크 위치 오차는 가로 0.08pt·세로 0.001pt 미만입니다. PCX 표시 호환 옵션으로 한컴 출력의 로고 생략도 재현합니다.
 
 페이지 수나 검사 통과가 한컴과의 완전한 일치를 의미하지는 않습니다.
 일부 표의 내부 행 분할·각주 분배와 대체 글꼴·워터마크 표현 차이가 남아 있습니다.
 현재 범위는 [FORMAT_COVERAGE.md](FORMAT_COVERAGE.md),
 최신 형식 지원은 [reference/EMPHASIS_MARKS.md](reference/EMPHASIS_MARKS.md),
-최신 한컴 비교는 [reference/OBJECT_ALIGNMENT.md](reference/OBJECT_ALIGNMENT.md),
+최신 한컴 비교는 [reference/PICTURE_PLACEMENT.md](reference/PICTURE_PLACEMENT.md),
 남은 전체 범위는 [reference/PRIORITY_WORKLIST.md](reference/PRIORITY_WORKLIST.md)를 확인하세요.
 
 ## 실행
@@ -30,12 +30,15 @@ cargo run -- input.hwp output.pdf /path/to/fonts
 cargo run -- input.hwpx output.pdf /path/to/fonts
 cargo run -- input.hwpx output.pdf /path/to/fonts --reflow
 cargo run -- input.hwpx output.pdf /path/to/fonts --contour-wrap
+cargo run -- input.hwp output.pdf /path/to/fonts --hancom-hide-pcx
 cargo test --all-targets
 cargo clippy --all-targets -- -D warnings
 ```
 
 기본 모드는 저장된 줄 배치를 사용하며, 배치 캐시가 없거나 일부 손상된 구역을 재구성합니다.
 `--reflow`는 지원되는 혼합 콘텐츠의 재계산, `--contour-wrap`는 기하 윤곽선 감싸기 옵션입니다.
+`--hancom-hide-pcx`는 한컴의 제한된 그림 표시와 비교하기 위해 PCX 그림만 생략하는 옵션입니다.
+기본 변환은 원본 그림을 보존하며, 이 옵션은 보안 기능이 아닙니다. 생략은 변환 보고서에 기록됩니다.
 지원하지 않는 복합 배치에는 제한 또는 명시적 오류가 있으며 전체 형식 지원을 뜻하지 않습니다.
 
 Windows 기본 글꼴 경로는 `C:/Windows/Fonts`, 현재 WSL 검증 경로는 `/mnt/c/Windows/Fonts`입니다.
@@ -49,6 +52,8 @@ TTC의 개별 면, 실제 굵은 글꼴과 기울임 글꼴을 우선 선택하�
 hwp_engine::convert(input_path, output_path, font_directory)?;
 hwp_engine::convert_with_reflow(input_path, output_path, font_directory, true)?;
 hwp_engine::convert_with_options(input_path, output_path, font_directory, true, true)?;
+hwp_engine::convert_configured(input_path, output_path, font_directory,
+    hwp_engine::ConversionOptions { hancom_hide_pcx: true, ..Default::default() })?;
 ```
 
 `run-cargo.sh`는 이 작업 공간의 WSL 도구 체인용 편의 스크립트입니다.
@@ -59,8 +64,8 @@ hwp_engine::convert_with_options(input_path, output_path, font_directory, true, 
 - [src/README.md](src/README.md): 파서, 배치, 글꼴, PDF 출력의 모듈별 책임.
 - `tests/`: 기능·회귀 검사. 일부 통합 검사는 로컬 사용자 문서와 Windows 글꼴이 필요합니다.
 - `samples/`, `examples/`: 공개 예제, 재현용 HWPX 생성기 및 진단 명령.
-- `output/roadmap/15-tables/` ~ `28-alignment/`: 단계별 PDF·이미지·검증 로그.
-- `output/roadmap/28-alignment/SUMMARY.html`: 최신 네 문서 비교와 PDF. 강조점 비교는 `26-emphasis-marks/`에 보존.
+- `output/roadmap/15-tables/` ~ `31-picture-placement/`: 단계별 PDF·이미지·검증 로그.
+- `output/roadmap/31-picture-placement/page-comparison.png`: 최신 한컴·수정 전·수정 후 비교. 원본 그림 보존 및 PCX 표시 호환 PDF를 함께 보존.
 - [reference/IMPLEMENTATION_HISTORY.md](reference/IMPLEMENTATION_HISTORY.md): 이전 단계의 구현·검증 기록.
 
 생성된 PDF/이미지와 빌드 결과는 `output/`, `target/`에 두고 Git에서 제외합니다.

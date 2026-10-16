@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 fn main() -> anyhow::Result<()> {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
+    let hancom_hide_pcx = args.iter().any(|a| a == "--hancom-hide-pcx");
+    args.retain(|a| a != "--hancom-hide-pcx");
     let contours = args.iter().any(|a| a == "--contour-wrap");
     args.retain(|a| a != "--contour-wrap");
     let force = args
@@ -9,7 +11,7 @@ fn main() -> anyhow::Result<()> {
     args.retain(|a| !matches!(a.as_str(), "--reflow" | "--reflow-text"));
     if args.len() < 2 {
         eprintln!(
-            "Usage: cargo run -- INPUT.hwp|INPUT.hwpx OUTPUT.pdf [FONT_DIRECTORY] [--reflow] [--contour-wrap]"
+            "Usage: cargo run -- INPUT.hwp|INPUT.hwpx OUTPUT.pdf [FONT_DIRECTORY] [--reflow] [--contour-wrap] [--hancom-hide-pcx]"
         );
         eprintln!("본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.");
         std::process::exit(2)
@@ -21,12 +23,15 @@ fn main() -> anyhow::Result<()> {
             PathBuf::from("/mnt/c/Windows/Fonts")
         }
     });
-    let r = hwp_engine::convert_with_options(
+    let r = hwp_engine::convert_configured(
         &PathBuf::from(&args[0]),
         &PathBuf::from(&args[1]),
         &fonts,
-        force,
-        contours,
+        hwp_engine::ConversionOptions {
+            reflow: force,
+            contours,
+            hancom_hide_pcx,
+        },
     )?;
     println!(
         "{} pages; {} equations; {} pictures; {} table draws; {} warnings",

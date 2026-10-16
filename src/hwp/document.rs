@@ -315,6 +315,7 @@ pub fn open(path: &Path) -> Result<Document> {
         .map(|e| e.path().to_string_lossy().to_string())
         .collect();
     let mut binaries = BTreeMap::new();
+    let mut pcx_ids = BTreeSet::new();
     for name in &names {
         if name.starts_with("/BinData/") {
             let id = u16::from_str_radix(name.get(12..16).context("Invalid BinData name")?, 16)?;
@@ -333,6 +334,7 @@ pub fn open(path: &Path) -> Result<Document> {
                 raw
             };
             let raw = if name.to_lowercase().ends_with(".pcx") {
+                pcx_ids.insert(format!("image{id}"));
                 decode_pcx(&raw)?
             } else {
                 raw
@@ -395,6 +397,8 @@ pub fn open(path: &Path) -> Result<Document> {
         sections.push(section);
     }
     ensure!(!sections.is_empty(), "Missing BodyText");
+    super::images::mark_pcx(&mut sections, &pcx_ids);
+    super::images::mark_pcx(&mut masters, &pcx_ids);
     crate::image_effects::apply(&mut sections, &mut binaries)?;
     crate::image_effects::apply(&mut masters, &mut binaries)?;
     crate::image_effects::apply(std::slice::from_mut(&mut header), &mut binaries)?;

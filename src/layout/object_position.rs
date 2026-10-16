@@ -1,4 +1,11 @@
 //! Shared vertical reference semantics for saved and rebuilt object anchors.
+pub(super) fn outside_inset(align: &str, leading: f64, trailing: f64) -> f64 {
+    match align {
+        "CENTER" => (leading - trailing) / 2.,
+        "RIGHT" | "BOTTOM" => -trailing,
+        _ => leading,
+    }
+}
 pub(super) fn vertical(
     origin: f64,
     extent: f64,

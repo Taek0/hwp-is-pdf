@@ -22,6 +22,14 @@ mod wrap_region;
 
 use anyhow::Result;
 use std::path::Path;
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ConversionOptions {
+    pub reflow: bool,
+    pub contours: bool,
+    /// Omit decoded PCX pictures to match Hancom's restricted image display.
+    /// The default preserves source content. This is not a security feature.
+    pub hancom_hide_pcx: bool,
+}
 pub fn convert(input: &Path, output: &Path, font_dir: &Path) -> Result<layout::Report> {
     convert_with_reflow(input, output, font_dir, false)
 }
@@ -42,12 +50,30 @@ pub fn convert_with_options(
     force: bool,
     contours: bool,
 ) -> Result<layout::Report> {
+    convert_configured(
+        input,
+        output,
+        font_dir,
+        ConversionOptions {
+            reflow: force,
+            contours,
+            ..Default::default()
+        },
+    )
+}
+pub fn convert_configured(
+    input: &Path,
+    output: &Path,
+    font_dir: &Path,
+    options: ConversionOptions,
+) -> Result<layout::Report> {
     anyhow::ensure!(input != output, "Input and output must differ");
     let document = model::Document::open(input)?;
     let mut engine = layout::Engine::new(&document, font_dir);
-    if contours {
+    engine.hancom_hide_pcx = options.hancom_hide_pcx;
+    if options.contours {
         engine.render_contours()?;
-    } else if force {
+    } else if options.reflow {
         engine.render_reflow()?;
     } else {
         engine.render()?;
