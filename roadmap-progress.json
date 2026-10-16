@@ -250,5 +250,16 @@
     ],
     "report": "output/roadmap/24-line-note-detail/SUMMARY.html",
     "remaining": "Form/law title offsets, math cached column flow and other in-page typography/graphics differences remain"
+  },
+  "typography_extensions": {
+    "date": "2026-10-16",
+    "empty_paragraph_reflow": "complete",
+    "emphasis_marks": "complete",
+    "tests": 164,
+    "documents": 43,
+    "pages": 205,
+    "byte_identical_pdfs": 43,
+    "report": "output/roadmap/26-emphasis-marks/SUMMARY.html",
+    "remaining": "Saved math column origin, form/law title metrics, outline/shadow/vertical text and broader graphics support"
   }
 }

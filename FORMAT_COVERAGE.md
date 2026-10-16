@@ -11,7 +11,7 @@ Hancom are not achieved.**
 
 | Area | Implemented | Remaining limits |
 |---|---|---|
-| Text | Installed family/TTC face selection, native or synthetic styles, scripts/offsets, language slots, optional Latin pair kerning, Unicode and installed Hancom PUA glyphs | Missing original fonts, exact synthetic metrics, some outline/shadow/emphasis and vertical typography |
+| Text | Installed family/TTC face selection, native or synthetic styles, scripts/offsets, language slots, optional Latin pair kerning, Unicode, installed Hancom PUA glyphs and vector emphasis marks | Missing original fonts, exact synthetic/mark metrics, outline/shadow/emboss and vertical typography |
 | Body layout | Saved-cache rendering and recovery, supported mixed reflow, floats/contours, column changes and shared-note flows | Complex overlaps, all writer variants and exact Hancom line/page boundaries |
 | Tables | Merged/nested cells, structural splitting, repeated headers/captions, mixed pictures/rotations/notes, stale text recovery and single automatic-row height allocation | Ambiguous multiple auto rows and exact row/paragraph composition |
 | Notes | Footnotes/endnotes, long-note continuation, source-driven placement and numbering | Some precise page distribution differs |
@@ -22,9 +22,9 @@ Hancom are not achieved.**
 
 ## Final validation
 
-159 Rust tests and all-target Clippy pass. 43 baseline documents / 205 pages retain
+164 Rust tests and all-target Clippy pass. 43 baseline documents / 205 pages retain
 their source hashes and page/picture/table/equation/chart counts, with zero findings
-in the four geometry audit classes. 42 PDFs are byte-identical to stage 23;
+in the four geometry audit classes. All 43 PDFs are byte-identical to stage 25;
 all 43 extracted character multisets are unchanged. The report's research table
 fits pages 46–47, matching the reference range. Its note 44 now matches Hancom's
 three-plus-one line split, with note 41–44 first-line top errors of 0.02–0.11pt.
@@ -47,7 +47,8 @@ remaining form frame offset, internal report table/footnote page boundaries, som
 watermark tone/geometry and border pattern details. The empty report TOC page is
 also empty in Hancom. QA zero is not a compatibility percentage or proof of reading order.
 
-Latest evidence: output/roadmap/24-line-note-detail/SUMMARY.html and
+Latest feature evidence: output/roadmap/26-emphasis-marks/SUMMARY.html and
+[EMPHASIS_MARKS.md](reference/EMPHASIS_MARKS.md). Four-document reference comparison:
 [LINE_NOTE_DETAIL_COMPARISON.md](reference/LINE_NOTE_DETAIL_COMPARISON.md).
 Historical increments, fixture restrictions and earlier measurements are preserved
 in [IMPLEMENTATION_HISTORY.md](reference/IMPLEMENTATION_HISTORY.md); their old
