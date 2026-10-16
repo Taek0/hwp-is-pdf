@@ -235,5 +235,20 @@
     ],
     "report": "output/roadmap/23-research-pages/SUMMARY.html",
     "remaining": "Research table page range matches Hancom; in-page text, row and note-line positions still differ"
+  },
+  "post_final_note_detail": {
+    "status": "complete",
+    "date": "2026-10-16",
+    "tests": 159,
+    "documents": 43,
+    "pages": 205,
+    "byte_identical_pdfs": 42,
+    "geometry_findings": 0,
+    "note44_lines": [
+      3,
+      1
+    ],
+    "report": "output/roadmap/24-line-note-detail/SUMMARY.html",
+    "remaining": "Form/law title offsets, math cached column flow and other in-page typography/graphics differences remain"
   }
 }
