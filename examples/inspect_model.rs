@@ -25,6 +25,48 @@ fn main() -> Result<()> {
     let a: Vec<_> = std::env::args().collect();
     let d = Document::open(std::path::Path::new(&a[1]))?;
     if let Some(query) = a.get(3) {
+        for master in &d.masters {
+            let mut boxes = Vec::new();
+            master.all("rect", &mut boxes);
+            for shape in boxes.into_iter().filter(|s| {
+                s.child("drawText")
+                    .is_some_and(|n| hwp_engine::model::text(n).contains(query))
+            }) {
+                println!(
+                    "MASTER BOX {:?} POS {:?} SIZE {:?} CURRENT {:?} MARGIN {:?} LIST {:?}",
+                    shape.attrs,
+                    shape.child("pos"),
+                    shape.child("sz"),
+                    shape.child("curSz"),
+                    shape.child("drawText").and_then(|n| n.child("textMargin")),
+                    shape
+                        .child("drawText")
+                        .and_then(|n| n.child("subList"))
+                        .map(|n| &n.attrs)
+                );
+            }
+            let mut ps = Vec::new();
+            master.all("p", &mut ps);
+            for p in ps {
+                let plain = p
+                    .children_named("run")
+                    .flat_map(|r| r.children_named("t"))
+                    .map(hwp_engine::model::text)
+                    .collect::<String>();
+                if plain.contains(query) {
+                    println!(
+                        "MASTER {:?} TEXT {:?} LINES {:?} STYLE {:?}",
+                        master.attrs,
+                        plain,
+                        p.child("linesegarray"),
+                        d.paras.get(p.a("paraPrIDRef"))
+                    );
+                    for run in p.children_named("run") {
+                        println!("MASTER CHAR {:?}", d.chars.get(run.a("charPrIDRef")));
+                    }
+                }
+            }
+        }
         for section in &d.sections {
             for p in section.children_named("p") {
                 let plain = p

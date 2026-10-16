@@ -43,22 +43,23 @@ impl<'a> Engine<'a> {
             contents.push((*c, cx, cy, ww, ch, m, flow));
         }
         let mut start = 0.;
+        let header_rows = table_headers::band_rows(n).unwrap_or(0);
+        let header_height = rh[..header_rows].iter().sum::<f64>();
         while start < total - 0.01 {
-            if start > 0. && n.a("repeatHeader") == "1" {
+            if header_rows > 0 && start >= header_height - 0.01 {
                 let header_cells: Vec<Node> = cells
                     .iter()
-                    .filter(|c| c.child("cellAddr").unwrap().u("rowAddr") == 0)
+                    .filter(|c| c.child("cellAddr").unwrap().u("rowAddr") < header_rows)
                     .map(|c| (*c).clone())
                     .collect();
                 if !header_cells.is_empty()
-                    && header_cells.iter().all(|c| {
-                        c.child("cellSpan").unwrap().u("rowSpan") == 1
-                            && c.find("footNote").is_none()
-                    })
-                    && rh[0] < (self.ph - self.top - self.bottom) / 3.
+                    && header_cells.iter().all(|c| c.find("footNote").is_none())
+                    && header_height < (self.ph - self.top - self.bottom) / 3.
                 {
                     let mut header = n.clone();
-                    header.attrs.insert("rowCnt".into(), "1".into());
+                    header
+                        .attrs
+                        .insert("rowCnt".into(), header_rows.to_string());
                     header.attrs.insert("repeatHeader".into(), "0".into());
                     header.attrs.insert("pageBreak".into(), "NONE".into());
                     header.children.retain(|c| c.name != "tr");
@@ -68,9 +69,9 @@ impl<'a> Engine<'a> {
                         ..Default::default()
                     });
                     self.depth += 1;
-                    self.table(&header, x, top, cw.iter().sum(), rh[0])?;
+                    self.table(&header, x, top, cw.iter().sum(), header_height)?;
                     self.depth -= 1;
-                    top += rh[0];
+                    top += header_height;
                 }
             }
             let mut cut = (start + self.ph - self.bottom - top).min(total);

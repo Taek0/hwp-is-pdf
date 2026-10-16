@@ -5,7 +5,6 @@ impl<'a> Engine<'a> {
     pub(super) fn table(&mut self, n: &Node, x: f64, y: f64, w: f64, h: f64) -> Result<()> {
         let repaired = self.repair_saved_cell_text(n)?;
         let n = repaired.as_ref().unwrap_or(n);
-        let rows = n.u("rowCnt");
         let cols = n.u("colCnt");
         let cells: Vec<_> = n
             .children_named("tr")
@@ -168,26 +167,28 @@ impl<'a> Engine<'a> {
         }
         // Cached table heights include minimum/automatic row growth; keep them
         // instead of stretching cells to a stale object rectangle.
+        let header_rows = table_headers::band_rows(n).unwrap_or(0);
+        let header_height = rh[..header_rows].iter().sum::<f64>();
         let header_cells: Vec<_> = cells
             .iter()
-            .filter(|c| c.child("cellAddr").is_some_and(|a| a.u("rowAddr") == 0))
+            .filter(|c| {
+                c.child("cellAddr")
+                    .is_some_and(|a| a.u("rowAddr") < header_rows)
+            })
             .map(|c| (*c).clone())
             .collect();
         let mut page_row = 0;
         let mut page_y = y;
         let mut previous_row = None;
         let captured_header = if self.capture_table_headers
-            && n.a("repeatHeader") == "1"
-            && rows > 1
-            && rh[0] < (self.ph - self.top - self.bottom) / 3.
-            && header_cells.iter().all(|c| {
-                c.child("cellSpan").is_some_and(|s| s.u("rowSpan") == 1)
-                    && c.find("footNote").is_none()
-            }) {
+            && header_rows > 0
+            && header_height < (self.ph - self.top - self.bottom) / 3.
+            && header_cells.iter().all(|c| c.find("footNote").is_none())
+        {
             let index = self.table_headers.len();
             self.table_headers.push(TableHeaderPaint {
                 y,
-                height: rh[0],
+                height: header_height,
                 end: y + rh.iter().sum::<f64>(),
                 ops: Vec::new(),
             });
@@ -200,8 +201,8 @@ impl<'a> Engine<'a> {
             let s = c.child("cellSpan").unwrap();
             let col = a.u("colAddr");
             let row = a.u("rowAddr");
-            let mut band_end = if row == 0 && n.a("repeatHeader") == "1" && rows > 1 {
-                2
+            let mut band_end = if row == 0 && header_rows > 0 {
+                header_rows + 1
             } else {
                 row + 1
             };
@@ -260,13 +261,12 @@ impl<'a> Engine<'a> {
                     )?;
                     page_y = self.top;
                     page_row = row;
-                    if n.a("repeatHeader") == "1"
-                        && header_cells
-                            .iter()
-                            .all(|c| c.child("cellSpan").unwrap().u("rowSpan") == 1)
+                    if header_rows > 0 && header_cells.iter().all(|c| c.find("footNote").is_none())
                     {
                         let mut header = n.clone();
-                        header.attrs.insert("rowCnt".into(), "1".into());
+                        header
+                            .attrs
+                            .insert("rowCnt".into(), header_rows.to_string());
                         header.attrs.insert("pageBreak".into(), "NONE".into());
                         header.attrs.insert("repeatHeader".into(), "0".into());
                         header.children.retain(|c| c.name != "tr");
@@ -275,8 +275,8 @@ impl<'a> Engine<'a> {
                             children: header_cells.clone(),
                             ..Default::default()
                         });
-                        self.table(&header, x, page_y, w, rh[0])?;
-                        page_y += rh[0];
+                        self.table(&header, x, page_y, w, header_height)?;
+                        page_y += header_height;
                     }
                     self.report
                         .warnings
@@ -317,7 +317,7 @@ impl<'a> Engine<'a> {
                     bounds: bounds_start..self.report.bounds.len(),
                 });
             }
-            if row == 0
+            if row < header_rows
                 && let Some(index) = captured_header
             {
                 self.table_headers[index]

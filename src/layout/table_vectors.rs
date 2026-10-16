@@ -51,7 +51,13 @@ impl<'a> Engine<'a> {
         n.all("tbl", &mut table_nodes);
         let requested_headers = table_nodes
             .iter()
-            .filter(|t| t.a("repeatHeader") == "1")
+            .filter(|t| {
+                table_headers::band_rows(t).is_some()
+                    // Native saved tables with a non-repeatable header flag
+                    // retain their established row/line fallback and cache flow.
+                    || (n.a("binaryHwp")=="1" && n.a("reflowTable")!="1"
+                        && t.a("repeatHeader")=="1")
+            })
             .count();
         let bound_start = self.report.bounds.len();
         let counts = (
