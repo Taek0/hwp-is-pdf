@@ -274,7 +274,8 @@ impl<'a> Engine<'a> {
                             strikes.push((it.style.clone(), x, end, g.size, g.shift));
                         }
                     }
-                    if g.shear != 0. {
+                    let grouped = g.shear != 0. || g.emphasis.is_some();
+                    if grouped {
                         self.current.ops.push(Op::TransformBegin {
                             matrix: [1., 0., -g.shear, 1., g.shear * (base + g.shift), 0.],
                         });
@@ -288,7 +289,11 @@ impl<'a> Engine<'a> {
                         scale: g.scale,
                         color: g.color,
                     });
-                    if g.shear != 0. {
+                    if g.emphasis.is_some() {
+                        let advance = self.fonts.width(g.font, &c.to_string(), g.size) * g.scale;
+                        self.paint_emphasis(g, x, base + g.shift, advance);
+                    }
+                    if grouped {
                         self.current.ops.push(Op::TransformEnd);
                     }
                     if self

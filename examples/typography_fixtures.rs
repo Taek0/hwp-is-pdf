@@ -62,5 +62,43 @@ fn main() -> anyhow::Result<()> {
             i * 5000
         );
     }
-    save("emphasis-marks", &chars, &rows)
+    save("emphasis-marks", &chars, &rows)?;
+    native_marks()
+}
+
+fn native_marks() -> anyhow::Result<()> {
+    use std::io::Read;
+    let path = Path::new("samples/text-style/emphasis-marks.hwp");
+    std::fs::copy("samples/additional/underline-styles.hwp", path)?;
+    let mut file = cfb::open_rw(path)?;
+    let mut compressed = Vec::new();
+    file.open_stream("/DocInfo")?.read_to_end(&mut compressed)?;
+    let mut data = Vec::new();
+    flate2::read::DeflateDecoder::new(compressed.as_slice()).read_to_end(&mut data)?;
+    let (mut pos, mut index) = (0, 0);
+    while pos + 4 <= data.len() {
+        let h = u32::from_le_bytes(data[pos..pos + 4].try_into()?);
+        pos += 4;
+        let mut len = (h >> 20) as usize;
+        if len == 4095 {
+            len = u32::from_le_bytes(data[pos..pos + 4].try_into()?) as usize;
+            pos += 4;
+        }
+        anyhow::ensure!(pos + len <= data.len(), "Truncated fixture record");
+        if h & 1023 == 21 {
+            anyhow::ensure!(len >= 50, "Truncated character shape");
+            let flags = u32::from_le_bytes(data[pos + 46..pos + 50].try_into()?);
+            let flags = (flags & !(15 << 21)) | ((index % 6 + 1) << 21);
+            data[pos + 46..pos + 50].copy_from_slice(&flags.to_le_bytes());
+            index += 1;
+        }
+        pos += len;
+    }
+    let mut encoder =
+        flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
+    encoder.write_all(&data)?;
+    let mut stream = file.open_stream("/DocInfo")?;
+    stream.set_len(0)?;
+    stream.write_all(&encoder.finish()?)?;
+    Ok(())
 }

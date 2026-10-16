@@ -28,11 +28,12 @@ fn binary_char_flags_preserve_italic_and_double_strike() -> anyhow::Result<()> {
                 } else {
                     1 << 16
                 };
-                let flags = (flags & !((7 << 18) | (15 << 26) | (3 << 15)))
+                let flags = (flags & !((7 << 18) | (15 << 26) | (3 << 15) | (15 << 21)))
                     | 1
                     | (1 << 18)
                     | (7 << 26)
-                    | script;
+                    | script
+                    | (((char_index % 8) as u32) << 21);
                 data[pos + 46..pos + 50].copy_from_slice(&flags.to_le_bytes());
                 data[pos + 35..pos + 42].fill((-20i8) as u8);
                 char_index += 1;
@@ -56,6 +57,19 @@ fn binary_char_flags_preserve_italic_and_double_strike() -> anyhow::Result<()> {
         assert_eq!(c.child("supscript").is_some(), sup);
         assert_eq!(c.child("subscript").is_some(), !sup);
         assert_eq!(c.child("offset").unwrap().n("hangul"), -20.);
+        assert_eq!(
+            c.a("symMark"),
+            [
+                "",
+                "DOT_ABOVE",
+                "RING_ABOVE",
+                "CARON",
+                "TILDE",
+                "SIDE",
+                "COLON",
+                ""
+            ][c.u("id") % 8]
+        );
     }
     Ok(())
 }

@@ -122,14 +122,21 @@ impl<'a> Engine<'a> {
         let bb = crate::pdf::glyph_id(&face, c).and_then(|id| face.glyph_bounding_box(id));
         let unit = size / face.units_per_em() as f64;
         let pad = self.fonts.ink_padding(font, size);
+        let emphasis = (!c.is_whitespace() && !c.is_control())
+            .then(|| text_marks::Emphasis::named(ch.a("symMark")))
+            .flatten();
+        let (mark_above, mark_below) = emphasis.map(|m| m.extent(size)).unwrap_or((0., 0.));
         let glyph = Glyph {
+            emphasis,
             font,
             size,
             scale,
             width,
             color: color(ch.a("textColor")),
-            ascent: (bb.map(|b| b.y_max as f64 * unit + pad).unwrap_or(0.) - shift).max(0.),
-            descent: (bb.map(|b| -b.y_min as f64 * unit + pad).unwrap_or(0.) + shift).max(0.),
+            ascent: (bb.map(|b| b.y_max as f64 * unit + pad).unwrap_or(0.) - shift + mark_above)
+                .max(0.),
+            descent: (bb.map(|b| -b.y_min as f64 * unit + pad).unwrap_or(0.) + shift + mark_below)
+                .max(0.),
             ink_left: bb
                 .map(|b| (b.x_min as f64 * scale + shear * b.y_min as f64) * unit - pad)
                 .unwrap_or(0.),

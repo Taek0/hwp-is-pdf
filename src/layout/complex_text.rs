@@ -315,6 +315,22 @@ impl<'a> Engine<'a> {
                     matrix: [1., 0., -g.shear, 1., g.shear * (base + g.shift), 0.],
                 });
             }
+            let emphasis = self
+                .doc
+                .chars
+                .get(&run.style)
+                .and_then(|s| text_marks::Emphasis::named(s.a("symMark")));
+            if emphasis.is_some() {
+                for (metric, glyph) in run.metrics.iter().zip(&run.glyphs) {
+                    if metric.1>0. && items.iter().any(|i| i.pos==metric.0
+                        && matches!(i.kind,ItemKind::Char(c) if !c.is_whitespace() && !c.is_control())) {
+                        let mut decorated=g.clone(); decorated.emphasis=emphasis;
+                        decorated.raw_ascent=(metric.2+glyph.y+g.shift).max(0.);
+                        decorated.raw_descent=(metric.3-glyph.y-g.shift).max(0.);
+                        self.paint_emphasis(&decorated,x+glyph.x,base+g.shift+glyph.y,metric.1*factor);
+                    }
+                }
+            }
             self.current.ops.push(Op::Shaped {
                 x,
                 y: base + g.shift,

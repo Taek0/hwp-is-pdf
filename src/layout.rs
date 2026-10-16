@@ -197,6 +197,7 @@ struct Item {
 }
 #[derive(Clone)]
 struct Glyph {
+    emphasis: Option<text_marks::Emphasis>,
     font: usize,
     size: f64,
     scale: f64,
@@ -348,6 +349,7 @@ mod table_measure;
 mod table_pagination;
 mod table_vectors;
 mod text_decorations;
+mod text_marks;
 mod text_metrics;
 mod text_paint;
 mod text_style;

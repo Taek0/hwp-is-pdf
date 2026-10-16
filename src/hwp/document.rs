@@ -97,6 +97,21 @@ pub fn open(path: &Path) -> Result<Document> {
                     ch.children.push(n("bold"));
                 }
                 let props = u32(d, 46)?;
+                // HWP table 35 uses CARON/TILDE order, unlike the OWPML enum.
+                if let Some(name) = [
+                    "NONE",
+                    "DOT_ABOVE",
+                    "RING_ABOVE",
+                    "CARON",
+                    "TILDE",
+                    "SIDE",
+                    "COLON",
+                ]
+                .get(((props >> 21) & 15) as usize)
+                .filter(|&&name| name != "NONE")
+                {
+                    ch = ch.at("symMark", name);
+                }
                 ch = ch
                     .at("useFontSpace", (props >> 25) & 1)
                     .at("useKerning", (props >> 30) & 1);
