@@ -22,9 +22,9 @@ Hancom are not achieved.**
 
 ## Final validation
 
-180 Rust tests and all-target Clippy pass. 43 baseline documents / 205 pages retain
+183 Rust tests and all-target Clippy pass. 43 baseline documents / 205 pages retain
 their source hashes and page/picture/table/equation/chart counts, with zero findings
-in the four geometry audit classes. 42 PDFs are byte-identical to stage 31;
+in the four geometry audit classes. 42 PDFs are byte-identical to stage 32;
 all 43 extracted character multisets are unchanged. The report's research table
 fits pages 46–47, matching the reference range. Its note 44 now matches Hancom's
 three-plus-one line split, with note 41–44 first-line top errors of 0.02–0.11pt.

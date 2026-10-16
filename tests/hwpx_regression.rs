@@ -63,8 +63,10 @@ fn supplied_math_document_has_complete_object_coverage_and_repaired_box() {
     assert!(engine.pages[0].ops.iter().any(|op| matches!(op,
         hwp_engine::pdf::Op::Line{x,y,x2,y2,..}
         if (*x-28.35).abs()<0.02 && (*y-48.20).abs()<0.02 && *x2>*x && (*y2-*y).abs()<0.01)));
+    // The saved line already reserves 68.66pt. Do not add the 30.47pt
+    // difference from the obsolete declared shape size a second time.
     assert!(
-        engine
+        !engine
             .report
             .warnings
             .iter()

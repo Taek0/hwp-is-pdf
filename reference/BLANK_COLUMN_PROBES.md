@@ -1,7 +1,7 @@
 # Empty-paragraph column-cache probes — 2026-10-16
 
-Status: all three Hancom exports received; isolating the remaining blank-line
-pagination difference. No layout correction is enabled by this diagnostic stage.
+Status: all four Hancom exports received. The validated implementation and
+remaining mixed-content differences are described in BLANK_COLUMN_FLOW.md.
 
 The math document contains repeated final empty-line coordinates followed by a
 column-origin reset. A simple overflow carry can improve early columns while
@@ -39,7 +39,11 @@ bottom-margin reference, B moves down 48pt and C down 63.96pt. Thus the bottom
 margin affects the logical column/page break; treating the repeated cache
 coordinates alone cannot establish the correct flow. These observations do not
 yet establish a general rule for carrying or discarding empty paragraphs.
-No speculative rule to discard empty paragraphs is enabled.
+The additional top-margin-20 export has one page: A at (39.96,20.005),
+B at (210,35.965), C at (210,227.965). It rejected a draft that used top margin
+as an empty-line allowance. Reading the source visibility flag and combining
+bounded leading-empty-line suppression with content-height fitting explains
+all four results. The rejected margin formula was not committed to the engine.
 
 Current unchanged engine: normal-cache produces 2 pages, stalled-cache 1 page.
 Both preserve A START, B AFTER BLANKS and C NEXT PAGE. Logical XML was compared

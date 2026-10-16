@@ -66,7 +66,13 @@ impl<'a> Engine<'a> {
         }
         let sec = section.find("secPr").unwrap();
         self.paint_page_border(sec, first, hiding);
-        if cols > 1 && sec.a("binaryHwp") != "1" && self.column_widths.is_empty() {
+        if cols > 1
+            && sec.a("binaryHwp") != "1"
+            && self.column_widths.is_empty()
+            && section_columns(section)
+                .and_then(|c| c.child("colLine"))
+                .is_some_and(|l| l.a("type") != "NONE")
+        {
             let x = self.left + (self.pw - self.left - self.right) / 2.;
             let mut first_body = section
                 .children_named("p")

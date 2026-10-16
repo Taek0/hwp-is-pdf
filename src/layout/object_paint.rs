@@ -42,6 +42,12 @@ impl<'a> Engine<'a> {
                 if n.name == "tbl" && n.a("binaryHwp") == "1" && n.a("reflowTable") != "1" {
                     // Native cached line baselines include the table's outside box.
                     declared_h + m[2] + m[3]
+                } else if n.name == "rect" && h > declared_h && base - line_y + 0.02 >= h * baseline
+                {
+                    // A saved line may already reserve the repaired rectangle's
+                    // current height. Align that reserved box without shifting
+                    // the shape down and counting the same growth a second time.
+                    h
                 } else {
                     declared_h
                 };

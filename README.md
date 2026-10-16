@@ -8,18 +8,18 @@ DLL을 호출하지 않습니다. 글꼴은 지정한 디렉터리에서 읽으�
 
 ## 현재 검증 결과 — 2026-10-16
 
-- Rust 테스트 180개 및 all-target Clippy 통과.
+- Rust 테스트 183개 및 all-target Clippy 통과.
 - 기존 43개 문서·205쪽 재변환: 원본 해시와 페이지·개체 수 유지, 네 종류의 기하 검사 0건.
 - 한컴 비교 문서 4개의 페이지 수 일치: 복학원서 2, 법학적성시험 15, 수학 시험지 9, 중간보고서 50.
 - 글꼴 부분 포함 전후 76쪽의 1000px 렌더링 픽셀 동일. 비교 PDF 용량 약 96.4~98.1% 감소.
 - 최신 수정: 끝 글자 자간, 그림 흑백·밝기·대비, 떠 있는 그림의 바깥 여백. 복학원서 워터마크 위치 오차는 가로 0.08pt·세로 0.001pt 미만입니다. PCX 표시 호환 옵션으로 한컴 출력의 로고 생략도 재현합니다.
-- 수학 시험지 첫 쪽: 커진 제목 표의 아래 여백·단 예약 높이·구분선 시작을 보정했습니다. 1·2번 문항 위치 오차는 0.009/0.056pt이며, 오른쪽 단과 이후 쪽의 빈 문단 연결 차이는 남아 있습니다.
+- 수학 시험지: `hideFirstEmptyLine`과 줄 간격을 반영해 빈 문단의 단·쪽 연결을 복구했습니다. 26개 문항 중 19개의 시작 위치가 한컴과 0.1pt 이내이며, 14~20번에는 지문 줄바꿈에서 이어지는 약 16pt 차이가 남아 있습니다.
 
 페이지 수나 검사 통과가 한컴과의 완전한 일치를 의미하지는 않습니다.
 일부 표의 내부 행 분할·각주 분배와 대체 글꼴·워터마크 표현 차이가 남아 있습니다.
 현재 범위는 [FORMAT_COVERAGE.md](FORMAT_COVERAGE.md),
 최신 형식 지원은 [reference/EMPHASIS_MARKS.md](reference/EMPHASIS_MARKS.md),
-최신 한컴 비교는 [reference/SAVED_COLUMN_STARTS.md](reference/SAVED_COLUMN_STARTS.md),
+최신 한컴 비교는 [reference/BLANK_COLUMN_FLOW.md](reference/BLANK_COLUMN_FLOW.md),
 남은 전체 범위는 [reference/PRIORITY_WORKLIST.md](reference/PRIORITY_WORKLIST.md)를 확인하세요.
 
 ## 실행
@@ -65,8 +65,8 @@ hwp_engine::convert_configured(input_path, output_path, font_directory,
 - [src/README.md](src/README.md): 파서, 배치, 글꼴, PDF 출력의 모듈별 책임.
 - `tests/`: 기능·회귀 검사. 일부 통합 검사는 로컬 사용자 문서와 Windows 글꼴이 필요합니다.
 - `samples/`, `examples/`: 공개 예제, 재현용 HWPX 생성기 및 진단 명령.
-- `output/roadmap/15-tables/` ~ `32-saved-column-starts/`: 단계별 PDF·이미지·검증 로그.
-- `output/roadmap/32-saved-column-starts/SUMMARY.html`: 수학 시험지 첫 쪽의 한컴·수정 전·수정 후 비교와 미해결 범위.
+- `output/roadmap/15-tables/` ~ `34-blank-column-recovery/`: 단계별 PDF·이미지·검증 로그.
+- `output/roadmap/34-blank-column-recovery/SUMMARY.html`: 네 한컴 대조본과 수학 시험지의 수정 전·후 비교 및 미해결 범위.
 - [reference/IMPLEMENTATION_HISTORY.md](reference/IMPLEMENTATION_HISTORY.md): 이전 단계의 구현·검증 기록.
 
 생성된 PDF/이미지와 빌드 결과는 `output/`, `target/`에 두고 Git에서 제외합니다.

@@ -6,7 +6,7 @@ regression set, rendered images, a commit and a push.
 
 | Priority | Scope | Current state / next concrete work |
 |---|---|---|
-| 1 | Math document paragraph and column flow | In progress. Expanded full-width table reservation and bottom margins now carry across same-page columns; initial divider uses measured height. Page-1 questions 1/2 have 0.009/0.056pt errors; questions 3/4 still differ by about 16pt. Later column starts and stalled empty-paragraph caches remain (SAVED_COLUMN_STARTS.md). Full reflow succeeds but still changes the math page count. |
+| 1 | Math document paragraph and column flow | Blank-column continuation and hideFirstEmptyLine are implemented against four Hancom probes; cached rectangle height is no longer counted twice. 19/26 question starts match within 0.1pt. Questions 14–20 remain about 16pt early, beginning with question 13's five-versus-four-line wrapping difference (BLANK_COLUMN_FLOW.md). |
 | 2 | Font metrics, title and baseline positions | Inline-table margins, drawing-text CENTER/BOTTOM and final-character tracking corrected. Selected form/law title Y errors are 0.033/0.008pt; law title X error is 0.032pt. Generated italic labels remain. |
 | 3 | General paragraph line wrapping | Pending: distinguish stale saved line breaks from authored breaks and verify rebuilt line widths/spacing against reference outputs. |
 | 4 | Complex table row splitting and vertical alignment | Explicit merged header bands implemented and tested. Independent cell continuation exists; exact reference row-fragment distribution remains. |

@@ -62,6 +62,12 @@ impl<'a> Engine<'a> {
                 reflow_used = true;
                 note_start = self.reflow_text_section(section, cw, cols, gap)?;
             } else {
+                let mut blank_flow = self
+                    .recover_blank_columns(section, cols)
+                    .then(saved_blank_flow::BlankColumnFlow::new);
+                if blank_flow.is_some() {
+                    self.report.warnings.insert("Rebuilt saved column flow across empty-paragraph cache boundaries; hideFirstEmptyLine suppresses up to two leading empty lines after automatic breaks".into());
+                }
                 let mut col = 0;
                 let mut last = None;
                 let mut flow_shift = 0f64;
@@ -93,6 +99,7 @@ impl<'a> Engine<'a> {
                         let next_count = def.u("colCount").max(1);
                         let next_gap = val(Some(def), "sameGap");
                         if next_count != cols || next_gap != gap {
+                            blank_flow = None;
                             spanning_floor = None;
                             spanning_shift = None;
                             repage_saved_tail = false;
@@ -117,19 +124,35 @@ impl<'a> Engine<'a> {
                         let floor = self.flow_floor.take().filter(|f| f.0 == self.pages.len());
                         let table_consumed_break =
                             floor.is_some_and(|f| f.2) && p.a("pageBreak") != "1";
-                        let cached_break =
-                            last.is_some_and(|last| y < last) && !table_consumed_break;
-                        let explicit_break = last.is_some() && i == 0 && p.a("pageBreak") == "1";
+                        let cached_break = blank_flow.is_none()
+                            && last.is_some_and(|last| y < last)
+                            && !table_consumed_break;
+                        let explicit_break = last.is_some()
+                            && i == 0
+                            && (p.a("pageBreak") == "1"
+                                || (blank_flow.is_some()
+                                    && self
+                                        .doc
+                                        .paras
+                                        .get(p.a("paraPrIDRef"))
+                                        .and_then(|s| s.child("breakSetting"))
+                                        .is_some_and(|b| {
+                                            matches!(b.a("pageBreakBefore"), "1" | "true")
+                                        })));
+                        let explicit_column = blank_flow.is_some()
+                            && last.is_some()
+                            && i == 0
+                            && p.a("columnBreak") == "1";
                         if cached_break && repage_saved_tail && !explicit_break {
                             // Changed table/note geometry invalidated the saved page boundary.
                             // Reuse cached line positions as continuous flow until an explicit break.
                             flow_shift = previous_end - self.top - y / 100.;
-                        } else if cached_break || explicit_break {
+                        } else if cached_break || explicit_break || explicit_column {
                             repage_saved_tail = false;
                             col += 1;
                             flow_shift = 0.;
                             table_reflowed = false;
-                            if i == 0 && p.a("pageBreak") == "1" {
+                            if explicit_break {
                                 col = cols
                             }
                             if col >= cols {
@@ -145,6 +168,17 @@ impl<'a> Engine<'a> {
                                 // page share the repaired reservation.
                                 flow_shift = shift;
                             }
+                        }
+                        if let Some(flow) = &mut blank_flow {
+                            if explicit_break || explicit_column {
+                                flow.break_column(false);
+                                previous_end = spanning_floor
+                                    .filter(|(page, _)| *page == self.pages.len())
+                                    .map(|(_, bottom)| bottom)
+                                    .unwrap_or(self.top)
+                                    .max(self.top);
+                            }
+                            flow_shift = previous_end + flow.gap(y / 100.) - self.top - y / 100.;
                         }
                         if let Some((_, bottom, continued)) =
                             floor.filter(|f| f.0 == self.pages.len())
@@ -190,7 +224,16 @@ impl<'a> Engine<'a> {
                                     matches!(n.name.as_str(), "footNote" | "endNote" | "autoNum")
                                 }
                                 _ => false,
-                            });
+                            })
+                            || (blank_flow.is_some()
+                                && self
+                                    .doc
+                                    .paras
+                                    .get(p.a("paraPrIDRef"))
+                                    .and_then(|s| s.child("heading"))
+                                    .is_some_and(|h| {
+                                        matches!(h.a("type"), "NUMBER" | "BULLET" | "OUTLINE")
+                                    }));
                         let inline_object = its.iter().filter(|it| it.pos >= l.u("textpos") && it.pos < end)
                             .any(|it| matches!(&it.kind,ItemKind::Object(n) if n.name=="tbl" && n.a("pageBreak")=="NONE" && n.child("pos").is_some_and(|p|p.a("treatAsChar")=="1")));
                         let line_slot = l.n("vertsize")
@@ -199,8 +242,14 @@ impl<'a> Engine<'a> {
                             } else {
                                 0.
                             };
-                        if visible
-                            && (repage_saved_tail
+                        let fit_slot = if blank_flow.is_some() {
+                            l.n("vertsize")
+                        } else {
+                            line_slot
+                        };
+                        if (visible || blank_flow.is_some())
+                            && (blank_flow.is_some()
+                                || repage_saved_tail
                                 || reserve > 0.
                                 || fallback_flow
                                 || table_reflowed
@@ -208,7 +257,7 @@ impl<'a> Engine<'a> {
                                     && self.top + flow_shift + (y + l.n("vertsize")) / 100.
                                         <= self.ph - self.bottom
                                     && line_slot / 100. <= self.ph - self.top - self.bottom))
-                            && self.top + flow_shift + (y + line_slot) / 100.
+                            && self.top + flow_shift + (y + fit_slot) / 100.
                                 > self.ph - self.bottom - reserve
                             && self.top + flow_shift + y / 100. > self.top + 0.1
                         {
@@ -219,8 +268,25 @@ impl<'a> Engine<'a> {
                                 self.decorations(section, false, cols, gap)?;
                             }
                             flow_shift = -y / 100.;
+                            if let Some(flow) = &mut blank_flow {
+                                flow.break_column(true);
+                                if let Some((_, bottom)) =
+                                    spanning_floor.filter(|(page, _)| *page == self.pages.len())
+                                {
+                                    flow_shift += bottom - self.top;
+                                }
+                            }
                             if cols == 1 && (reserve > 0. || table_reflowed) {
                                 repage_saved_tail = true;
+                            }
+                        }
+                        if let Some(flow) = &mut blank_flow {
+                            flow.observe(y / 100., (l.n("vertsize") + l.n("spacing")) / 100.);
+                            if flow.hide(!visible) {
+                                previous_end = self.top + flow_shift + y / 100.;
+                                last = Some(y);
+                                note_start = (previous_end, col, cw, gap);
+                                continue;
                             }
                         }
                         self.line(
@@ -256,8 +322,10 @@ impl<'a> Engine<'a> {
                                         .unwrap_or(false)
                                     {
                                         Some(
-                                            (effective_height(n) - val(n.child("sz"), "height"))
-                                                .max(0.),
+                                            (effective_height(n)
+                                                - val(n.child("sz"), "height")
+                                                    .max(l.n("vertsize") / 100.))
+                                            .max(0.),
                                         )
                                     } else {
                                         None
