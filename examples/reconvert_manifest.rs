@@ -17,11 +17,24 @@ fn main() -> anyhow::Result<()> {
             .join(item["group"].as_str().unwrap())
             .join(item["name"].as_str().unwrap())
             .with_extension("pdf");
-        let r = hwp_engine::convert(
+        let result = hwp_engine::convert(
             std::path::Path::new(&source),
             &target,
             std::path::Path::new("/mnt/c/Windows/Fonts"),
-        )?;
+        );
+        let r = match result {
+            Ok(r) => r,
+            Err(error) if args.iter().any(|a| a == "--keep-going") => {
+                eprintln!("{}: {error:#}", item["name"]);
+                results.push(serde_json::json!({"group":item["group"],"name":item["name"],"error":format!("{error:#}")}));
+                std::fs::write(
+                    out.join("corpus-report.json"),
+                    serde_json::to_vec_pretty(&results)?,
+                )?;
+                continue;
+            }
+            Err(error) => return Err(error),
+        };
         let qa: serde_json::Value =
             serde_json::from_slice(&std::fs::read(target.with_extension("qa.json"))?)?;
         println!("{}: {} pages", item["name"], r.pages);

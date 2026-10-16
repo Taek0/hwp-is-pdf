@@ -152,7 +152,7 @@ impl<'a> Engine<'a> {
                     let w = self.fonts.width(
                         g.font,
                         &self.note_label(n, n.name == "endNote"),
-                        g.size * 0.6,
+                        g.size * notes::ANCHOR_SIZE,
                     ) * g.scale;
                     (
                         crate::reflow::Unit {

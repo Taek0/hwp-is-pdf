@@ -1,6 +1,11 @@
 //! Layout responsibility: notes.
 use super::*;
 
+// Body note anchors are always raised, independently of the note-body
+// autoNumFormat.supscript flag. Confirmed in native HWP and HWPX exports.
+pub(super) const ANCHOR_SIZE: f64 = 0.75;
+pub(super) const ANCHOR_RAISE: f64 = 0.2;
+
 pub(super) fn note_row_advance(flow: &[(&Node, usize, f64)], idx: usize) -> f64 {
     let (p, line, y) = flow[idx];
     flow.get(idx + 1)

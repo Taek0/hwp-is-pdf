@@ -121,12 +121,13 @@ impl<'a> Engine<'a> {
                     let width = self.fonts.width(g.font, n.a("main"), g.size);
                     (Some(g), width)
                 }
-                ItemKind::Control(n)
-                    if n.name == "footNote" || (n.name == "endNote" && number_draw.is_none()) =>
-                {
+                ItemKind::Control(n) if n.name == "footNote" || n.name == "endNote" => {
                     let g = self.glyph('1', &i.style)?;
                     let label = self.note_label(n, n.name == "endNote");
-                    let w = self.fonts.width(g.font, &label, g.size * 0.6);
+                    let w = self
+                        .fonts
+                        .width(g.font, &label, g.size * notes::ANCHOR_SIZE)
+                        * g.scale;
                     (Some(g), w)
                 }
                 ItemKind::Control(n) if n.name == "autoNum" => {
@@ -507,21 +508,18 @@ impl<'a> Engine<'a> {
                     }
                     "footNote" | "endNote" => {
                         let end = n.name == "endNote";
-                        let mut note_top = base;
-                        if !end || number_draw.is_none() {
-                            let g = gs[idx].as_ref().unwrap();
-                            note_top = base - g.size * 1.2;
-                            self.current.ops.push(Op::Text {
-                                x,
-                                y: base - g.size * 0.35,
-                                text: self.note_label(n, end),
-                                font: g.font,
-                                size: g.size * 0.6,
-                                scale: 1.,
-                                color: g.color,
-                            });
-                            x += widths[idx];
-                        }
+                        let g = gs[idx].as_ref().unwrap();
+                        let note_top = base - g.size * 1.2;
+                        self.current.ops.push(Op::Text {
+                            x,
+                            y: base - g.size * notes::ANCHOR_RAISE,
+                            text: self.note_label(n, end),
+                            font: g.font,
+                            size: g.size * notes::ANCHOR_SIZE,
+                            scale: g.scale,
+                            color: g.color,
+                        });
+                        x += widths[idx];
                         if !self.note_rendering {
                             if end {
                                 let mut note = n.clone();
