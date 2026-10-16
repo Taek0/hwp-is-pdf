@@ -68,6 +68,8 @@ impl<'a> Engine<'a> {
                 let mut table_reflowed = false;
                 let mut repage_saved_tail = false;
                 let mut previous_end = self.top;
+                let mut spanning_floor: Option<(usize, f64)> = None;
+                let mut spanning_shift: Option<(usize, f64)> = None;
                 let fallback_flow = section
                     .children_named("p")
                     .filter(|p| !text(p).trim().is_empty())
@@ -91,6 +93,8 @@ impl<'a> Engine<'a> {
                         let next_count = def.u("colCount").max(1);
                         let next_gap = val(Some(def), "sameGap");
                         if next_count != cols || next_gap != gap {
+                            spanning_floor = None;
+                            spanning_shift = None;
                             repage_saved_tail = false;
                             if last.is_some_and(|y| ls[0].n("vertpos") < y)
                                 || p.a("pageBreak") == "1"
@@ -133,6 +137,14 @@ impl<'a> Engine<'a> {
                                 col = 0;
                                 self.decorations(section, false, cols, gap)?;
                             }
+                            if let Some((_, shift)) =
+                                spanning_shift.filter(|(page, _)| *page == self.pages.len())
+                            {
+                                // A table covering multiple columns can grow beyond
+                                // its saved reservation. All covered columns on this
+                                // page share the repaired reservation.
+                                flow_shift = shift;
+                            }
                         }
                         if let Some((_, bottom, continued)) =
                             floor.filter(|f| f.0 == self.pages.len())
@@ -147,6 +159,11 @@ impl<'a> Engine<'a> {
                                 flow_shift.max(shift)
                             };
                             table_reflowed = true;
+                            if spanning_floor.is_some_and(|(page, end)| {
+                                page == self.pages.len() && (end - bottom).abs() < 0.001
+                            }) {
+                                spanning_shift = Some((self.pages.len(), flow_shift));
+                            }
                         }
                         let end = ls.get(i + 1).map(|l| l.u("textpos")).unwrap_or(usize::MAX);
                         let its = Self::items(p);
@@ -213,6 +230,21 @@ impl<'a> Engine<'a> {
                             self.top + flow_shift,
                             cw,
                         )?;
+                        if cols > 1
+                            && col == 0
+                            && its.iter().any(|it| {
+                                it.pos >= l.u("textpos") && it.pos < end
+                                    && matches!(&it.kind, ItemKind::Object(n)
+                                        if n.name == "tbl"
+                                        && val(n.child("sz"), "width")
+                                            + margin(n, "outMargin")[0]
+                                            + margin(n, "outMargin")[1]
+                                            >= self.pw - self.left - self.right - 0.01
+                                        && n.child("pos").is_some_and(|p| p.a("treatAsChar") == "0"))
+                            })
+                        {
+                            spanning_floor = self.flow_floor.map(|(page, bottom, _)| (page, bottom));
+                        }
                         let end = ls.get(i + 1).map(|n| n.u("textpos")).unwrap_or(usize::MAX);
                         let growth = Self::items(p)
                             .iter()

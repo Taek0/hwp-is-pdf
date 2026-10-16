@@ -68,13 +68,33 @@ impl<'a> Engine<'a> {
         self.paint_page_border(sec, first, hiding);
         if cols > 1 && sec.a("binaryHwp") != "1" && self.column_widths.is_empty() {
             let x = self.left + (self.pw - self.left - self.right) / 2.;
-            let first_body = section
+            let mut first_body = section
                 .children_named("p")
                 .skip(1)
                 .flat_map(lines)
                 .next()
                 .map(|l| l.n("vertpos") / 100.)
                 .unwrap_or(0.);
+            if first && let Some(p) = section.children_named("p").next() {
+                for n in p.children_named("run").flat_map(|r| &r.children) {
+                    let m = margin(n, "outMargin");
+                    if n.name == "tbl"
+                        && val(n.child("sz"), "width") + m[0] + m[1]
+                            >= self.pw - self.left - self.right - 0.01
+                        && n.child("pos").is_some_and(|p| {
+                            p.a("treatAsChar") == "0"
+                                && p.a("vertRelTo") == "PARA"
+                                && p.a("vertAlign") == "TOP"
+                        })
+                    {
+                        let repaired = self.repair_saved_cell_text(n)?;
+                        let n = repaired.as_ref().unwrap_or(n);
+                        let (_, _, height) = self.measure_table_grid(n, effective_height(n))?;
+                        let offset = n.child("pos").unwrap().signed("vertOffset") / 100.;
+                        first_body = first_body.max(offset + m[2] + height + m[3]);
+                    }
+                }
+            }
             self.current.ops.push(Op::Line {
                 x,
                 y: if first {
