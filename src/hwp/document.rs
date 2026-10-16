@@ -320,12 +320,19 @@ pub fn open(path: &Path) -> Result<Document> {
         if name.starts_with("/BinData/") {
             let id = u16::from_str_radix(name.get(12..16).context("Invalid BinData name")?, 16)?;
             let raw = read(&mut cfb, name)?;
-            let entry = all
+            // Drawing references are one-based BinData record indices, not
+            // the storage IDs embedded in those records (BINxxxx streams).
+            let entries: Vec<_> = all
                 .iter()
                 .filter(|r| r.tag == 18)
-                .find(|r| u16(&r.data, 2).ok() == Some(id));
-            let mode = entry
-                .map(|r| u16(&r.data, 0).map(|v| (v >> 4) & 3))
+                .enumerate()
+                .filter(|(_, r)| {
+                    u16(&r.data, 0).is_ok_and(|v| v & 0xf != 0) && u16(&r.data, 2).ok() == Some(id)
+                })
+                .collect();
+            let mode = entries
+                .first()
+                .map(|(_, r)| u16(&r.data, 0).map(|v| (v >> 4) & 3))
                 .transpose()?
                 .unwrap_or(0);
             let raw = if mode == 1 || (mode == 0 && compressed) {
@@ -334,12 +341,16 @@ pub fn open(path: &Path) -> Result<Document> {
                 raw
             };
             let raw = if name.to_lowercase().ends_with(".pcx") {
-                pcx_ids.insert(format!("image{id}"));
+                for (index, _) in &entries {
+                    pcx_ids.insert(format!("image{}", index + 1));
+                }
                 decode_pcx(&raw)?
             } else {
                 raw
             };
-            binaries.insert(format!("image{id}"), raw);
+            for (index, _) in entries {
+                binaries.insert(format!("image{}", index + 1), raw.clone());
+            }
         }
     }
     let section_prefix = if distribution {
