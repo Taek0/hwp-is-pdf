@@ -22,11 +22,14 @@ Hancom are not achieved.**
 
 ## Final validation
 
-158 Rust tests and all-target Clippy pass. 43 baseline documents / 205 pages retain
+159 Rust tests and all-target Clippy pass. 43 baseline documents / 205 pages retain
 their source hashes and page/picture/table/equation/chart counts, with zero findings
-in the four geometry audit classes. All 43 outputs retain character multisets
-relative to stage 21, including repeated headers. 41 PDFs are byte-identical to
-stage 21. Native plain-text tables can carry staggered cell lines independently
+in the four geometry audit classes. 42 PDFs are byte-identical to stage 22;
+the report loses only one repeated table header because its research table now
+fits pages 46–47, matching the reference range. No body text is lost.
+Saved single-column short notes can continue when their first complete line fits
+with the anchor; exact note-line distribution still differs in some cases.
+Native plain-text tables can carry staggered cell lines independently
 and close fragment bottoms using the source cell rule; transformed objects retain
 the shared-ink fallback. Earlier native-symbol repair
 separately restores two U+F012B, 100 U+F081C and one
@@ -43,8 +46,8 @@ remaining form frame offset, internal report table/footnote page boundaries, som
 watermark tone/geometry and border pattern details. The empty report TOC page is
 also empty in Hancom. QA zero is not a compatibility percentage or proof of reading order.
 
-Latest evidence: output/roadmap/22-table-fragments/SUMMARY.html and
-[TABLE_FRAGMENT_COMPARISON.md](reference/TABLE_FRAGMENT_COMPARISON.md).
+Latest evidence: output/roadmap/23-research-pages/SUMMARY.html and
+[RESEARCH_PAGINATION_COMPARISON.md](reference/RESEARCH_PAGINATION_COMPARISON.md).
 Historical increments, fixture restrictions and earlier measurements are preserved
 in [IMPLEMENTATION_HISTORY.md](reference/IMPLEMENTATION_HISTORY.md); their old
 "current"/"remaining" statements describe those earlier versions.

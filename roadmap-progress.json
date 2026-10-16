@@ -220,5 +220,20 @@
     "text_unchanged": true,
     "report": "output/roadmap/22-table-fragments/SUMMARY.html",
     "remaining": "Research table remains 46-48 versus Hancom 46-47; exact row and note distribution requires further work"
+  },
+  "post_final_research_pagination": {
+    "status": "complete",
+    "date": "2026-10-16",
+    "tests": 159,
+    "documents": 43,
+    "pages": 205,
+    "byte_identical_pdfs": 42,
+    "geometry_findings": 0,
+    "research_table_pages": [
+      46,
+      47
+    ],
+    "report": "output/roadmap/23-research-pages/SUMMARY.html",
+    "remaining": "Research table page range matches Hancom; in-page text, row and note-line positions still differ"
   }
 }
