@@ -202,6 +202,7 @@ struct Glyph {
     size: f64,
     scale: f64,
     width: f64,
+    tracking: f64,
     color: [f64; 3],
     ascent: f64,
     descent: f64,

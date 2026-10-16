@@ -41,6 +41,7 @@ impl<'a> Engine<'a> {
                             pos: item.pos,
                             ch: Some(*c),
                             width: g.width.max(0.),
+                            trailing: g.tracking,
                             ascent: g.ascent,
                             descent: g.descent,
                             em: g.size,
@@ -254,11 +255,17 @@ impl<'a> Engine<'a> {
                 units[i - 1].ch = None;
             }
         }
+        for (unit, glyph) in units.iter_mut().zip(&glyphs) {
+            if let Some(g) = glyph {
+                unit.trailing = unit.width - (g.width - g.tracking);
+            }
+        }
         let mut grouped: Vec<crate::reflow::Unit> = Vec::new();
         self.measure_complex_units(p, &items, &mut units)?;
         for unit in units {
             if let Some(last) = grouped.last_mut().filter(|last| last.pos == unit.pos) {
                 last.width += unit.width;
+                last.trailing = unit.trailing;
                 last.ascent = last.ascent.max(unit.ascent);
                 last.descent = last.descent.max(unit.descent);
                 last.em = last.em.max(unit.em);

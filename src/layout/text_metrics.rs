@@ -1,5 +1,25 @@
 //! Language-dependent character properties and optional Latin pair kerning.
 use super::*;
+/// Tracking separates advances; it is not a margin after the final glyph.
+pub(super) fn trim_trailing_tracking(
+    items: &[Item],
+    glyphs: &mut [Option<Glyph>],
+    widths: &mut [f64],
+) {
+    for i in (0..items.len()).rev() {
+        if matches!(items[i].kind,ItemKind::Char(c) if !c.is_control()) {
+            if let Some(g) = &mut glyphs[i] {
+                widths[i] -= g.tracking;
+                g.width -= g.tracking;
+                g.tracking = 0.;
+            }
+            break;
+        }
+        if widths[i] != 0. {
+            break;
+        }
+    }
+}
 pub(super) fn language(c: char) -> (&'static str, &'static str) {
     match c as u32 {
         0x3040..=0x30ff | 0x31f0..=0x31ff | 0xff66..=0xff9f => ("japanese", "JAPANESE"),

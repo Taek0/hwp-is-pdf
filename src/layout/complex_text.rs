@@ -210,6 +210,7 @@ impl<'a> Engine<'a> {
         for (item, unit) in items.iter().zip(units.iter_mut()) {
             if matches!(item.kind, ItemKind::Char(_)) {
                 unit.width = 0.;
+                unit.trailing = 0.;
             }
         }
         for run in runs {

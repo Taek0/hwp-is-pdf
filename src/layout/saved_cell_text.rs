@@ -63,14 +63,18 @@ impl<'a> Engine<'a> {
                     for (i, l) in ls.iter().enumerate() {
                         let end = ls.get(i + 1).map(|l| l.u("textpos")).unwrap_or(usize::MAX);
                         let mut measured = 0.;
+                        let mut trailing = 0.;
                         for it in items
                             .iter()
                             .filter(|it| it.pos >= l.u("textpos") && it.pos < end)
                         {
                             if let ItemKind::Char(c) = it.kind {
-                                measured += self.glyph(c, &it.style)?.width;
+                                let g = self.glyph(c, &it.style)?;
+                                measured += g.width;
+                                trailing = g.tracking;
                             }
                         }
+                        measured -= trailing;
                         let available = if l.n("horzsize") > 0. {
                             (l.n("horzsize") / 100.).min(width)
                         } else {

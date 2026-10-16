@@ -5,6 +5,8 @@ pub(crate) struct Unit {
     pub pos: usize,
     pub ch: Option<char>,
     pub width: f64,
+    /// Advance adjustment that applies only when another unit follows on the line.
+    pub trailing: f64,
     pub ascent: f64,
     pub descent: f64,
     pub em: f64,
@@ -18,6 +20,15 @@ pub(crate) struct Line {
     pub width: f64,
     pub hard: bool,
     pub block: bool,
+}
+fn inline_width(units: &[Unit]) -> f64 {
+    units.iter().map(|u| u.width).sum::<f64>()
+        - units
+            .iter()
+            .rev()
+            .find(|u| u.width != 0. || u.trailing != 0.)
+            .map(|u| u.trailing)
+            .unwrap_or(0.)
 }
 #[derive(Default)]
 pub(crate) struct Settings {
@@ -205,19 +216,20 @@ fn wrap_exclusion(
             available = b - a;
         }
         // Keep a Latin token intact when a later interval on this row can hold it.
-        let mut token_width = 0.;
+        let mut token_end = begin;
         let mut token_started = false;
         for unit in &units[begin..] {
             match unit.ch {
                 Some(c) if c.is_ascii_alphanumeric() || (token_started && "'-._".contains(c)) => {
                     token_started = true;
-                    token_width += unit.width;
                 }
-                None if !token_started => token_width += unit.width,
-                Some(' ') if !token_started => token_width += unit.width,
+                None if !token_started => {}
+                Some(' ') if !token_started => {}
                 _ => break,
             }
+            token_end += 1;
         }
+        let token_width = inline_width(&units[begin..token_end]);
         if token_started
             && token_width > available
             && row_gaps.iter().any(|(a, b)| b - a >= token_width)
@@ -236,6 +248,7 @@ fn wrap_exclusion(
         );
         let mut end = begin;
         let mut used = 0.;
+        let mut last_trailing = 0.;
         let mut last_break: Option<usize> = None;
         let mut last_space: Option<usize> = None;
         let mut hard = false;
@@ -271,30 +284,34 @@ fn wrap_exclusion(
             } else {
                 units[end].width
             };
-            if end > begin && used + advance > available + 0.001 {
+            let trailing = if advance != 0. || units[end].trailing != 0. {
+                units[end].trailing
+            } else {
+                last_trailing
+            };
+            if end > begin && used + advance - trailing > available + 0.001 {
                 if s.prefer_words
                     && let Some(b) = last_space.filter(|b| *b > begin)
                 {
-                    let token_width: f64 = units[b..]
+                    let token_len = units[b..]
                         .iter()
                         .take_while(|u| !matches!(u.ch, Some(' ' | '\n' | '\t')) && !u.block)
-                        .map(|u| u.width)
-                        .sum();
+                        .count();
+                    let token_width = inline_width(&units[b..b + token_len]);
                     if token_width <= available {
                         end = b;
                         break;
                     }
                 }
                 if let Some(b) = last_break {
-                    let mut word_width = 0.;
                     let mut at = b;
                     while at < units.len() && units[at].ch != Some('\n') {
-                        word_width += units[at].width;
                         at += 1;
                         if opportunity(units[at - 1].ch, units.get(at).and_then(|u| u.ch), s) {
                             break;
                         }
                     }
+                    let word_width = inline_width(&units[b..at]);
                     if !units[b].ch.is_some_and(|c| c.is_ascii_alphanumeric())
                         || word_width <= (width - s.left - s.right).max(available)
                     {
@@ -304,6 +321,7 @@ fn wrap_exclusion(
                 break;
             }
             used += advance;
+            last_trailing = trailing;
             end += 1;
             if units[end - 1].ch == Some(' ') {
                 last_space = Some(end);
@@ -403,6 +421,7 @@ mod tests {
                     pos,
                     ch: Some(c),
                     width: 10.,
+                    trailing: 0.,
                     ascent: 8.,
                     descent: 2.,
                     em: 10.,
@@ -412,6 +431,31 @@ mod tests {
                 u
             })
             .collect()
+    }
+    #[test]
+    fn positive_tracking_does_not_add_a_margin_after_the_last_glyph() {
+        let mut input = units("AB");
+        for u in &mut input {
+            u.width = 14.;
+            u.trailing = 4.;
+        }
+        assert_eq!(wrap(&input, 24., &config()).unwrap().len(), 1);
+        assert_eq!(wrap(&input, 23.9, &config()).unwrap().len(), 2);
+        input.push(Unit {
+            pos: 2,
+            ..Default::default()
+        });
+        assert_eq!(wrap(&input, 24., &config()).unwrap().len(), 1);
+    }
+    #[test]
+    fn negative_tracking_does_not_hide_the_last_glyph_width() {
+        let mut input = units("AB");
+        for u in &mut input {
+            u.width = 8.;
+            u.trailing = -2.;
+        }
+        assert_eq!(wrap(&input, 18., &config()).unwrap().len(), 1);
+        assert_eq!(wrap(&input, 17.9, &config()).unwrap().len(), 2);
     }
     fn config() -> Settings {
         Settings {

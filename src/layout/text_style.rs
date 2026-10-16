@@ -132,6 +132,7 @@ impl<'a> Engine<'a> {
             size,
             scale,
             width,
+            tracking: spacing,
             color: color(ch.a("textColor")),
             ascent: (bb.map(|b| b.y_max as f64 * unit + pad).unwrap_or(0.) - shift + mark_above)
                 .max(0.),

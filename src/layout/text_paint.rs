@@ -159,6 +159,7 @@ impl<'a> Engine<'a> {
                     };
             }
         }
+        text_metrics::trim_trailing_tracking(&its, &mut gs, &mut widths);
         if p.a("reflowed") == "1" {
             let (stops, step) = self.paragraph_tabs(p);
             let mut at = seg.n("horzpos") / 100.;
