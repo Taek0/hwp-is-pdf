@@ -158,8 +158,11 @@ impl<'a> Engine<'a> {
                                 _ => None,
                             })
                             .collect();
-                        let reserve = self
-                            .footnote_reservation(&incoming, self.left + col as f64 * (cw + gap));
+                        let reserve = self.saved_line_note_reservation(
+                            &incoming,
+                            self.left + col as f64 * (cw + gap),
+                            self.top + flow_shift + (y + l.n("vertsize")) / 100.,
+                        );
                         let visible = its
                             .iter()
                             .filter(|it| it.pos >= l.u("textpos") && it.pos < end)

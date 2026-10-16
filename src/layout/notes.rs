@@ -1,7 +1,7 @@
 //! Layout responsibility: notes.
 use super::*;
 
-fn note_row_advance(flow: &[(&Node, usize, f64)], idx: usize) -> f64 {
+pub(super) fn note_row_advance(flow: &[(&Node, usize, f64)], idx: usize) -> f64 {
     let (p, line, y) = flow[idx];
     flow.get(idx + 1)
         .map(|next| next.2 - y)
@@ -315,7 +315,7 @@ impl<'a> Engine<'a> {
                 + 1.
                 > body - 48.
         });
-        if has_long_group || !self.continued_notes.is_empty() {
+        if has_long_group || !self.continued_notes.is_empty() || self.notes_exceed_free_area() {
             return self.finish_long_notes();
         }
         let notes = std::mem::take(&mut self.footnotes);
@@ -398,47 +398,17 @@ impl<'a> Engine<'a> {
         loop {
             let overhead =
                 self.note_gap(false, "aboveLine", 6.) + self.note_gap(false, "belowLine", 4.) + 1.;
-            let capacity = (if first {
-                let mut text_bottom = self.top;
-                let mut matrix = crate::graphics::IDENTITY;
-                let mut stack = Vec::new();
-                for op in &self.current.ops {
-                    match op {
-                        Op::TransformBegin { matrix: m } => {
-                            stack.push(matrix);
-                            matrix = crate::graphics::compose(matrix, *m);
-                        }
-                        Op::TransformEnd => {
-                            matrix = stack.pop().unwrap_or(crate::graphics::IDENTITY)
-                        }
-                        Op::Text { .. } | Op::Shaped { .. } => {
-                            if let Some(b) = crate::pagination::bounds(op, &self.fonts) {
-                                let b = crate::graphics::rect(matrix, b);
-                                if b[1] >= self.top && b[3] < self.ph - self.bottom {
-                                    text_bottom = text_bottom.max(b[3]);
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                let object_bottom = self
-                    .report
-                    .bounds
-                    .iter()
-                    .filter(|b| b.page == self.pages.len() + 1 && b.kind != "watermark")
-                    .map(|b| b.y + b.h)
-                    .fold(self.top, f64::max);
-                // Body layout already reserved half a page. At finalization the
-                // unoccupied space above it can safely hold more complete lines.
-                (self.ph - self.bottom - text_bottom.max(object_bottom))
-                    .max((self.ph - self.top - self.bottom) * 0.5)
-            } else {
-                self.ph - self.top - self.bottom
-            }) - overhead;
-            anyhow::ensure!(capacity > 0., "No printable area for footnote continuation");
             self.note_rendering = true;
             for (x, w, rows) in groups.values_mut() {
+                let capacity = (if first {
+                    self.ph - self.bottom - self.body_content_bottom_in_area(*x, *w)
+                } else {
+                    self.ph - self.top - self.bottom
+                }) - overhead;
+                if capacity <= 0. && first {
+                    continue;
+                }
+                anyhow::ensure!(capacity > 0., "No printable area for footnote continuation");
                 let mut batch = Vec::new();
                 let mut height = 0.;
                 while let Some(row) = rows.front() {

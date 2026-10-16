@@ -89,6 +89,22 @@ fn report_anchor_precedes_table_and_research_table_returns_to_reference_page() {
     assert!(page_text(34).contains("이 과정에서"));
     assert!(!page_text(41).contains("이 과정에서"));
     assert!(page_text(45).contains("제목(년도)"));
+    let research: std::collections::BTreeSet<_> = e
+        .report
+        .bounds
+        .iter()
+        .filter(|b| b.kind == "tbl" && b.id == "hwp-6909f")
+        .map(|b| b.page)
+        .collect();
+    assert_eq!(research, [46, 47].into_iter().collect());
+    let note_pages: std::collections::BTreeSet<_> = e
+        .report
+        .bounds
+        .iter()
+        .filter(|b| b.kind.starts_with("footnote") && b.id == "44")
+        .map(|b| b.page)
+        .collect();
+    assert_eq!(note_pages, [44, 45].into_iter().collect());
     let tail = e
         .report
         .bounds
