@@ -46,6 +46,7 @@ pub(crate) struct Settings {
     pub latin_char: bool,
     pub cjk_word: bool,
     pub prefer_words: bool,
+    pub discard_boundary_space: bool,
     pub tabs: Vec<crate::tabs::Stop>,
     pub tab_step: f64,
 }
@@ -62,9 +63,15 @@ pub(crate) fn settings(n: Option<&Node>) -> Settings {
     };
     let spacing = n.and_then(|n| n.find("lineSpacing"));
     Settings {
+        discard_boundary_space: n.is_some_and(|p| p.a("binaryHwp") == "1"),
         tabs: Vec::new(),
         tab_step: 40.,
-        left: value("left"),
+        left: value("left")
+            + if n.is_some_and(|p| p.a("binaryHwp") == "1") {
+                (-value("intent")).max(0.)
+            } else {
+                0.
+            },
         right: value("right"),
         indent: value("intent"),
         before: value("prev").max(0.),
@@ -296,6 +303,17 @@ fn wrap_exclusion(
                 last_trailing
             };
             if end > begin && used + advance - trailing > available + 0.001 {
+                // A break space does not make an otherwise fitting final word
+                // overflow. Consume it here instead of backing up into that word.
+                if s.discard_boundary_space
+                    && units[end].ch == Some(' ')
+                    && used - last_trailing <= available + 0.001
+                {
+                    while end < units.len() && units[end].ch == Some(' ') {
+                        end += 1;
+                    }
+                    break;
+                }
                 if s.prefer_words
                     && let Some(b) = last_space.filter(|b| *b > begin)
                 {
@@ -407,6 +425,20 @@ fn wrap_exclusion(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_hanging_indent_keeps_first_line_at_left_margin() {
+        let p=crate::model::xml(br#"<paraPr binaryHwp="1"><margin><left value="500"/><intent value="-1500"/></margin></paraPr>"#).unwrap();
+        let s = settings(Some(&p));
+        assert_eq!(s.left + s.indent, 5.);
+        assert_eq!(s.left, 20.);
+    }
+    #[test]
+    fn boundary_space_does_not_eject_a_fitting_word() {
+        let mut s = config();
+        s.discard_boundary_space = true;
+        let rows = wrap(&units("ab cd ef"), 50., &s).unwrap();
+        assert_eq!(rows.iter().map(|l| l.pos).collect::<Vec<_>>(), vec![0, 6]);
+    }
     #[test]
     fn latin_word_uses_a_wider_later_interval_without_splitting() {
         let region = crate::wrap_region::Region {

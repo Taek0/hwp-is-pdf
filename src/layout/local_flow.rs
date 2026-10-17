@@ -47,17 +47,42 @@ impl<'a> Engine<'a> {
             let end = ls.get(i + 1).map(|n| n.u("textpos")).unwrap_or(usize::MAX);
             let mut ascent = l.n("baseline") / 100.;
             let mut descent = 0f64;
+            let mut block_height = 0f64;
             for it in items
                 .iter()
                 .filter(|it| it.pos >= l.u("textpos") && it.pos < end)
             {
+                if let ItemKind::Object(n) = &it.kind
+                    && n.a("textWrap") == "TOP_AND_BOTTOM"
+                    && n.child("pos").is_some_and(|pos| {
+                        pos.a("treatAsChar") == "0" && pos.a("vertRelTo") == "PARA"
+                    })
+                {
+                    let m = margin(n, "outMargin");
+                    let cap = caption_extent(n);
+                    let height = if n.name == "tbl" {
+                        self.measure_table_grid(n, effective_height(n))?.2
+                    } else {
+                        effective_height(n)
+                    };
+                    block_height = block_height.max(
+                        n.child("pos").unwrap().signed("vertOffset") / 100.
+                            + m[2]
+                            + height
+                            + m[3]
+                            + cap[2]
+                            + cap[3],
+                    );
+                }
                 if let ItemKind::Char(c) = it.kind {
                     let g = self.glyph(c, &it.style)?;
                     ascent = ascent.max(g.ascent);
                     descent = descent.max(g.descent);
                 }
             }
-            let h = (ascent + descent).max(l.n("vertsize") / 100.);
+            let h = (ascent + descent)
+                .max(l.n("vertsize") / 100.)
+                .max(block_height);
             let actual = y.max(bottom);
             out.push((p, i, actual, h));
             bottom = actual + h;

@@ -24,6 +24,9 @@ impl<'a> Engine<'a> {
         let pos = n.child("pos").context("Missing object position")?;
         let sz = n.child("sz").context("Missing object size")?;
         let mut w = sz.n("width") / 100.;
+        if n.name == "tbl" && n.a("binaryHwp") == "1" && n.a("reflowTable") != "1" {
+            w = table_measure::native_width(n).unwrap_or(w);
+        }
         let h = sz.n("height") / 100.;
         let m = margin(n, "outMargin");
         let declared_h = h;
@@ -113,7 +116,7 @@ impl<'a> Engine<'a> {
             x += caption_extent(n)[0];
         }
         if !inline
-            && n.name == "pic"
+            && matches!(n.name.as_str(), "pic" | "tbl")
             && n.a("binaryHwp") == "1"
             && n.a("reflowGeneral") != "1"
             && n.child("caption").is_none()
@@ -147,7 +150,7 @@ impl<'a> Engine<'a> {
             && n.a("reflowCaptions") != "1"
         {
             let e = caption_extent(n);
-            x += m[0] + e[0];
+            x += object_position::outside_inset(pos.a("horzAlign"), m[0], m[1]) + e[0];
             y += m[2] + e[2];
             // Position the combined caption/object box inside its containing column.
             x = x

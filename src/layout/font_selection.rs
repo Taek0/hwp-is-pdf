@@ -16,7 +16,9 @@ impl<'a> Engine<'a> {
         }
         let lower = name.to_ascii_lowercase();
         let bold = bold || lower.ends_with(" bold") || name.ends_with(" B");
-        let fallback = if name.contains("명조") || name.contains("바탕") {
+        let fallback = if name == "휴먼명조" {
+            "함초롬바탕"
+        } else if name.contains("명조") || name.contains("바탕") {
             "바탕"
         } else if name.contains("고딕") || name.contains("돋움") {
             "돋움"

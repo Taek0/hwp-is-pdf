@@ -174,6 +174,7 @@ pub fn open(path: &Path) -> Result<Document> {
                     id.clone(),
                     n("paraPr")
                         .at("id", id)
+                        .at("binaryHwp", 1)
                         .at("tabPrIDRef", u16(d, 28)?)
                         .with(vec![
                             n("align").at("horizontal", align),
@@ -187,7 +188,9 @@ pub fn open(path: &Path) -> Result<Document> {
                                 ]
                                 .into_iter()
                                 .map(|(key, off)| {
-                                    Ok(n(key).at("value", i32(d, off)?).at("unit", "HWPUNIT"))
+                                    Ok(n(key)
+                                        .at("value", f64::from(i32(d, off)?) / 2.)
+                                        .at("unit", "HWPUNIT"))
                                 })
                                 .collect::<Result<Vec<_>>>()?,
                             ),

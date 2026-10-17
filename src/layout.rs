@@ -339,6 +339,8 @@ mod font_selection;
 mod generated_text;
 mod list_labels;
 mod local_flow;
+mod native_cell_cache;
+mod native_table_rows;
 mod note_space;
 mod notes;
 mod object_paint;
@@ -440,3 +442,5 @@ impl<'a> Engine<'a> {
         self.render_mode(true)
     }
 }
+
+mod native_paragraph_cache;

@@ -3,6 +3,14 @@ use hwp_engine::model::{Document, Node};
 fn dump(n: &Node) {
     if n.name == "tc" {
         println!("text={:?}", hwp_engine::model::text(n));
+        println!(
+            "CELLATTR {:?} PARAS {:?}",
+            n.attrs,
+            n.child("subList").map(|l| l
+                .children_named("p")
+                .map(|p| (p.a("id"), p.child("linesegarray").map(|a| a.children.len())))
+                .collect::<Vec<_>>())
+        );
         let a = n.child("cellAddr").unwrap();
         let mut ls = vec![];
         n.all("lineseg", &mut ls);
@@ -24,6 +32,36 @@ fn dump(n: &Node) {
 fn main() -> Result<()> {
     let a: Vec<_> = std::env::args().collect();
     let d = Document::open(std::path::Path::new(&a[1]))?;
+    if a.get(2).is_some_and(|s| s == "pages") {
+        for section in &d.sections {
+            let mut previous = None;
+            let mut page = 1;
+            for p in section.children_named("p") {
+                if let Some(ls) = p.child("linesegarray") {
+                    for (i, l) in ls.children_named("lineseg").enumerate() {
+                        if previous.is_some_and(|y| {
+                            l.n("vertpos") < y || (i == 0 && p.a("pageBreak") == "1")
+                        }) {
+                            page += 1;
+                        }
+                        if i == 0 {
+                            println!(
+                                "PAGE {page} {:?} y={} {:?}",
+                                p.attrs,
+                                l.n("vertpos"),
+                                hwp_engine::model::text(p)
+                                    .chars()
+                                    .take(55)
+                                    .collect::<String>()
+                            );
+                        }
+                        previous = Some(l.n("vertpos"));
+                    }
+                }
+            }
+        }
+        return Ok(());
+    }
     if let Some(query) = a.get(3) {
         for master in &d.masters {
             let mut boxes = Vec::new();
@@ -55,11 +93,12 @@ fn main() -> Result<()> {
                     .collect::<String>();
                 if plain.contains(query) {
                     println!(
-                        "MASTER {:?} TEXT {:?} LINES {:?} STYLE {:?}",
+                        "MASTER {:?} TEXT {:?} LINES {:?} STYLE {:?} CACHE {:?}",
                         master.attrs,
                         plain,
                         p.child("linesegarray"),
-                        d.paras.get(p.a("paraPrIDRef"))
+                        d.paras.get(p.a("paraPrIDRef")),
+                        p.child("linesegarray")
                     );
                     for run in p.children_named("run") {
                         println!("MASTER CHAR {:?}", d.chars.get(run.a("charPrIDRef")));
@@ -82,6 +121,7 @@ fn main() -> Result<()> {
                         plain,
                         p.child("linesegarray")
                     );
+                    println!("ROOT_STYLE {:?}", d.paras.get(p.a("paraPrIDRef")));
                     for o in p
                         .children_named("run")
                         .flat_map(|r| &r.children)
@@ -92,7 +132,9 @@ fn main() -> Result<()> {
                             o.attrs,
                             o.child("pos"),
                             o.child("sz"),
-                            o.child("caption").map(|c| &c.attrs), o.child("outMargin"), o.child("img")
+                            o.child("caption").map(|c| &c.attrs),
+                            o.child("outMargin"),
+                            o.child("img")
                         );
                     }
                 }
@@ -112,9 +154,10 @@ fn main() -> Result<()> {
                 cell.all("p", &mut paras);
                 for p in paras {
                     println!(
-                        "PARA {:?} STYLE {:?}",
+                        "PARA {:?} STYLE {:?} LINES {:?}",
                         hwp_engine::model::text(p),
-                        d.paras.get(p.a("paraPrIDRef"))
+                        d.paras.get(p.a("paraPrIDRef")),
+                        p.child("linesegarray")
                     );
                     let mut seen = std::collections::BTreeSet::new();
                     for r in p.children_named("run") {
@@ -133,8 +176,105 @@ fn main() -> Result<()> {
         s.all("tbl", &mut tables)
     }
     for t in tables {
-        if a.get(2).is_none_or(|id| t.a("id") == id) {
+        if a.get(2).is_none_or(|id| t.a("id") == id || id == "summary") {
             println!("TABLE {} {:?}", t.a("id"), t.child("sz").map(|n| &n.attrs));
+            println!(
+                "PROPERTIES {:?} POSITION {:?} OUTSIDE {:?} INSIDE {:?}",
+                t.attrs,
+                t.child("pos").map(|n| &n.attrs),
+                t.child("outMargin").map(|n| &n.attrs),
+                t.child("inMargin").map(|n| &n.attrs)
+            );
+            if a.get(2).is_some_and(|s| s == "summary") {
+                for p in d
+                    .sections
+                    .iter()
+                    .flat_map(|s| s.children_named("p"))
+                    .filter(|p| {
+                        p.children_named("run")
+                            .flat_map(|r| &r.children)
+                            .any(|c| c.name == "tbl" && c.a("id") == t.a("id"))
+                    })
+                {
+                    println!(
+                        "PARENT {:?} TEXT {:?} LINES {:?}",
+                        p.attrs,
+                        p.children_named("run")
+                            .flat_map(|r| r.children_named("t"))
+                            .map(hwp_engine::model::text)
+                            .collect::<String>(),
+                        p.child("linesegarray")
+                    );
+                }
+                let mut notes = Vec::new();
+                t.all("footNote", &mut notes);
+                println!("FOOTNOTES {}", notes.len());
+                let all_cells = t
+                    .children_named("tr")
+                    .flat_map(|r| r.children_named("tc"))
+                    .collect::<Vec<_>>();
+                println!(
+                    "HEADER_CELLS {:?}",
+                    all_cells
+                        .iter()
+                        .filter(|c| c.a("header") == "1")
+                        .map(|c| (
+                            c.child("cellAddr").unwrap().u("rowAddr"),
+                            c.child("cellSpan").unwrap().u("rowSpan")
+                        ))
+                        .collect::<Vec<_>>()
+                );
+                for p in all_cells
+                    .iter()
+                    .filter_map(|c| c.child("subList"))
+                    .flat_map(|l| l.children_named("p"))
+                {
+                    let mut controls = Vec::new();
+                    p.all("ctrl", &mut controls);
+                    let style = d.paras.get(p.a("paraPrIDRef"));
+                    let keep = style
+                        .and_then(|s| s.child("breakSetting"))
+                        .is_some_and(|b| {
+                            ["keepLines", "keepWithNext", "widowOrphan"]
+                                .iter()
+                                .any(|k| b.a(k) == "1")
+                        });
+                    let border = style
+                        .and_then(|s| s.child("border"))
+                        .and_then(|b| d.borders.get(b.a("borderFillIDRef")))
+                        .is_some_and(|b| {
+                            b.children
+                                .iter()
+                                .any(|s| s.name.ends_with("Border") && s.a("type") != "NONE")
+                                || b.find("winBrush")
+                                    .is_some_and(|f| f.a("faceColor") != "none")
+                        });
+                    if keep || border || !controls.is_empty() {
+                        println!(
+                            "SPECIAL_PARA {} keep={keep} border={border} controls={:?}",
+                            p.a("id"),
+                            controls
+                                .iter()
+                                .flat_map(|n| &n.children)
+                                .map(|n| n.name.as_str())
+                                .collect::<Vec<_>>()
+                        );
+                    }
+                }
+                println!(
+                    "BODY_MERGES {:?}",
+                    t.children_named("tr")
+                        .flat_map(|r| r.children_named("tc"))
+                        .filter(|c| c.a("header") != "1"
+                            && c.child("cellSpan").is_some_and(|s| s.u("rowSpan") > 1))
+                        .map(|c| (
+                            c.child("cellAddr").unwrap().attrs.clone(),
+                            c.child("cellSpan").unwrap().attrs.clone()
+                        ))
+                        .collect::<Vec<_>>()
+                );
+                continue;
+            }
             dump(t)
         }
     }

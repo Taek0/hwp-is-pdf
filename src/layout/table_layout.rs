@@ -11,6 +11,9 @@ impl<'a> Engine<'a> {
             .flat_map(|r| r.children_named("tc"))
             .collect();
         let (cw, rh, total) = self.measure_table_grid(n, h)?;
+        if self.native_table_rows(n, x, y, w, &cw, &rh, total)? {
+            return Ok(());
+        }
         if self.depth == 0
             && (self.reflow_table_column.is_some()
                 || (n.a("reflowTable") == "1" && n.child("caption").is_some()))

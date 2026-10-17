@@ -41,11 +41,22 @@ impl<'a> Engine<'a> {
         // A wrapping space belongs to the break, not the visible line width.
         // Counting it can shrink an otherwise fitting saved line, especially
         // at large font sizes and narrow columns.
-        if li + 1 < segs.len() && seg.a("hardBreak") != "1" {
-            while its
-                .last()
-                .is_some_and(|i| matches!(i.kind, ItemKind::Char(' ')))
-            {
+        if seg.a("hardBreak") != "1"
+            && its.iter().any(|i| {
+                matches!(i.kind,ItemKind::Char(c) if !c.is_whitespace())
+                    || matches!(i.kind, ItemKind::Object(_))
+            })
+        {
+            while its.last().is_some_and(|i| {
+                matches!(i.kind, ItemKind::Char(' '))
+                    && self.doc.chars.get(&i.style).is_none_or(|s| {
+                        s.child("underline")
+                            .is_none_or(|u| matches!(u.a("type"), "" | "NONE"))
+                            && s.child("strikeout")
+                                .is_none_or(|u| matches!(u.a("shape"), "" | "NONE"))
+                            && matches!(s.a("shadeColor"), "" | "none" | "NONE")
+                    })
+            }) {
                 its.pop();
             }
         }
@@ -61,6 +72,17 @@ impl<'a> Engine<'a> {
             avail = avail.min((width - seg.n("horzpos") / 100.).max(0.));
         }
         let style = self.doc.paras.get(p.a("paraPrIDRef"));
+        // Native caches store the full text region; paragraph margins remain separate.
+        if p.a("reflowed") != "1"
+            && style.is_some_and(|s| s.a("binaryHwp") == "1")
+            && seg.n("horzpos") == 0.
+            && (avail - width).abs() < 0.1
+        {
+            let settings = crate::reflow::settings(style);
+            let inset = settings.left + if li == 0 { settings.indent } else { 0. };
+            x += inset;
+            avail -= inset + settings.right;
+        }
         let align = style
             .and_then(|n| n.child("align"))
             .map(|n| n.a("horizontal"))
@@ -165,7 +187,11 @@ impl<'a> Engine<'a> {
                     if let Some(adjust) = self.pair_kerning(&its[i], &its[i + 1], left, right) {
                         (widths[i] + adjust).max(0.)
                     } else {
-                        widths[i].max(left.ink_right - right.ink_left + 0.02)
+                        if self.doc.header.a("binaryHwp") == "1" {
+                            text_metrics::compatible_advance(widths[i], left, right)
+                        } else {
+                            widths[i].max(left.ink_right - right.ink_left + 0.02)
+                        }
                     };
             }
         }
@@ -226,7 +252,14 @@ impl<'a> Engine<'a> {
         }
         // Never justify through tabs or into the measured boxes of equations/images.
         let atomic_display = its.windows(2).any(|p| p[0].pos == p[1].pos);
-        let stretch = if atomic_display {
+        let word_spaces = total <= avail
+            && matches!(align, "JUSTIFY" | "DISTRIBUTE_SPACE")
+            && its.iter().any(|i| matches!(i.kind, ItemKind::Char(' ')));
+        let stretch = if word_spaces {
+            its.iter()
+                .filter(|i| matches!(i.kind, ItemKind::Char(' ')))
+                .count()
+        } else if atomic_display {
             its.windows(2)
                 .filter(|p| {
                     p[0].pos != p[1].pos
@@ -243,7 +276,7 @@ impl<'a> Engine<'a> {
         if !its.iter().any(|i| matches!(i.kind, ItemKind::Tab(_)))
             && stretch > 0
             && ((align == "JUSTIFY" && li + 1 < segs.len() && seg.a("hardBreak") != "1")
-                || align == "DISTRIBUTE"
+                || matches!(align, "DISTRIBUTE" | "DISTRIBUTE_SPACE")
                 || total > avail)
         {
             gap = (avail - total) / stretch as f64;
@@ -255,6 +288,11 @@ impl<'a> Engine<'a> {
         let mut underlines: Vec<(String, f64, f64, f64, f64, f64)> = Vec::new();
         let mut strikes: Vec<(String, f64, f64, f64, f64)> = Vec::new();
         for (idx, it) in its.iter().enumerate() {
+            let gap = if word_spaces && !matches!(it.kind, ItemKind::Char(' ')) {
+                0.
+            } else {
+                gap
+            };
             self.link_ink(
                 &field_targets[idx],
                 x,

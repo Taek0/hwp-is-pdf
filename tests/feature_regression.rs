@@ -126,7 +126,9 @@ fn structured_equations_emit_content_and_reject_excessive_nesting() {
 
 #[test]
 fn public_documents_keep_negative_tracking_from_colliding() {
-    for (name, pages) in [("government-notice", 30), ("government-faq", 14)] {
+    // FAQ stores 13 page bands, with "3 신청 관련" explicitly starting band 7.
+    // The former 14-page result inserted a spurious table continuation before it.
+    for (name, pages) in [("government-notice", 30), ("government-faq", 13)] {
         let doc = Document::open(&root().join(format!("samples/web/{name}.hwp"))).unwrap();
         let mut engine = Engine::new(&doc, &fonts());
         engine.render().unwrap();

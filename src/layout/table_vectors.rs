@@ -12,6 +12,14 @@ impl<'a> Engine<'a> {
         total: f64,
     ) -> Result<bool> {
         let canvas_x = x;
+        let outside = if n.a("binaryHwp") == "1"
+            && n.a("reflowTable") != "1"
+            && n.child("pos").is_some_and(|p| p.a("treatAsChar") == "0")
+        {
+            margin(n, "outMargin")
+        } else {
+            [0.; 4]
+        };
         let captions: Vec<_> = n.children_named("caption").collect();
         let mut all_captions = Vec::new();
         n.all("caption", &mut all_captions);
@@ -56,7 +64,8 @@ impl<'a> Engine<'a> {
                     // Native saved tables with a non-repeatable header flag
                     // retain their established row/line fallback and cache flow.
                     || (n.a("binaryHwp")=="1" && n.a("reflowTable")!="1"
-                        && t.a("repeatHeader")=="1")
+                        && t.a("repeatHeader")=="1"
+                        && !t.children_named("tr").flat_map(|r|r.children_named("tc")).any(|c|c.attrs.contains_key("header")))
             })
             .count();
         let bound_start = self.report.bounds.len();
@@ -259,7 +268,7 @@ impl<'a> Engine<'a> {
         }
         if top + first_min > self.ph - self.bottom - self.footnote_reservation(&caption_notes, x) {
             self.advance_table_fragment(&mut x)?;
-            top = self.column_top() + above;
+            top = self.column_top() + outside[2] + above;
         }
         let mut caption_y = top - above;
         for c in captions.iter().filter(|c| c.a("side") == "TOP") {
@@ -304,8 +313,11 @@ impl<'a> Engine<'a> {
                 header_height += group_height;
             }
             top += header_height;
-            let mut capacity =
-                self.ph - self.bottom - top - self.footnote_reservation(&bottom_notes, x);
+            let mut capacity = self.ph
+                - self.bottom
+                - top
+                - outside[3]
+                - self.footnote_reservation(&bottom_notes, x);
             if start + capacity >= total {
                 capacity -= below;
             }
@@ -327,6 +339,7 @@ impl<'a> Engine<'a> {
                 let next = (start + self.ph
                     - self.bottom
                     - top
+                    - outside[3]
                     - reserve
                     - if start + capacity >= total { below } else { 0. })
                 .min(cut);
@@ -394,7 +407,7 @@ impl<'a> Engine<'a> {
                     "Nested-table text line exceeds printable page"
                 );
                 self.advance_table_fragment(&mut x)?;
-                top = self.column_top();
+                top = self.column_top() + outside[2];
                 continue;
             }
             let shift = top - start;
@@ -542,7 +555,7 @@ impl<'a> Engine<'a> {
             first = false;
             if start < total - 0.01 {
                 self.advance_table_fragment(&mut x)?;
-                top = self.column_top();
+                top = self.column_top() + outside[2];
             }
         }
         let mut caption_y = self.last_table_end;

@@ -20,7 +20,14 @@ impl<'a> Engine<'a> {
             return Ok(None);
         }
         let mut base = n.clone();
-        let changed = self.repair_nested_saved_tables(&mut base)?;
+        let mut changed = self.repair_nested_saved_tables(&mut base)?;
+        if base.a("binaryHwp") == "1" && self.repair_native_cell_underflow(&mut base)? {
+            changed = true;
+            self.report.warnings.insert(
+                "Rebuilt overlong native plain-text cell caches after resolving font metrics"
+                    .into(),
+            );
+        }
         let n = &base;
         let mut repaired = changed.then(|| base.clone());
         for (ri, row) in n
@@ -158,6 +165,13 @@ impl<'a> Engine<'a> {
             }
         }
         if let Some(copy) = &mut repaired {
+            let original_height = copy
+                .child("sz")
+                .map(|s| s.a("height").to_string())
+                .unwrap_or_default();
+            copy.attrs
+                .entry("nativeDeclaredHeight".into())
+                .or_insert(original_height);
             let (_, rows, _) = self.measure_table_grid(copy, val(copy.child("sz"), "height"))?;
             node_mut(copy, "sz").attrs.insert(
                 "height".into(),

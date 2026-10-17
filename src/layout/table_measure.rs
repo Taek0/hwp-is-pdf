@@ -1,5 +1,46 @@
 //! Shared table grid constraints for painting and saved-cell cache repair.
 use super::*;
+pub(super) fn native_width(n: &Node) -> Option<f64> {
+    let count = n.u("colCnt");
+    if count == 0 || count > 1000 {
+        return None;
+    }
+    let cells: Vec<_> = n
+        .children_named("tr")
+        .flat_map(|r| r.children_named("tc"))
+        .collect();
+    let mut widths = vec![0f64; count];
+    for c in &cells {
+        let start = c.child("cellAddr")?.u("colAddr");
+        let span = c.child("cellSpan")?.u("colSpan");
+        if span == 0 || start.checked_add(span)? > count {
+            return None;
+        }
+        if span == 1 {
+            widths[start] = widths[start].max(val(c.child("cellSz"), "width"));
+        }
+    }
+    for _ in 0..2 {
+        for c in &cells {
+            let start = c.child("cellAddr")?.u("colAddr");
+            let span = c.child("cellSpan")?.u("colSpan");
+            let missing: Vec<_> = (start..start + span).filter(|i| widths[*i] == 0.).collect();
+            if !missing.is_empty() {
+                let value = (val(c.child("cellSz"), "width")
+                    - widths[start..start + span].iter().sum::<f64>())
+                .max(0.)
+                    / missing.len() as f64;
+                for i in missing {
+                    widths[i] = value;
+                }
+            }
+        }
+    }
+    widths
+        .iter()
+        .all(|w| *w > 0. && w.is_finite())
+        .then(|| widths.iter().sum())
+}
 impl<'a> Engine<'a> {
     pub(super) fn measure_table_grid(
         &mut self,

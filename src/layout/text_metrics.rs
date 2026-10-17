@@ -1,5 +1,18 @@
 //! Language-dependent character properties and optional Latin pair kerning.
 use super::*;
+/// Same-face positive advances can legitimately have overlapping bounding boxes
+/// (serifs, side bearings and authored tracking). They are not ink collisions.
+pub(super) fn compatible_advance(width: f64, left: &Glyph, right: &Glyph) -> f64 {
+    if width > (left.ink_right - left.ink_left).max(0.) * 0.5
+        && left.font == right.font
+        && left.size == right.size
+        && left.scale == right.scale
+    {
+        width
+    } else {
+        width.max(left.ink_right - right.ink_left + 0.02)
+    }
+}
 /// Tracking separates advances; it is not a margin after the final glyph.
 pub(super) fn trim_trailing_tracking(
     items: &[Item],

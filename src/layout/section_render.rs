@@ -96,6 +96,13 @@ impl<'a> Engine<'a> {
                     );
                 }
                 for p in section.children_named("p") {
+                    let original_last = lines(p).last().map(|l| l.n("vertpos"));
+                    let native_repaired = if cols == 1 {
+                        self.repair_native_paragraph_cache(p, cw)?
+                    } else {
+                        None
+                    };
+                    let p = native_repaired.as_ref().unwrap_or(p);
                     // Logical blank-column recovery can propagate the changed
                     // line count without trusting the following stale origins.
                     let repaired = if blank_flow.is_some() {
@@ -401,6 +408,12 @@ impl<'a> Engine<'a> {
                         if fallback_flow {
                             flow_shift += (l.n("vertsize") + l.n("spacing")) / 100.;
                         }
+                    }
+                    if native_repaired.is_some()
+                        && let (Some(old), Some(new)) = (original_last, ls.last())
+                    {
+                        flow_shift += (new.n("vertpos") - old) / 100.;
+                        last = Some(old);
                     }
                 }
             }

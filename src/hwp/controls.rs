@@ -201,7 +201,8 @@ pub(super) fn control(r: &Record) -> Result<Node> {
                     }
                 }
                 let cell = n("tc")
-                    .at("hasMargin", 1)
+                    .at("hasMargin", (u32(d, 4)? >> 16) & 1)
+                    .at("header", (u32(d, 4)? >> 18) & 1)
                     .at("borderFillIDRef", u16(d, 32)?)
                     .with(vec![
                         list(hdr, &ps)?,
