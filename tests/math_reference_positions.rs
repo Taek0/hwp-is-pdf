@@ -58,7 +58,7 @@ fn all_math_question_starts_match_reference_pages_and_baselines() {
             .enumerate()
             .flat_map(|(p, page)| {
                 page.ops.iter().filter_map(move |op| {
-                    if let Op::Text { text, x, y, .. } = op {
+                    if let Op::Text { text, x, y, .. } | Op::Shaped { text, x, y, .. } = op {
                         Some((p + 1, text, *x, *y))
                     } else {
                         None

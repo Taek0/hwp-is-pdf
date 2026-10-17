@@ -122,15 +122,7 @@ impl<'a> Engine<'a> {
                 h,
             });
         } else {
-            self.current.ops.push(Op::Text {
-                x,
-                y: base,
-                text: label,
-                font: g.font,
-                size: g.size,
-                scale: g.scale,
-                color: g.color,
-            });
+            self.paint_generated_text(label, g, x, base)?;
         }
         Ok(())
     }
@@ -287,10 +279,16 @@ impl<'a> Engine<'a> {
                 } else {
                     head.n("textOffset") / 100.
                 };
+                let nw = nw * if image.is_some() { 1. } else { g.scale }
+                    + if image.is_some() {
+                        0.
+                    } else {
+                        generated_text::tracking(&label, &g)
+                    };
                 let reserved = if reflow {
-                    nw * if image.is_some() { 1. } else { g.scale } + offset.max(0.) + adjust
+                    nw + offset.max(0.) + adjust
                 } else {
-                    nw * if image.is_some() { 1. } else { g.scale } + offset
+                    nw + offset
                 };
                 return Ok(Some((label, g, reserved)));
             }

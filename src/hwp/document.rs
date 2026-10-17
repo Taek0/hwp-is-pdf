@@ -229,9 +229,9 @@ pub fn open(path: &Path) -> Result<Document> {
                                 .at(
                                     "breakNonLatinWord",
                                     if u32(d, 0)? & 128 != 0 {
-                                        "BREAK_WORD"
-                                    } else {
                                         "KEEP_WORD"
+                                    } else {
+                                        "BREAK_WORD"
                                     },
                                 ),
                             n("heading")

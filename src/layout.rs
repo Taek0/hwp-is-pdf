@@ -336,6 +336,7 @@ mod equation_layout;
 mod field_navigation;
 mod field_values;
 mod font_selection;
+mod generated_text;
 mod list_labels;
 mod local_flow;
 mod note_space;

@@ -82,6 +82,39 @@ impl<'a> Engine<'a> {
 mod tests {
     use super::*;
     #[test]
+    fn supplied_math_wrap_matches_all_five_reference_line_starts() {
+        let input = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("2단_수학시험지_변환검증_7826.hwpx");
+        let fonts = Path::new(if cfg!(windows) {
+            "C:/Windows/Fonts"
+        } else {
+            "/mnt/c/Windows/Fonts"
+        });
+        if !input.exists() || !fonts.exists() {
+            return;
+        }
+        let d = Document::open(&input).unwrap();
+        let p = d.sections[0]
+            .children_named("p")
+            .find(|p| {
+                p.children_named("run")
+                    .flat_map(|r| r.children_named("ctrl"))
+                    .any(|c| c.child("endNote").is_some_and(|n| n.u("number") == 13))
+            })
+            .unwrap();
+        let mut e = Engine::new(&d, fonts);
+        let repaired = e.repair_numbered_cache(p).unwrap().unwrap();
+        assert_eq!(
+            lines(&repaired)
+                .iter()
+                .map(|l| l.u("textpos"))
+                .collect::<Vec<_>>(),
+            vec![0, 38, 70, 95, 123]
+        );
+    }
+    #[test]
     fn expanded_numbered_cache_keeps_source_and_explicit_breaks() {
         let mut d = Document::open(
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("samples/reflow/contour-single.hwpx"),

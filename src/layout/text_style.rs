@@ -103,7 +103,12 @@ impl<'a> Engine<'a> {
             self.report.warnings.insert("Superscript/subscript use 65% size and nominal-font baseline shifts; exact Hancom metrics unverified".into());
         }
         let scale = text_metrics::property(ch, "ratio", script, fallback, 100.) / 100.;
-        let spacing = text_metrics::property(ch, "spacing", script, fallback, 0.) / 100. * size;
+        // Latin spacing uses the half-em character cell, including spaces;
+        // the adjustment follows horizontal character scaling as well.
+        let spacing = text_metrics::property(ch, "spacing", script, fallback, 0.) / 100.
+            * size
+            * scale
+            * if script == "latin" { 0.5 } else { 1. };
         let advance = if c == ' ' && ch.a("useFontSpace") == "0" {
             size * 0.5
         } else {

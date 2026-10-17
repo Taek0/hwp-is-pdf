@@ -83,7 +83,9 @@ pub(crate) fn settings(n: Option<&Node>) -> Settings {
             .is_some_and(|s| s.a("breakLatinWord") == "BREAK_WORD"),
         cjk_word: n
             .and_then(|n| n.find("breakSetting"))
-            .is_some_and(|s| s.a("breakNonLatinWord") == "KEEP_WORD"),
+            // Hancom's HWPX names are inverted for Korean: KEEP_WORD allows
+            // character breaks, while BREAK_WORD preserves the whole word.
+            .is_some_and(|s| s.a("breakNonLatinWord") == "BREAK_WORD"),
         prefer_words: n
             .and_then(|n| n.child("align"))
             .is_some_and(|a| a.a("horizontal") == "CENTER"),
@@ -96,12 +98,16 @@ fn opportunity(a: Option<char>, b: Option<char>, s: &Settings) -> bool {
     let Some(a) = a else {
         return false;
     };
-    if "([{〈《「『【（［｛".contains(a)
-        || b.is_some_and(|c| ",.!?:;)]}〉》」』】、。，！？：；）］｝".contains(c))
+    if "([{<〈《「『【（［｛".contains(a)
+        || b.is_some_and(|c| ",.!?:;)]}>〉》」』】、。，！？：；）］｝".contains(c))
     {
         return false;
     }
-    a == ' ' || a == '\t' || a == '-' || (!s.cjk_word && cjk(a)) || s.latin_char
+    a == ' '
+        || a == '\t'
+        || a == '-'
+        || (!s.cjk_word && (cjk(a) || b.is_some_and(cjk)))
+        || s.latin_char
 }
 pub(crate) fn wrap(units: &[Unit], width: f64, s: &Settings) -> anyhow::Result<Vec<Line>> {
     wrap_around(units, width, s, None)
@@ -536,5 +542,51 @@ mod tests {
         assert_eq!(l.iter().map(|l| l.pos).collect::<Vec<_>>(), vec![0, 2, 3]);
         let l = wrap(&units("가나,다"), 20., &config()).unwrap();
         assert!(!l.iter().any(|l| l.pos == 2));
+    }
+    #[test]
+    fn korean_hwpx_names_and_mixed_punctuation_follow_hancom() {
+        let character =
+            crate::model::xml(br#"<paraPr><breakSetting breakNonLatinWord="KEEP_WORD"/></paraPr>"#)
+                .unwrap();
+        let word = crate::model::xml(
+            br#"<paraPr><breakSetting breakNonLatinWord="BREAK_WORD"/></paraPr>"#,
+        )
+        .unwrap();
+        let c = settings(Some(&character));
+        let w = settings(Some(&word));
+        assert!(!c.cjk_word);
+        assert!(w.cjk_word);
+        assert_eq!(
+            wrap(&units("가 나다라"), 30., &c)
+                .unwrap()
+                .iter()
+                .map(|l| l.pos)
+                .collect::<Vec<_>>(),
+            vec![0, 3]
+        );
+        assert_eq!(
+            wrap(&units("가 나다라"), 30., &w)
+                .unwrap()
+                .iter()
+                .map(|l| l.pos)
+                .collect::<Vec<_>>(),
+            vec![0, 2]
+        );
+        assert_eq!(
+            wrap(&units("<가나>마"), 30., &c)
+                .unwrap()
+                .iter()
+                .map(|l| l.pos)
+                .collect::<Vec<_>>(),
+            vec![0, 2]
+        );
+        assert_eq!(
+            wrap(&units("[4점]"), 20., &c)
+                .unwrap()
+                .iter()
+                .map(|l| l.pos)
+                .collect::<Vec<_>>(),
+            vec![0, 2]
+        );
     }
 }
