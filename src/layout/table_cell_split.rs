@@ -8,7 +8,7 @@ fn shift(op: &mut Op, from: f64, delta: f64) {
         }
     };
     match op {
-        Op::Text { y, .. } => move_y(y),
+        Op::Text { y, .. } | Op::Shaped { y, .. } => move_y(y),
         Op::Line { y, y2, .. } => {
             move_y(y);
             move_y(y2);
@@ -34,7 +34,7 @@ fn intervals(ops: &[Op], fonts: &Fonts) -> Vec<(f64, f64)> {
             Op::Text { text, .. } if !text.trim().is_empty() => {
                 crate::pagination::bounds(o, fonts).map(|b| (b[1] - 0.6, b[3] + 0.6))
             }
-            Op::Path { .. } => {
+            Op::Path { .. } | Op::Shaped { .. } => {
                 crate::pagination::bounds(o, fonts).map(|b| (b[1] - 0.6, b[3] + 0.6))
             }
             _ => None,
@@ -96,6 +96,7 @@ pub(super) fn pack_cells(
             !matches!(
                 op,
                 Op::Text { .. }
+                    | Op::Shaped { .. }
                     | Op::Line { .. }
                     | Op::Rect { .. }
                     | Op::Path {

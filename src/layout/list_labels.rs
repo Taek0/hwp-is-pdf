@@ -279,12 +279,18 @@ impl<'a> Engine<'a> {
                 } else {
                     head.n("textOffset") / 100.
                 };
-                let nw = nw * if image.is_some() { 1. } else { g.scale }
-                    + if image.is_some() {
-                        0.
-                    } else {
-                        generated_text::tracking(&label, &g)
-                    };
+                let nw = if image.is_some() {
+                    nw
+                } else if bullet
+                    && self.doc.header.a("binaryHwp") == "1"
+                    && head.a("useInstWidth") == "0"
+                {
+                    // Fixed native bullet cells use the nominal em, independently
+                    // of glyph side bearings, tracking or horizontal scaling.
+                    g.size
+                } else {
+                    nw * g.scale + generated_text::tracking(&label, &g)
+                };
                 let reserved = if reflow {
                     nw + offset.max(0.) + adjust
                 } else {

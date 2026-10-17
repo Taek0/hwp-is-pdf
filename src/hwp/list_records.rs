@@ -4,6 +4,8 @@ pub(super) fn bullet(d: &[u8], id: usize) -> Result<Node> {
     let props = u32(d, 0)?;
     let mut bullet = n("bullet")
         .at("id", id)
+        .at("useInstWidth", (props >> 2) & 1)
+        .at("autoIndent", (props >> 3) & 1)
         .at("charPrIDRef", u32(d, 8)?)
         .at("textOffset", u16(d, 6)?)
         .at("widthAdjust", u16(d, 4)? as i16)
@@ -50,6 +52,8 @@ pub(super) fn numbering(d: &[u8], id: usize) -> Result<Node> {
         number.children.push(
             n("paraHead")
                 .at("level", level)
+                .at("useInstWidth", (props >> 2) & 1)
+                .at("autoIndent", (props >> 3) & 1)
                 .at("charPrIDRef", u32(d, off + 8)?)
                 .at("widthAdjust", u16(d, off + 4)? as i16)
                 .at(
@@ -95,6 +99,8 @@ pub(super) fn numbering(d: &[u8], id: usize) -> Result<Node> {
                     heads.push(
                         n("paraHead")
                             .at("level", level)
+                            .at("useInstWidth", (props >> 2) & 1)
+                            .at("autoIndent", (props >> 3) & 1)
                             .at("charPrIDRef", u32(d, at + 8)?)
                             .at("widthAdjust", u16(d, at + 4)? as i16)
                             .at("textOffset", u16(d, at + 6)?)
@@ -154,6 +160,16 @@ pub(super) fn numbering(d: &[u8], id: usize) -> Result<Node> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn bullet_width_and_hanging_flags_are_independent() {
+        for props in [0u32, 4, 8, 12] {
+            let mut data = vec![0; 14];
+            data[..4].copy_from_slice(&props.to_le_bytes());
+            let n = bullet(&data, 1).unwrap();
+            assert_eq!(n.u("useInstWidth"), (props as usize >> 2) & 1);
+            assert_eq!(n.u("autoIndent"), (props as usize >> 3) & 1);
+        }
+    }
     #[test]
     fn image_bullet_record_keeps_binary_reference() {
         let mut d = vec![0; 25];

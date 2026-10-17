@@ -62,6 +62,36 @@ fn main() -> Result<()> {
         }
         return Ok(());
     }
+    if a.get(2).is_some_and(|s| s == "paragraph") {
+        let query = a.get(3).map(String::as_str).unwrap_or("");
+        for section in &d.sections {
+            let mut ps = Vec::new();
+            section.all("p", &mut ps);
+            for p in ps {
+                let plain = p
+                    .children_named("run")
+                    .flat_map(|r| r.children_named("t"))
+                    .map(hwp_engine::model::text)
+                    .collect::<String>();
+                if plain.contains(query) {
+                    println!(
+                        "P {:?} TEXT {:?} LINES {:?} STYLE {:?}",
+                        p.attrs,
+                        plain,
+                        p.child("linesegarray"),
+                        d.paras.get(p.a("paraPrIDRef"))
+                    );
+                    for r in p.children_named("run") {
+                        println!("CHAR {:?}", d.chars.get(r.a("charPrIDRef")));
+                    }
+                }
+            }
+        }
+        let mut bullets = Vec::new();
+        d.header.all("bullet", &mut bullets);
+        println!("BULLETS {bullets:?}");
+        return Ok(());
+    }
     if let Some(query) = a.get(3) {
         for master in &d.masters {
             let mut boxes = Vec::new();

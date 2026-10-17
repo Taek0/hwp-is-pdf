@@ -1,10 +1,11 @@
 # Current-corpus validation — 2026-10-18
 
-Stage 42 converts 53 unique HWP5/HWPX documents into 260 pages. All 206 Rust
+Stage 43 converts 53 unique HWP5/HWPX documents into 260 pages. All 208 Rust
 tests and all-target Clippy pass. Source hashes are unchanged. All four geometry
 categories, missing-glyph warnings and unresolved link/reference warnings are
-empty. Every page was rasterized; six contact sheets and selected full-size
-Hancom comparisons were reviewed. This is not a declaration of complete fidelity.
+empty. Stage 42 rasterized all 260 pages. Stage 43 changes six PDFs / 80 pages;
+those were rasterized again and reviewed in four contact sheets plus selected
+full-size Hancom comparisons. The other 47 PDFs are byte-identical. This is not a declaration of complete fidelity.
 
 Native table cell flags now preserve custom margins and explicit header rows.
 The report's merged two-row header repeats on pages 33–34, recovering 72 missing
@@ -30,6 +31,30 @@ text. In inner-table-01, the final “끝” moves below the nested table instea
 crossing its right border, with all three pages retained. Narrow punctuation
 with excessive negative tracking remains protected against actual collisions.
 
+## Native list spacing and table packing
+
+HWP paragraph-head bits 2 and 3 now preserve instance-width and automatic
+hanging-indent settings for bullets and numbering. Fixed native bullet cells
+reserve one nominal em before the configured text offset, independent of glyph
+side bearings and horizontal scaling. Continuation lines retain the hanging
+inset. This restores two-line “대지조성사업” and “주택건설사업” entries in the
+report instead of squeezing them into one line.
+
+The one-dot leader U+2024 selects the OTHER language face. The supplied report's
+reference embeds HCR Batang for this character, while the surrounding text uses
+Dotum. The corrected width restores the four-line “개발행위허가” entry.
+
+Independent cell packing now accepts positioned glyph runs and uses the same
+outside margins as the final vector fragment painter. This avoids planning line
+moves against a different page capacity. Report page 42's note 18 still starts
+about 35pt too high (218.64pt versus 253.9pt); the previous stage's per-page
+Hangul deficit on page 43 drops from 244 to 121 characters. These characters are
+on adjacent pages, not lost. Detailed pagination remains active.
+
+The format evidence is Hancom's HWP 5.0 revision 1.2, table 40 (paragraph-head
+properties), and embedded fonts/coordinates in the supplied Hancom PDFs.
+https://cdn.hancom.com/link/docs/한글문서파일형식_5.0_revision1.2.pdf
+
 ## Still active
 
 The report remains 50 pages, and its research table remains on pages 46–47.
@@ -39,9 +64,10 @@ the merged body cells with notes on pages 35–43. Some text moves from page 47 
 catch these. Continue reference comparison and general layout fixes; the user's
 request to resolve current document problems is not complete.
 
-Artifacts: `output/roadmap/42-report-cell-flow/`, including `regression-final/`,
+Latest artifacts: `output/roadmap/43-merged-note-flow/`, including `regression/`,
 `page-images/`, `all-verification.json`, `report-page-comparison.json`,
-`faq-cache-pages.log`, `tests.log`, `clippy.log` and six `contact-*.jpg` sheets.
+`tests.log`, `clippy.log`, `merged-bullet-comparison.png` and four `contact-*.jpg` sheets.
+The FAQ source-cache evidence remains in stage 42.
 
 Hancom explains URC indent units and hanging-indent semantics at:
 https://forum.developer.hancom.com/t/hwpml/2464

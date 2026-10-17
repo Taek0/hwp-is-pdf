@@ -135,8 +135,8 @@ impl<'a> Engine<'a> {
                 &mut planned_notes,
                 &self.fonts,
                 total,
-                self.ph - self.bottom - top.max(self.top + above),
-                self.ph - self.bottom - self.top,
+                self.ph - self.bottom - top.max(self.top + above) - outside[3],
+                self.ph - self.bottom - self.top - outside[2] - outside[3],
             );
             if total > original_total + 0.001 {
                 self.report.warnings.insert("Staggered native table cell lines continued independently; merged borders extended without scaling".into());
