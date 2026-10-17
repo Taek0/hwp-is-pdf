@@ -166,6 +166,9 @@ impl<'a> Engine<'a> {
             && n.a("textWrap") != "BEHIND_TEXT"
             && (inline || pos.a("vertRelTo") == "PARA")
             && (h > self.ph - self.top - self.bottom || w > self.pw - self.left - self.right)
+            && !(n.name == "pic"
+                && n.a("binaryHwp") == "1"
+                && object_position::within_paper(n, [x, y, w, h], [self.pw, self.ph]))
         {
             let target_y = y.max(self.top).min(self.ph - self.bottom - 1.);
             let factor = ((self.ph - self.bottom - target_y) / h.max(0.1))

@@ -45,6 +45,24 @@ fn supplied_wmf_document_keeps_rasters_vectors_text_and_caption_clearance() {
         .find(|b| b.kind == "metafile" && b.page == 1)
         .unwrap();
     assert!((first.y - 468.716).abs() < 0.01);
+    let wide = e
+        .report
+        .bounds
+        .iter()
+        .find(|b| b.kind == "metafile" && b.page == 3 && b.w > 400.)
+        .unwrap();
+    assert!(
+        (wide.x - 93.55).abs() < 0.1 && (wide.w - 426.97).abs() < 0.3,
+        "Native picture must preserve its paper-contained margin overlap: x={}, w={}",
+        wide.x,
+        wide.w
+    );
+    assert!(
+        !e.report
+            .warnings
+            .iter()
+            .any(|w| w.starts_with("Oversized pic"))
+    );
     let q = qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
     assert!(q.outside_page.is_empty());
     assert!(q.text_overlaps.is_empty());

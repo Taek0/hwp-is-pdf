@@ -34,6 +34,10 @@ The module splits are internal; callers do not need to depend on implementation 
 | `hwp/field_records.rs` | Native field commands and bookmark parameter decoding |
 | `layout/field_values.rs`, `layout/field_navigation.rs`, `layout/toc.rs` | Deferred values, logical link scopes and outline TOC generation |
 | `pdf/navigation.rs` | Link annotations, named destinations and hierarchical outlines |
+| `metafile.rs`, `metafile/` | Bounded WMF records, DIB extraction, object-table playback and encoded text |
+| `chart/native_combo.rs` | Source-axis column/line combination charts and tick/label placement |
+| `layout/saved_column_bands.rs` | Page-local origins for native changes of column definition |
+| `layout/saved_numbering.rs`, `layout/generated_text.rs` | Numbered-cache repair and tracked logical labels |
 
 Add behavior to its owning module. Split by responsibility when a file acquires a second concern;
 do not create numbered file fragments or duplicate implementations to meet a line limit.
