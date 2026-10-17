@@ -71,3 +71,9 @@ Page coordinate modules:
 - `layout/note_space.rs`: minimum short-note reservation and actual printable-body clearance, shared with note continuation painting.
 - `layout/text_marks.rs`: vector emphasis geometry and font-relative extent; ordinary glyph/mark pairs share a pagination transform group, while shaped text preserves its logical cluster content.
 - `layout/table_headers.rs`: explicit complete header bands, merged-cell boundaries and legacy first-row fallback shared by table pagination paths.
+
+Native saved-layout recovery:
+- `layout/native_cell_cache.rs`: bounded plain-text underflow recovery with preserved vertical metrics.
+- `layout/native_paragraph_cache.rs`: native root paragraph wrapping and section-local height propagation.
+- `layout/native_table_rows.rs`: fragment-local plain-text rows, repeated complete headers, padding and vertical alignment; merged body rows and notes retain the vector path.
+- `layout/local_flow.rs`: nested text measurement including the height of TOP_AND_BOTTOM floating objects.

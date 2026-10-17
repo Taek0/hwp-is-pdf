@@ -1,36 +1,51 @@
 # Current-corpus validation — 2026-10-18
 
-The current manifest has 53 unique HWP5/HWPX documents and 261 output pages.
-Stage 41 passes 202 Rust tests and all-target Clippy. Source hashes and all
-page/object counts remain unchanged; all four geometry categories, missing-glyph
-warnings and unresolved link/reference warnings are empty. All 261 pages were
-rasterized. This is structural/geometry validation, not a declaration of complete
-Hancom fidelity.
+Stage 42 converts 53 unique HWP5/HWPX documents into 260 pages. All 206 Rust
+tests and all-target Clippy pass. Source hashes are unchanged. All four geometry
+categories, missing-glyph warnings and unresolved link/reference warnings are
+empty. Every page was rasterized; six contact sheets and selected full-size
+Hancom comparisons were reviewed. This is not a declaration of complete fidelity.
 
-The latest placement correction preserves native pictures that extend into the
-print margins but remain inside the physical paper, including rotated-envelope
-checks. The WMF reference's large page-3 picture now begins at x=93.60pt and keeps
-its 427.20pt width, versus Hancom x=93.55pt / 426.97pt. Previously it was moved to
-x=85.04pt and reduced to 425.20pt. The other 52 PDFs remain byte-identical.
+Native table cell flags now preserve custom margins and explicit header rows.
+The report's merged two-row header repeats on pages 33–34, recovering 72 missing
+Hangul characters. Its pages 9–16 have the same per-page Hangul multisets as the
+reference. Fragment-local padding and alignment avoid repeating short cell text
+or manufacturing a header-only final fragment.
 
-## Additional discrepancy found during deeper comparison
+Native paragraph margins use URC normalization and preserve hanging indents.
+JUSTIFY expands word spaces where possible. Resolved native font metrics can
+recover redundant cached lines without changing explicit page boundaries.
+Report page 3's 19.2pt displacement is removed: body/caption vertical positions
+are within about 0.1pt of the reference. The missing Human Myeongjo face resolves
+to HCR Batang, matching the reference's embedded font. This rule does not alter
+the math document's independently verified Batang substitution.
 
-Page-by-page comparison of the report reveals differences that geometry QA
-cannot detect: in particular its merged two-row table header is absent from the
-engine's pages 33–34 while Hancom repeats it. Several table and footnote fragments
-also distribute text differently. These are active follow-up work in stage 42;
-the user's request to continue until the currently observed document problems
-are resolved has not been marked complete.
+The FAQ changes from 14 to 13 pages. Its original line cache has 13 page bands,
+including an explicit section-3 start on page 7. The previous output inserted an
+extra table continuation before that boundary. The final page retains the full
+contact table. No source document was edited.
 
-Artifacts under `output/roadmap/41-paper-picture-placement/` include the 53 PDFs,
-all-inputs.json, all-verification.json, all page images, tests-final.log,
-clippy-final.log, picture-comparison.png and hancom-page-text-audit.json. The latter
-is a diagnostic: character counts alone do not distinguish pagination from
-reference-font extraction differences.
+A nested TOP_AND_BOTTOM table now reserves its measured height before following
+text. In inner-table-01, the final “끝” moves below the nested table instead of
+crossing its right border, with all three pages retained. Narrow punctuation
+with excessive negative tracking remains protected against actual collisions.
 
-Recent completed stages:
+## Still active
 
-* [Native column bands and nested columns](NATIVE_COLUMN_BANDS.md)
-* [Combination charts, WMF and picture baselines](EMBEDDED_GRAPHICS.md)
-* [Korean wrapping and tracking](KOREAN_BREAKS_AND_TRACKING.md)
-* [Legacy symbol glyphs and native links](LEGACY_SYMBOLS_AND_LINKS.md)
+The report remains 50 pages, and its research table remains on pages 46–47.
+There are still per-page text differences around pages 3–6, 20–29 and especially
+the merged body cells with notes on pages 35–43. Some text moves from page 47 to
+48; footer typography and finer line endings also differ. Geometry QA does not
+catch these. Continue reference comparison and general layout fixes; the user's
+request to resolve current document problems is not complete.
+
+Artifacts: `output/roadmap/42-report-cell-flow/`, including `regression-final/`,
+`page-images/`, `all-verification.json`, `report-page-comparison.json`,
+`faq-cache-pages.log`, `tests.log`, `clippy.log` and six `contact-*.jpg` sheets.
+
+Hancom explains URC indent units and hanging-indent semantics at:
+https://forum.developer.hancom.com/t/hwpml/2464
+
+Earlier completed work: [column bands](NATIVE_COLUMN_BANDS.md),
+[embedded graphics](EMBEDDED_GRAPHICS.md), [Korean wrapping](KOREAN_BREAKS_AND_TRACKING.md),
+and [legacy symbols and links](LEGACY_SYMBOLS_AND_LINKS.md).

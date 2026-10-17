@@ -8,14 +8,15 @@ DLL을 호출하지 않습니다. 글꼴은 지정한 디렉터리에서 읽으�
 
 ## 현재 검증 결과 — 2026-10-18
 
-- Rust 테스트 202개 및 all-target Clippy 통과.
-- 중복 제외 53개 문서·261쪽 재변환: 원본 해시와 페이지·개체 수 유지, 네 종류의 기하 검사 0건.
+- Rust 테스트 206개 및 all-target Clippy 통과.
+- 중복 제외 53개 문서·260쪽 재변환: 원본 해시 유지, 네 종류의 기하 검사 0건.
 - 전체 대상에서 누락 글리프 및 미해석 링크·참조 경고 0건. 모든 페이지를 이미지로 렌더링했습니다.
 - 한컴 비교 문서 4개의 페이지 수 일치: 복학원서 2, 법학적성시험 15, 수학 시험지 9, 중간보고서 50.
 - 글꼴 부분 포함 전후 76쪽의 1000px 렌더링 픽셀 동일. 비교 PDF 용량 약 96.4~98.1% 감소.
 - 최신 수정: 본문·글상자·표의 다단 배치, 복합 차트의 두 축과 계열, WMF 그림·도형·텍스트, 그림·캡션 기준선, 사설 영역 기호 및 링크 이스케이프.
 - 수학 시험지: 26개 문항 시작 위치가 모두 한컴과 0.1pt 이내이며, 13번 문단 내부의 다섯 줄 경계도 일치합니다. 한글 줄나눔·금칙 처리와 영문 반각 자간을 반영했습니다.
 - 원본 그림이 여백을 넘지만 종이 안에 들어가는 경우 원래 위치와 크기를 보존합니다.
+- HWP 내어쓰기 단위·양쪽 정렬, 반복 제목 행, 분할 셀의 여백과 중첩 표 뒤 문단 배치를 수정했습니다. FAQ는 원본의 저장 페이지 경계에 맞게 14쪽에서 13쪽으로 복구됐습니다.
 
 페이지 수나 검사 통과가 한컴과의 완전한 일치를 의미하지는 않습니다.
 일부 표의 내부 행 분할·각주 분배와 대체 글꼴·워터마크 표현 차이가 남아 있습니다.
@@ -68,8 +69,8 @@ hwp_engine::convert_configured(input_path, output_path, font_directory,
 - [src/README.md](src/README.md): 파서, 배치, 글꼴, PDF 출력의 모듈별 책임.
 - `tests/`: 기능·회귀 검사. 일부 통합 검사는 로컬 사용자 문서와 Windows 글꼴이 필요합니다.
 - `samples/`, `examples/`: 공개 예제, 재현용 HWPX 생성기 및 진단 명령.
-- `output/roadmap/15-tables/` ~ `41-paper-picture-placement/`: 단계별 PDF·이미지·검증 로그.
-- `output/roadmap/41-paper-picture-placement/regression/`: 최신 53개 문서의 PDF·배치·검사 보고서.
+- `output/roadmap/15-tables/` ~ `42-report-cell-flow/`: 단계별 PDF·이미지·검증 로그.
+- `output/roadmap/42-report-cell-flow/regression-final/`: 최신 53개 문서의 PDF·배치·검사 보고서.
 - 같은 단계의 `all-inputs.json`, `all-verification.json`, `page-images/`: 원본 목록·검증 결과·전체 페이지 이미지.
 - [reference/IMPLEMENTATION_HISTORY.md](reference/IMPLEMENTATION_HISTORY.md): 이전 단계의 구현·검증 기록.
 

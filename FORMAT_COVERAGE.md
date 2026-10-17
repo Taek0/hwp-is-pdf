@@ -22,15 +22,14 @@ Hancom are not achieved.**
 
 ## Final validation
 
-202 Rust tests and all-target Clippy pass. The current unified corpus contains
-53 unique documents / 261 pages, with unchanged source hashes and
-page/picture/table/equation/chart counts. It has zero findings in the four geometry
+206 Rust tests and all-target Clippy pass. The current unified corpus contains
+53 unique documents / 260 pages, with unchanged source hashes. FAQ now has
+13 pages, matching its source cache bands rather than the old spurious 14-page output. It has zero findings in the four geometry
 classes, zero missing-glyph warnings and zero unresolved link/reference warnings.
 All pages were rasterized. The notice's formerly collapsed private-use character
 mappings were corrected to match its 28 original symbol occurrences.
 The report's research table
-fits pages 46–47, matching the reference range. Its note 44 now matches Hancom's
-three-plus-one line split, with note 41–44 first-line top errors of 0.02–0.11pt.
+fits pages 46–47, matching the reference range. Further merged-table and note-line placement differences remain under investigation.
 Saved single-column short notes can continue when their first complete line fits
 with the anchor; exact note-line distribution still differs in some cases.
 Native plain-text tables can carry staggered cell lines independently
