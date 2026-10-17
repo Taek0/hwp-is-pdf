@@ -67,6 +67,10 @@ pub fn open(path: &Path) -> Result<Document> {
                 let id = header.children_named("bullet").count() + 1;
                 header.children.push(list_records::bullet(d, id)?);
             }
+            26 => {
+                let id = header.children_named("style").count();
+                header.children.push(style_records::style(d, id)?);
+            }
             21 => {
                 let id = chars.len().to_string();
                 let mut ch = n("charPr")

@@ -1,6 +1,6 @@
 # Current-corpus validation — 2026-10-18
 
-Stage 45 converts 53 unique HWP5/HWPX documents into 260 pages. All 211 Rust
+Stage 46 converts 53 unique HWP5/HWPX documents into 260 pages. All 213 Rust
 tests and all-target Clippy pass. Source hashes are unchanged. All four geometry
 categories, missing-glyph warnings and unresolved link/reference warnings are
 empty. Stage 42 rasterized all 260 pages. Stage 43 changes six PDFs / 80 pages;
@@ -87,17 +87,37 @@ the research table returns to page 47. Pages 47–48 now have matching Hangul
 multisets. The 50-page report is the only changed PDF; its changed rasters are
 pages 4–6, 25–29 and 47–48. Other 52 PDFs are byte-identical to stage 44.
 
+## Named page-number styles
+
+Native DocInfo style records now preserve names and shape references. Generated
+page numbers select the document's “Page Number” / “쪽 번호” character style,
+including source font, size, spacing and half-em spaces. Styled footer text ends
+at the footer area's bottom boundary using the face's descent. The generated
+paragraph is isolated from any hyperlink field active in body text.
+
+Report page 3's number baseline moves from 785.115pt to 797.07pt, versus Hancom
+797.16pt; its left edge is 285.23pt versus 285.12pt. The supplied endnote and
+footnote references independently agree within about 0.1pt in baseline position.
+The source HCR Dotum face replaces the previous hardcoded Times face.
+
+Five PDFs / 104 pages change (103 visible automatic numbers; FAQ's cover hides
+its number). All other 48 PDFs are byte-identical to stage 45. Every non-number
+text coordinate and layout bound in the five changed documents is unchanged.
+The focused test also proves that body hyperlink state is preserved without
+adding links to generated page numbers.
+
 ## Still active
 
 The report remains 50 pages, and its research table remains on pages 46–47.
 There are still per-page text differences around pages 3–6, 20–29 and especially
-the merged body cells with notes on pages 35–43. Footer typography and finer line endings also differ. Geometry QA does not
+the merged body cells with notes on pages 35–43. Finer line endings and some cell/footnote placement still differ. Geometry QA does not
 catch these. Continue reference comparison and general layout fixes; the user's
 request to resolve current document problems is not complete.
 
-Latest artifacts: `output/roadmap/45-body-repagination/`, including `regression/`,
-`report-images/`, `all-verification.json`, `report-page-comparison.json`,
-`tests.log`, `clippy.log`, `changed-pages.json` and `changed-pages.jpg`.
+Latest artifacts: `output/roadmap/46-page-number-style/`, including `regression/`,
+`all-verification.json`, `body-preservation.json`, `tests.log`, `clippy.log`
+and `footer-comparison.png`. The latest report page-allocation audit and changed
+page rasters remain in stage 45.
 The FAQ source-cache evidence remains in stage 42.
 
 Hancom explains URC indent units and hanging-indent semantics at:

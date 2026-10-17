@@ -32,36 +32,38 @@ impl<'a> Engine<'a> {
             let pos = number.u("position");
             if pos > 0 {
                 let page = (self.pages.len() as i64 + self.page_base).max(1) as usize;
-                let font = self.fonts.get("times.ttf")?;
                 let label = page_label(number, page);
-                let w = self.fonts.width(font, &label, 10.);
-                let right = match pos {
-                    3 | 6 => true,
-                    7 | 8 => page % 2 == 1,
-                    9 | 10 => page.is_multiple_of(2),
-                    _ => false,
-                };
-                let x = if pos == 2 || pos == 5 {
-                    (self.pw - w) / 2.
-                } else if right {
-                    self.pw - self.right - w
-                } else {
-                    self.left
-                };
-                let y = if matches!(pos, 1 | 2 | 3 | 7 | 9) {
-                    self.top - self.header.max(15.) / 2.
-                } else {
-                    self.ph - self.bottom + self.footer.max(15.) / 2. + 7.
-                };
-                self.current.ops.push(Op::Text {
-                    x,
-                    y,
-                    text: label,
-                    font,
-                    size: 10.,
-                    scale: 1.,
-                    color: [0.; 3],
-                });
+                if !self.styled_page_number(number, page, &label)? {
+                    let font = self.fonts.get("times.ttf")?;
+                    let w = self.fonts.width(font, &label, 10.);
+                    let right = match pos {
+                        3 | 6 => true,
+                        7 | 8 => page % 2 == 1,
+                        9 | 10 => page.is_multiple_of(2),
+                        _ => false,
+                    };
+                    let x = if pos == 2 || pos == 5 {
+                        (self.pw - w) / 2.
+                    } else if right {
+                        self.pw - self.right - w
+                    } else {
+                        self.left
+                    };
+                    let y = if matches!(pos, 1 | 2 | 3 | 7 | 9) {
+                        self.top - self.header.max(15.) / 2.
+                    } else {
+                        self.ph - self.bottom + self.footer.max(15.) / 2. + 7.
+                    };
+                    self.current.ops.push(Op::Text {
+                        x,
+                        y,
+                        text: label,
+                        font,
+                        size: 10.,
+                        scale: 1.,
+                        color: [0.; 3],
+                    });
+                }
             }
         }
         let sec = section.find("secPr").unwrap();

@@ -226,6 +226,7 @@ mod list_records;
 mod object_properties;
 mod paragraphs;
 mod section;
+mod style_records;
 mod tab_records;
 use controls::control;
 pub use document::open;

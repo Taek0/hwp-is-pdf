@@ -79,3 +79,6 @@ Native saved-layout recovery:
 - `layout/local_flow.rs`: nested text measurement including the height of TOP_AND_BOTTOM floating objects.
 
 - `layout/character_borders.rs`: contiguous character border/fill spans, glyph-envelope clearance, and background insertion with table-note anchor index preservation.
+
+- `hwp/style_records.rs`: named HWP paragraph/character style records and their shape references.
+- `layout/page_numbers.rs`: source-styled page numbers, header/footer placement and isolation from active body fields.

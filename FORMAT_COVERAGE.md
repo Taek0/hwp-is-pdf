@@ -17,12 +17,12 @@ Hancom are not achieved.**
 | Notes | Footnotes/endnotes, long-note continuation, source-driven placement and numbering | Some precise page distribution differs |
 | Graphics | Curves, rotation/crop/group transforms, static OLE images, bounded WMF raster/vector/text playback, native dual-axis column/line charts, border patterns and alpha-safe effects | Full WMF/EMF/OLE and chart-family coverage, advanced effects/text art, exact pattern/3D metrics |
 | Equations | Supported HWP grammar, fractions, scripts, roots, matrices, accents and layout integration | Complete grammar and exact Hancom math metrics |
-| Fields/PDF semantics | Cached fields, supported TOC/field evaluation, links/bookmarks, native escaped URL commands, extended lists and page-number side characters | Arbitrary field recalculation, source-authored bad targets and unsupported variants |
+| Fields/PDF semantics | Cached fields, supported TOC/field evaluation, links/bookmarks, native escaped URL commands, extended lists, named page-number styles and side characters | Arbitrary field recalculation, source-authored bad targets and unsupported variants |
 | PDF fonts | Stable-ID TrueType subsetting, recursive composites, metrics/hinting/checksums, Unicode mappings | Variable/color/non-glyf/no-subsetting faces retain full embedding; no universal color-font support claimed |
 
 ## Final validation
 
-211 Rust tests and all-target Clippy pass. The current unified corpus contains
+213 Rust tests and all-target Clippy pass. The current unified corpus contains
 53 unique documents / 260 pages, with unchanged source hashes. FAQ now has
 13 pages, matching its source cache bands rather than the old spurious 14-page output. It has zero findings in the four geometry
 classes, zero missing-glyph warnings and zero unresolved link/reference warnings.
