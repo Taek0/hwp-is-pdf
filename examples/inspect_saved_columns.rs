@@ -15,7 +15,11 @@ fn main() -> Result<()> {
             let original_id = p.a("id").to_owned();
             let cache: Vec<_> = p.child("linesegarray").into_iter().flat_map(|a| &a.children)
                 .map(|l| serde_json::json!({"y":l.n("vertpos")/100.,"height":l.n("vertsize")/100.,"spacing":l.n("spacing")/100.})).collect();
-            rows.push(serde_json::json!({"id":id,"sourceId":original_id,"section":section,"index":index,"empty":text(p).trim().is_empty(),"cache":cache}));
+            let styles: Vec<_> = p
+                .children_named("run")
+                .map(|r| r.a("charPrIDRef").to_string())
+                .collect();
+            rows.push(serde_json::json!({"id":id,"sourceId":original_id,"section":section,"index":index,"empty":text(p).trim().is_empty(),"cache":cache,"attributes":p.attrs,"columns":p.find("colPr").map(|n| &n.attrs),"characterStyles":styles}));
             p.attrs.insert("id".into(), id);
         }
     }
@@ -27,6 +31,15 @@ fn main() -> Result<()> {
     let mut engine = Engine::new(&doc, Path::new(fonts));
     engine.render()?;
     for row in &mut rows {
+        row["styles"] = serde_json::json!(
+            row["characterStyles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter_map(|id| doc.chars.get(id.as_str().unwrap()))
+                .map(|n| format!("{n:?}"))
+                .collect::<std::collections::BTreeSet<_>>()
+        );
         row["rendered"] = serde_json::to_value(
             engine
                 .report

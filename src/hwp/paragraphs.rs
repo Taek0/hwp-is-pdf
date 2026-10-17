@@ -10,6 +10,13 @@ pub(super) fn paragraph(r: &Record) -> Result<Node> {
             "pageBreak",
             if bytes(d, 11, 1)?[0] & 4 != 0 { 1 } else { 0 },
         );
+    let division = bytes(d, 11, 1)?[0];
+    if division & 2 != 0 {
+        out.attrs.insert("columnStart".into(), "1".into());
+    }
+    if division & 8 != 0 {
+        out.attrs.insert("columnBreak".into(), "1".into());
+    }
     let runs = r.first(68).context("Missing character-shape runs")?;
     ensure!(runs.data.len() % 8 == 0, "Invalid shape-run length");
     let runs: Vec<(usize, u32)> = runs
@@ -130,4 +137,42 @@ pub(super) fn paragraph(r: &Record) -> Result<Node> {
     }
     out.children.push(linearray);
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn paragraph_division_flags_are_independent() {
+        for flag in [0, 2, 4, 8, 14] {
+            let mut data = vec![0; 22];
+            data[11] = flag;
+            let record = Record {
+                tag: 66,
+                level: 0,
+                offset: 0,
+                data,
+                children: vec![
+                    Record {
+                        tag: 68,
+                        level: 1,
+                        offset: 0,
+                        data: vec![0; 8],
+                        children: vec![],
+                    },
+                    Record {
+                        tag: 69,
+                        level: 1,
+                        offset: 0,
+                        data: vec![0; 36],
+                        children: vec![],
+                    },
+                ],
+            };
+            let p = paragraph(&record).unwrap();
+            assert_eq!(p.u("columnStart"), usize::from(flag & 2 != 0));
+            assert_eq!(p.u("pageBreak"), usize::from(flag & 4 != 0));
+            assert_eq!(p.u("columnBreak"), usize::from(flag & 8 != 0));
+        }
+    }
 }

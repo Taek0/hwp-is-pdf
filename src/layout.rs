@@ -62,6 +62,17 @@ fn content_height(list: &Node) -> f64 {
         .fold(0., f64::max)
 }
 fn flowing_lines(list: &Node) -> Vec<(&Node, usize, f64)> {
+    if list.a("savedColumns") == "1" {
+        return list
+            .children_named("p")
+            .flat_map(|p| {
+                lines(p)
+                    .into_iter()
+                    .enumerate()
+                    .map(move |(i, l)| (p, i, l.n("vertpos") / 100.))
+            })
+            .collect();
+    }
     let mut out = Vec::new();
     let mut shift = 0.;
     let mut last = None;
@@ -343,6 +354,7 @@ mod reflow_table;
 mod reflow_units;
 mod saved_blank_flow;
 mod saved_cell_text;
+mod saved_column_bands;
 mod saved_float_order;
 mod saved_numbering;
 mod section_render;

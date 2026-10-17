@@ -213,6 +213,7 @@ fn list(header: &Record, paras: &[&Record]) -> Result<Node> {
     for p in paras {
         out.children.push(paragraph(p)?);
     }
+    columns::position_list(&mut out);
     Ok(out)
 }
 

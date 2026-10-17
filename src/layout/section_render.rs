@@ -69,6 +69,11 @@ impl<'a> Engine<'a> {
                     self.report.warnings.insert("Rebuilt saved column flow across empty-paragraph cache boundaries; hideFirstEmptyLine suppresses up to two leading empty lines after automatic breaks".into());
                 }
                 let mut col = 0;
+                let mut bands = (self.doc.header.a("binaryHwp") == "1"
+                    && section
+                        .children_named("p")
+                        .any(|p| p.a("columnStart") == "1" && paragraph_columns(p).is_some()))
+                .then(saved_column_bands::ColumnBands::default);
                 let mut last = None;
                 let mut flow_shift = 0f64;
                 let mut table_reflowed = false;
@@ -106,17 +111,36 @@ impl<'a> Engine<'a> {
                     if let Some(def) = paragraph_columns(p) {
                         let next_count = def.u("colCount").max(1);
                         let next_gap = val(Some(def), "sameGap");
-                        if next_count != cols || next_gap != gap {
+                        if next_count != cols
+                            || next_gap != gap
+                            || (bands.is_some() && last.is_some() && p.a("columnStart") == "1")
+                        {
                             blank_flow = None;
                             spanning_floor = None;
                             spanning_shift = None;
                             repage_saved_tail = false;
-                            if last.is_some_and(|y| ls[0].n("vertpos") < y)
+                            if (bands.is_none() && last.is_some_and(|y| ls[0].n("vertpos") < y))
                                 || p.a("pageBreak") == "1"
                             {
                                 self.finish()?;
                                 last = None;
                                 flow_shift = 0.;
+                            }
+                            if let Some(band) = &mut bands {
+                                flow_shift = band.start(
+                                    self.pages.len(),
+                                    ls[0].n("vertpos") / 100.,
+                                    sec.n("spaceColumns") / 100.,
+                                );
+                                if flow_shift > 0.
+                                    && self.top + flow_shift
+                                        + (ls[0].n("vertpos") + ls[0].n("vertsize")) / 100.
+                                        > self.ph - self.bottom
+                                {
+                                    self.finish()?;
+                                    flow_shift = band.start(self.pages.len(), ls[0].n("vertpos") / 100., sec.n("spaceColumns") / 100.);
+                                }
+                                last = None;
                             }
                             cols = next_count;
                             gap = next_gap;
@@ -133,7 +157,14 @@ impl<'a> Engine<'a> {
                         let table_consumed_break =
                             floor.is_some_and(|f| f.2) && p.a("pageBreak") != "1";
                         let cached_break = blank_flow.is_none()
-                            && last.is_some_and(|last| y < last)
+                            && last.is_some_and(|last| {
+                                y < last
+                                    || (bands.is_some()
+                                        && cols > 1
+                                        && i > 0
+                                        && y == last
+                                        && l.n("horzpos") == ls[i - 1].n("horzpos"))
+                            })
                             && !table_consumed_break;
                         let explicit_break = last.is_some()
                             && i == 0
@@ -147,10 +178,7 @@ impl<'a> Engine<'a> {
                                         .is_some_and(|b| {
                                             matches!(b.a("pageBreakBefore"), "1" | "true")
                                         })));
-                        let explicit_column = blank_flow.is_some()
-                            && last.is_some()
-                            && i == 0
-                            && p.a("columnBreak") == "1";
+                        let explicit_column = last.is_some() && i == 0 && p.a("columnBreak") == "1";
                         if cached_break && repage_saved_tail && !explicit_break {
                             // Changed table/note geometry invalidated the saved page boundary.
                             // Reuse cached line positions as continuous flow until an explicit break.
@@ -167,6 +195,9 @@ impl<'a> Engine<'a> {
                                 self.finish()?;
                                 col = 0;
                                 self.decorations(section, false, cols, gap)?;
+                            }
+                            if let Some(band) = &mut bands {
+                                flow_shift = band.origin(self.pages.len());
                             }
                             if let Some((_, shift)) =
                                 spanning_shift.filter(|(page, _)| *page == self.pages.len())
@@ -356,6 +387,12 @@ impl<'a> Engine<'a> {
                         last = Some(y);
                         previous_end =
                             self.top + flow_shift + (y + l.n("vertsize") + l.n("spacing")) / 100.;
+                        if let Some(band) = &mut bands {
+                            band.observe(
+                                self.pages.len(),
+                                flow_shift + (y + l.n("vertsize")) / 100.,
+                            );
+                        }
                         if fallback_flow {
                             flow_shift += (l.n("vertsize") + l.n("spacing")) / 100.;
                         }

@@ -6,7 +6,7 @@ regression set, rendered images, a commit and a push.
 
 | Priority | Scope | Current state / next concrete work |
 |---|---|---|
-| 1 | Math document paragraph and column flow | All 26 question starts now match reference pages and text tops within 0.058pt after note-anchor and hanging-indent/cache repair. Within-paragraph word boundaries still differ. New native column-layout reference exposes same-page column-band transitions and nested column layout (NUMBERED_PARAGRAPH_FLOW.md). |
+| 1 | Math document paragraph and column flow | All 26 math question starts match reference pages and text tops within 0.058pt. Native same-page column bands and equal-width nested columns are now corrected against the supplied four-page reference (NATIVE_COLUMN_BANDS.md). Within-paragraph word boundaries still differ. |
 | 2 | Font metrics, title and baseline positions | Inline-table margins, drawing-text CENTER/BOTTOM and final-character tracking corrected. Selected form/law title Y errors are 0.033/0.008pt; law title X error is 0.032pt. Generated italic labels remain. |
 | 3 | General paragraph line wrapping | Numbered HWPX caches with omitted autoIndent can gain required lines within logical blank-column recovery; explicit breaks and complex objects are excluded. Broader stale-cache recovery, Korean word boundaries and exact justification remain. |
 | 4 | Complex table row splitting and vertical alignment | Explicit merged header bands implemented and tested. Independent cell continuation exists; exact reference row-fragment distribution remains. |

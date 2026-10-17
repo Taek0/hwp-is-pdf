@@ -33,9 +33,16 @@ impl<'a> Engine<'a> {
         }
         let mut out = Vec::new();
         let mut bottom = 0f64;
+        let mut column_bottoms = BTreeMap::<usize, f64>::new();
         for (p, i, y) in flowing_lines(list) {
             let ls = lines(p);
             let l = ls[i];
+            if list.a("savedColumns") == "1" {
+                bottom = column_bottoms
+                    .get(&l.u("savedColumn"))
+                    .copied()
+                    .unwrap_or(0.);
+            }
             let items = Self::items(p);
             let end = ls.get(i + 1).map(|n| n.u("textpos")).unwrap_or(usize::MAX);
             let mut ascent = l.n("baseline") / 100.;
@@ -54,6 +61,9 @@ impl<'a> Engine<'a> {
             let actual = y.max(bottom);
             out.push((p, i, actual, h));
             bottom = actual + h;
+            if list.a("savedColumns") == "1" {
+                column_bottoms.insert(l.u("savedColumn"), bottom);
+            }
         }
         Ok(out)
     }

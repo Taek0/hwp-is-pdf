@@ -22,6 +22,7 @@ pub(super) fn section_properties(r: &Record) -> Result<Node> {
         .with(vec![margin]);
     let mut sec = n("secPr")
         .at("binaryHwp", 1)
+        .at("spaceColumns", u16(&r.data, 8)?)
         .at(
             "hideFirstHeader",
             if u32(&r.data, 4)? & 1 != 0 { 1 } else { 0 },

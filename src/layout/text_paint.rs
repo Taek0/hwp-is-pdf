@@ -38,7 +38,10 @@ impl<'a> Engine<'a> {
             .filter(|i| !matches!(&i.kind,ItemKind::Object(n) if n.a("reflowGeneral")=="1" || n.a("reflowBehind")=="1"))
             .filter(|i| p.a("reflowed") != "1" || !matches!(i.kind, ItemKind::Char('\n' | '\r')))
             .collect();
-        if p.a("reflowed") == "1" && li + 1 < segs.len() && seg.a("hardBreak") != "1" {
+        // A wrapping space belongs to the break, not the visible line width.
+        // Counting it can shrink an otherwise fitting saved line, especially
+        // at large font sizes and narrow columns.
+        if li + 1 < segs.len() && seg.a("hardBreak") != "1" {
             while its
                 .last()
                 .is_some_and(|i| matches!(i.kind, ItemKind::Char(' ')))
