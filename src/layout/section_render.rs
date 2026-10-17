@@ -133,12 +133,17 @@ impl<'a> Engine<'a> {
                                     sec.n("spaceColumns") / 100.,
                                 );
                                 if flow_shift > 0.
-                                    && self.top + flow_shift
+                                    && self.top
+                                        + flow_shift
                                         + (ls[0].n("vertpos") + ls[0].n("vertsize")) / 100.
                                         > self.ph - self.bottom
                                 {
                                     self.finish()?;
-                                    flow_shift = band.start(self.pages.len(), ls[0].n("vertpos") / 100., sec.n("spaceColumns") / 100.);
+                                    flow_shift = band.start(
+                                        self.pages.len(),
+                                        ls[0].n("vertpos") / 100.,
+                                        sec.n("spaceColumns") / 100.,
+                                    );
                                 }
                                 last = None;
                             }

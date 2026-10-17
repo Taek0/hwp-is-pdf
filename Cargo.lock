@@ -256,6 +256,7 @@ dependencies = [
  "anyhow",
  "cfb",
  "crc32fast",
+ "encoding_rs",
  "flate2",
  "hwp-legacy-chart",
  "image",

@@ -6,6 +6,7 @@ description = "Independent HWP 5 / HWPX reader and vector PDF renderer"
 
 [dependencies]
 anyhow = "1"
+encoding_rs = "0.8"
 roxmltree = "0.21"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 flate2 = "1"

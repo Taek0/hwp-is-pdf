@@ -11,6 +11,7 @@ pub mod math;
 mod math_accents;
 mod math_extra;
 mod math_stacks;
+mod metafile;
 pub mod model;
 mod number_format;
 mod pagination;

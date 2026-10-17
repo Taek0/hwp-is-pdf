@@ -1,6 +1,9 @@
 //! Conservative alpha-cell spans, normalized to the displayed crop.
 use crate::model::Node;
 pub(crate) fn alpha_rects(bytes: &[u8], node: &Node) -> anyhow::Result<Option<Vec<[f64; 4]>>> {
+    if crate::metafile::is_wmf(bytes) {
+        return Ok(None);
+    }
     let decoded = image::load_from_memory(bytes)?;
     if !decoded.color().has_alpha() {
         return Ok(None);

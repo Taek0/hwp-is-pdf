@@ -11,7 +11,7 @@ regression set, rendered images, a commit and a push.
 | 3 | General paragraph line wrapping | Numbered HWPX caches with omitted autoIndent can gain required lines within logical blank-column recovery; explicit breaks and complex objects are excluded. Broader stale-cache recovery, Korean word boundaries and exact justification remain. |
 | 4 | Complex table row splitting and vertical alignment | Explicit merged header bands implemented and tested. Independent cell continuation exists; exact reference row-fragment distribution remains. |
 | 5 | Watermarks, logos and borders | Grayscale/tone calibrated against four exports; native floating picture margins corrected. Optional PCX visibility compatibility reproduces the form's omitted logo while default conversion preserves it (PICTURE_PLACEMENT.md). Remaining: broader visibility/effects, wider tone parameter coverage and compound-rule fidelity. |
-| 6 | Additional formats | BinData index/storage-ID mapping fixed. New WMF reference fails decoding; modern mixed chart uses an unfaithful dense data-table fallback. EMF/OLE preview fixture converts but does not prove general vector support. Outline/shadow/emboss, vertical typography and broader equations remain. |
+| 6 | Additional formats | BinData mapping, native dual-axis combination chart rendering and supplied WMF record playback are implemented and tested (EMBEDDED_GRAPHICS.md). All 13 new references convert without geometry findings. This is not full WMF/EMF/OLE coverage; outline/shadow/emboss, vertical typography and broader equations remain. |
 
 Keep excluded: password-encrypted documents, HWP 2.x/3.x and original-file editing.
 Do not substitute per-file coordinates or page-number conditions for format rules.

@@ -38,20 +38,34 @@ impl<'a> Engine<'a> {
             } else {
                 0.85
             };
-            let baseline_height =
-                if n.name == "tbl" && n.a("binaryHwp") == "1" && n.a("reflowTable") != "1" {
-                    // Native cached line baselines include the table's outside box.
-                    declared_h + m[2] + m[3]
-                } else if n.name == "rect" && h > declared_h && base - line_y + 0.02 >= h * baseline
-                {
-                    // A saved line may already reserve the repaired rectangle's
-                    // current height. Align that reserved box without shifting
-                    // the shape down and counting the same growth a second time.
-                    h
+            let baseline_height = if matches!(n.name.as_str(), "tbl" | "pic")
+                && n.a("binaryHwp") == "1"
+                && n.a("reflowTable") != "1"
+                && n.a("reflowCaptions") != "1"
+            {
+                // Native cached line baselines include the table's outside box.
+                let cap = if n.name == "pic" {
+                    caption_extent(n)
                 } else {
-                    declared_h
+                    [0.; 4]
                 };
-            base - baseline_height * baseline + m[2]
+                declared_h + m[2] + m[3] + cap[2] + cap[3]
+            } else if n.name == "rect" && h > declared_h && base - line_y + 0.02 >= h * baseline {
+                // A saved line may already reserve the repaired rectangle's
+                // current height. Align that reserved box without shifting
+                // the shape down and counting the same growth a second time.
+                h
+            } else {
+                declared_h
+            };
+            let cap = if n.name == "pic" && n.a("binaryHwp") == "1" && n.a("reflowCaptions") != "1"
+            {
+                caption_extent(n)
+            } else {
+                [0.; 4]
+            };
+            x += cap[0];
+            base - baseline_height * baseline + m[2] + cap[2]
         } else {
             let hr = pos.a("horzRelTo");
             let vr = pos.a("vertRelTo");
@@ -215,12 +229,19 @@ impl<'a> Engine<'a> {
                     .collect::<Vec<_>>(),
             );
         }
+        let metafile = n.name == "pic"
+            && n.child("img")
+                .and_then(|img| self.doc.binaries.get(img.a("binaryItemIDRef")))
+                .is_some_and(|b| crate::metafile::is_wmf(b));
         self.report.bounds.push(Bounds {
             page: self.pages.len() + 1,
             kind: if n.name == "pic" && (!n.a("alphaParts").is_empty() || opaque_pieces.is_some()) {
                 "pic-alpha".into()
             } else if n.a("textWrap") == "BEHIND_TEXT" && n.name == "pic" {
                 "watermark".into()
+            } else if metafile {
+                // Like a chart, a metafile contains its own intentional text.
+                "metafile".into()
             } else {
                 n.name.clone()
             },
@@ -319,7 +340,15 @@ impl<'a> Engine<'a> {
             "pic" => {
                 let img = n.child("img").context("Missing image reference")?;
                 let id = img.a("binaryItemIDRef").to_string();
-                if self.doc.binaries.contains_key(&id) {
+                if metafile {
+                    self.current.ops.extend(crate::metafile::draw(
+                        &self.doc.binaries[&id],
+                        &id,
+                        [x, y, w, h],
+                        &mut self.fonts,
+                    )?);
+                    self.report.pictures += 1;
+                } else if self.doc.binaries.contains_key(&id) {
                     let crop = n
                         .child("imgClip")
                         .filter(|c| c.n("right") > c.n("left") && c.n("bottom") > c.n("top"));

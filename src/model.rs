@@ -173,6 +173,7 @@ impl Document {
         if sections.is_empty() {
             bail!("No sections")
         }
+        crate::metafile::prepare(&mut binaries)?;
         crate::image_effects::apply(&mut sections, &mut binaries)?;
         crate::image_effects::apply(&mut masters, &mut binaries)?;
         crate::image_effects::apply(std::slice::from_mut(&mut header), &mut binaries)?;

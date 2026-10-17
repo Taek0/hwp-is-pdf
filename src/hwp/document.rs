@@ -410,6 +410,7 @@ pub fn open(path: &Path) -> Result<Document> {
     ensure!(!sections.is_empty(), "Missing BodyText");
     super::images::mark_pcx(&mut sections, &pcx_ids);
     super::images::mark_pcx(&mut masters, &pcx_ids);
+    crate::metafile::prepare(&mut binaries)?;
     crate::image_effects::apply(&mut sections, &mut binaries)?;
     crate::image_effects::apply(&mut masters, &mut binaries)?;
     crate::image_effects::apply(std::slice::from_mut(&mut header), &mut binaries)?;
@@ -453,6 +454,44 @@ pub fn open(path: &Path) -> Result<Document> {
                     );
                     node.attrs
                         .insert("title".into(), chart.title.unwrap_or_default());
+                    if let Some(p) = &presentation {
+                        let mut layout = n("nativeLayout");
+                        for (name, rect) in [("extent", p.extent), ("plot", p.plot)] {
+                            layout.children.push(
+                                n(name)
+                                    .at("left", rect[0])
+                                    .at("top", rect[1])
+                                    .at("right", rect[2])
+                                    .at("bottom", rect[3]),
+                            );
+                        }
+                        for (i, axis) in p.axes.iter().enumerate() {
+                            if let Some(axis) = axis {
+                                layout.children.push(
+                                    n("axis")
+                                        .at("index", i)
+                                        .at("min", axis.min)
+                                        .at("max", axis.max)
+                                        .at("divisions", axis.divisions),
+                                );
+                            }
+                        }
+                        for (i, font) in p.axis_fonts.iter().enumerate() {
+                            if let Some(font) = font {
+                                layout.children.push(
+                                    n("axisFont")
+                                        .at("index", i)
+                                        .at("face", &font.face)
+                                        .at("size", font.size)
+                                        .at("bold", usize::from(font.bold))
+                                        .at("italic", usize::from(font.italic))
+                                        .at("horizontal", font.horizontal)
+                                        .at("vertical", font.vertical),
+                                );
+                            }
+                        }
+                        node.children.push(layout);
+                    }
                     for category in chart.categories {
                         node.children.push(n("category").at("name", category));
                     }
@@ -462,7 +501,18 @@ pub fn open(path: &Path) -> Result<Document> {
                             series.name.unwrap_or_else(|| format!("Series {}", i + 1)),
                         );
                         if let Some(style) = presentation.as_ref().and_then(|p| p.series.get(i)) {
-                            s = s.at("color", rgb(style.fill));
+                            s = s
+                                .at("color", rgb(style.fill))
+                                .at("lineColor", rgb(style.color))
+                                .at("lineWidth", style.width)
+                                .at("axis", usize::from(style.secondary));
+                            if let Some(painter) = presentation
+                                .as_ref()
+                                .and_then(|p| usize::try_from(p.chart_type).ok())
+                                .and_then(|i| style.selectors.get(i))
+                            {
+                                s = s.at("painter", painter);
+                            }
                         }
                         for v in series.values {
                             ensure!(v.is_finite(), "Non-finite chart value");
