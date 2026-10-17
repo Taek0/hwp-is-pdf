@@ -93,6 +93,12 @@ pub fn open(path: &Path) -> Result<Document> {
                     }
                     ch.children.push(child);
                 }
+                if d.len() >= 70 {
+                    ch = ch.at("borderFillIDRef", u16(d, 68)?);
+                }
+                if u32(d, 60)? != 0xffff_ffff {
+                    ch = ch.at("shadeColor", rgb(u32(d, 60)?));
+                }
                 if u32(d, 46)? & 2 != 0 {
                     ch.children.push(n("bold"));
                 }
@@ -131,8 +137,8 @@ pub fn open(path: &Path) -> Result<Document> {
                     ch.children
                         .push(n("strikeout").at("style", strike_style).at(
                             "color",
-                            rgb(if d.len() >= 72 {
-                                u32(d, 68)?
+                            rgb(if d.len() >= 74 {
+                                u32(d, 70)?
                             } else {
                                 u32(d, 52)?
                             }),

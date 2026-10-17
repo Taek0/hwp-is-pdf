@@ -141,6 +141,7 @@ impl<'a> Engine<'a> {
             .then(|| text_marks::Emphasis::named(ch.a("symMark")))
             .flatten();
         let (mark_above, mark_below) = emphasis.map(|m| m.extent(size)).unwrap_or((0., 0.));
+        let character_border = self.character_border_width(ch);
         let glyph = Glyph {
             emphasis,
             font,
@@ -149,9 +150,25 @@ impl<'a> Engine<'a> {
             width,
             tracking: spacing,
             color: color(ch.a("textColor")),
-            ascent: (bb.map(|b| b.y_max as f64 * unit + pad).unwrap_or(0.) - shift + mark_above)
+            ascent: (bb.map(|b| b.y_max as f64 * unit + pad).unwrap_or(0.).max(
+                if character_border > 0. {
+                    size * 0.85
+                } else {
+                    f64::NEG_INFINITY
+                },
+            ) + character_border
+                - shift
+                + mark_above)
                 .max(0.),
-            descent: (bb.map(|b| -b.y_min as f64 * unit + pad).unwrap_or(0.) + shift + mark_below)
+            descent: (bb.map(|b| -b.y_min as f64 * unit + pad).unwrap_or(0.).max(
+                if character_border > 0. {
+                    size * 0.15
+                } else {
+                    f64::NEG_INFINITY
+                },
+            ) + character_border
+                + shift
+                + mark_below)
                 .max(0.),
             ink_left: bb
                 .map(|b| (b.x_min as f64 * scale + shear * b.y_min as f64) * unit - pad)

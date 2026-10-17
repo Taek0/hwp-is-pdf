@@ -444,3 +444,5 @@ impl<'a> Engine<'a> {
 }
 
 mod native_paragraph_cache;
+
+mod character_borders;

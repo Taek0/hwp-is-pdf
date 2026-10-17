@@ -11,7 +11,7 @@ Hancom are not achieved.**
 
 | Area | Implemented | Remaining limits |
 |---|---|---|
-| Text | Installed families/TTC faces, native/synthetic styles, scripts/offsets, language slots, kerning, half-em Latin tracking, positioned generated labels, Hancom/legacy symbol glyphs and vector emphasis | Missing original fonts, exact synthetic/mark metrics, outline/shadow/emboss and vertical typography |
+| Text | Installed families/TTC faces, native/synthetic styles, scripts/offsets, language slots, kerning, half-em Latin tracking, positioned generated labels, Hancom/legacy symbol glyphs, vector emphasis, contiguous character borders and solid fills | Missing original fonts, exact synthetic/mark metrics, outline/shadow/emboss and vertical typography |
 | Body layout | Saved-cache recovery, supported mixed reflow, floats/contours, native column bands/nested columns, Korean word/character semantics, punctuation and shared-note flows | All writer variants, ambiguous stale caches and unmeasured Hancom line/page cases |
 | Tables | Merged/nested cells, structural splitting, repeated headers/captions, mixed pictures/rotations/notes, stale text recovery and single automatic-row height allocation | Ambiguous multiple auto rows and exact row/paragraph composition |
 | Notes | Footnotes/endnotes, long-note continuation, source-driven placement and numbering | Some precise page distribution differs |
@@ -22,7 +22,7 @@ Hancom are not achieved.**
 
 ## Final validation
 
-208 Rust tests and all-target Clippy pass. The current unified corpus contains
+210 Rust tests and all-target Clippy pass. The current unified corpus contains
 53 unique documents / 260 pages, with unchanged source hashes. FAQ now has
 13 pages, matching its source cache bands rather than the old spurious 14-page output. It has zero findings in the four geometry
 classes, zero missing-glyph warnings and zero unresolved link/reference warnings.

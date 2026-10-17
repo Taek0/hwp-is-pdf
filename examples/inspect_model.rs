@@ -62,6 +62,13 @@ fn main() -> Result<()> {
         }
         return Ok(());
     }
+    if a.get(2).is_some_and(|s| s == "border") {
+        println!(
+            "{:?}",
+            d.borders.get(a.get(3).map(String::as_str).unwrap_or(""))
+        );
+        return Ok(());
+    }
     if a.get(2).is_some_and(|s| s == "paragraph") {
         let query = a.get(3).map(String::as_str).unwrap_or("");
         for section in &d.sections {

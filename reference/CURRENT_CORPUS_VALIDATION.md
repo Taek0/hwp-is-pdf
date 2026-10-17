@@ -1,11 +1,13 @@
 # Current-corpus validation — 2026-10-18
 
-Stage 43 converts 53 unique HWP5/HWPX documents into 260 pages. All 208 Rust
+Stage 44 converts 53 unique HWP5/HWPX documents into 260 pages. All 210 Rust
 tests and all-target Clippy pass. Source hashes are unchanged. All four geometry
 categories, missing-glyph warnings and unresolved link/reference warnings are
 empty. Stage 42 rasterized all 260 pages. Stage 43 changes six PDFs / 80 pages;
 those were rasterized again and reviewed in four contact sheets plus selected
-full-size Hancom comparisons. The other 47 PDFs are byte-identical. This is not a declaration of complete fidelity.
+full-size Hancom comparisons. The other 47 PDFs were byte-identical. Stage 44 changes four PDFs / 96 pages;
+these were rendered and reviewed again, with the final one-page glyph-envelope
+change checked separately. Its other 49 PDFs are byte-identical to stage 43. This is not a declaration of complete fidelity.
 
 Native table cell flags now preserve custom margins and explicit header rows.
 The report's merged two-row header repeats on pages 33–34, recovering 72 missing
@@ -46,14 +48,30 @@ Dotum. The corrected width restores the four-line “개발행위허가” entry
 
 Independent cell packing now accepts positioned glyph runs and uses the same
 outside margins as the final vector fragment painter. This avoids planning line
-moves against a different page capacity. Report page 42's note 18 still starts
-about 35pt too high (218.64pt versus 253.9pt); the previous stage's per-page
-Hangul deficit on page 43 drops from 244 to 121 characters. These characters are
+moves against a different page capacity. After stage 43, report page 42's note 18 started about 35pt too high
+(218.64pt versus 253.9pt); the per-page Hangul deficit on page 43 dropped from
+244 to 121 characters. These characters are
 on adjacent pages, not lost. Detailed pagination remains active.
 
 The format evidence is Hancom's HWP 5.0 revision 1.2, table 40 (paragraph-head
 properties), and embedded fonts/coordinates in the supplied Hancom PDFs.
 https://cdn.hancom.com/link/docs/한글문서파일형식_5.0_revision1.2.pdf
+
+## Character borders and solid fills
+
+Native character records now retain border/fill IDs at offset 68 and shading
+colors. The optional strikeout color is read at offset 70, after the two-byte
+border ID. The shared HWP/HWPX painter joins adjacent character spans, draws
+solid backgrounds behind their glyphs, and reserves line/neighbor clearance.
+The box uses both the nominal em and actual ink envelope, so Latin descenders
+and italic side bearings do not cross its strokes. Planned table-note indices
+are adjusted when background operations are inserted.
+
+The report's gray boxes around “부담금” and other terms are restored. After this
+change note 18 starts at 230.36pt, reducing the remaining error to about 23.5pt.
+The page-43 Hangul deficit drops again, from 121 to 78; the full-report Hangul
+multisets match exactly at 31,899 characters. This verifies preservation, not
+identical page allocation. All 53 documents retain their stage-43 page counts.
 
 ## Still active
 
@@ -64,9 +82,9 @@ the merged body cells with notes on pages 35–43. Some text moves from page 47 
 catch these. Continue reference comparison and general layout fixes; the user's
 request to resolve current document problems is not complete.
 
-Latest artifacts: `output/roadmap/43-merged-note-flow/`, including `regression/`,
+Latest artifacts: `output/roadmap/44-character-borders/`, including `regression-final/`,
 `page-images/`, `all-verification.json`, `report-page-comparison.json`,
-`tests.log`, `clippy.log`, `merged-bullet-comparison.png` and four `contact-*.jpg` sheets.
+`tests-final.log`, `clippy-final.log`, `report37.png` and five `contact-*.jpg` sheets.
 The FAQ source-cache evidence remains in stage 42.
 
 Hancom explains URC indent units and hanging-indent semantics at:

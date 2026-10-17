@@ -77,3 +77,5 @@ Native saved-layout recovery:
 - `layout/native_paragraph_cache.rs`: native root paragraph wrapping and section-local height propagation.
 - `layout/native_table_rows.rs`: fragment-local plain-text rows, repeated complete headers, padding and vertical alignment; merged body rows and notes retain the vector path.
 - `layout/local_flow.rs`: nested text measurement including the height of TOP_AND_BOTTOM floating objects.
+
+- `layout/character_borders.rs`: contiguous character border/fill spans, glyph-envelope clearance, and background insertion with table-note anchor index preservation.

@@ -195,6 +195,11 @@ impl<'a> Engine<'a> {
                     };
             }
         }
+        for i in 0..its.len().saturating_sub(1) {
+            if let (Some(a), Some(b)) = (&gs[i], &gs[i + 1]) {
+                widths[i] = self.character_boundary_advance(widths[i], &its[i], &its[i + 1], a, b);
+            }
+        }
         text_metrics::trim_trailing_tracking(&its, &mut gs, &mut widths);
         if p.a("reflowed") == "1" {
             let (stops, step) = self.paragraph_tabs(p);
@@ -284,6 +289,7 @@ impl<'a> Engine<'a> {
         let origin = x;
         let field_targets =
             self.line_field_targets(p, &its, x, line_y, base, li == 0 && p.u("reflowStart") == 0);
+        let mut character_spans = Vec::new();
         let mut caption_cursor = line_y;
         let mut underlines: Vec<(String, f64, f64, f64, f64, f64)> = Vec::new();
         let mut strikes: Vec<(String, f64, f64, f64, f64)> = Vec::new();
@@ -304,6 +310,16 @@ impl<'a> Engine<'a> {
             match &it.kind {
                 ItemKind::Char(c) => {
                     let g = gs[idx].as_ref().unwrap();
+                    let advance = self.fonts.width(g.font, &c.to_string(), g.size) * g.scale;
+                    self.collect_character_border(
+                        &mut character_spans,
+                        &it.style,
+                        idx,
+                        x,
+                        base,
+                        g,
+                        advance,
+                    );
                     if self
                         .doc
                         .chars
@@ -610,6 +626,7 @@ impl<'a> Engine<'a> {
                 },
             }
         }
+        self.paint_character_borders(character_spans);
         self.paint_line_decorations(base, underlines, strikes);
         if let Some((label, g, _)) = number_draw {
             let label_x = ox

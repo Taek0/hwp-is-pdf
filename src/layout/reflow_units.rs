@@ -254,6 +254,12 @@ impl<'a> Engine<'a> {
                     };
             }
         }
+        for i in 0..items.len().saturating_sub(1) {
+            if let (Some(a), Some(b)) = (&glyphs[i], &glyphs[i + 1]) {
+                units[i].width =
+                    self.character_boundary_advance(units[i].width, &items[i], &items[i + 1], a, b);
+            }
+        }
         for i in 1..items.len() {
             if matches!(&items[i].kind,ItemKind::Control(n) if n.name=="footNote") {
                 units[i - 1].ch = None;

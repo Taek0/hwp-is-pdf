@@ -8,7 +8,7 @@ DLL을 호출하지 않습니다. 글꼴은 지정한 디렉터리에서 읽으�
 
 ## 현재 검증 결과 — 2026-10-18
 
-- Rust 테스트 208개 및 all-target Clippy 통과.
+- Rust 테스트 210개 및 all-target Clippy 통과.
 - 중복 제외 53개 문서·260쪽 재변환: 원본 해시 유지, 네 종류의 기하 검사 0건.
 - 전체 대상에서 누락 글리프 및 미해석 링크·참조 경고 0건. 모든 페이지를 이미지로 렌더링했습니다.
 - 한컴 비교 문서 4개의 페이지 수 일치: 복학원서 2, 법학적성시험 15, 수학 시험지 9, 중간보고서 50.
@@ -69,8 +69,8 @@ hwp_engine::convert_configured(input_path, output_path, font_directory,
 - [src/README.md](src/README.md): 파서, 배치, 글꼴, PDF 출력의 모듈별 책임.
 - `tests/`: 기능·회귀 검사. 일부 통합 검사는 로컬 사용자 문서와 Windows 글꼴이 필요합니다.
 - `samples/`, `examples/`: 공개 예제, 재현용 HWPX 생성기 및 진단 명령.
-- `output/roadmap/15-tables/` ~ `43-merged-note-flow/`: 단계별 PDF·이미지·검증 로그.
-- `output/roadmap/43-merged-note-flow/regression/`: 최신 53개 문서의 PDF·배치·검사 보고서.
+- `output/roadmap/15-tables/` ~ `44-character-borders/`: 단계별 PDF·이미지·검증 로그.
+- `output/roadmap/44-character-borders/regression-final/`: 최신 53개 문서의 PDF·배치·검사 보고서.
 - 같은 단계의 `all-inputs.json`, `all-verification.json`, `page-images/`: 원본 목록·검증 결과·전체 페이지 이미지.
 - [reference/IMPLEMENTATION_HISTORY.md](reference/IMPLEMENTATION_HISTORY.md): 이전 단계의 구현·검증 기록.
 
