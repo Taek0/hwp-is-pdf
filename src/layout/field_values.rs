@@ -30,12 +30,29 @@ pub(super) fn link_target(n: &Node) -> Option<String> {
     }
     let value = command(n);
     let value = value.trim().trim_matches('"');
+    let native = n.a("sourceControl") == "%hlk";
+    // Native field commands escape URL delimiters, including the scheme colon.
+    // Consume the first unescaped separator; preserve the literal URL content.
+    if native {
+        let mut chars = value.chars().peekable();
+        let mut url = String::new();
+        while let Some(c) = chars.next() {
+            if c == ';' {
+                break;
+            }
+            if c == '\\' && chars.peek().is_some_and(|c| matches!(c, ':' | ';' | '\\')) {
+                url.push(chars.next().unwrap());
+            } else {
+                url.push(c);
+            }
+        }
+        return (!url.is_empty()).then_some(url);
+    }
     let parts: Vec<_> = value.split(';').collect();
-    let value = if n.a("sourceControl") == "%hlk"
-        || (parts.len() > 3
-            && parts[1..]
-                .iter()
-                .all(|s| s.chars().all(|c| c.is_ascii_digit())))
+    let value = if parts.len() > 3
+        && parts[1..]
+            .iter()
+            .all(|s| s.chars().all(|c| c.is_ascii_digit()))
     {
         parts[0]
     } else {
@@ -187,5 +204,37 @@ impl<'a> Engine<'a> {
             }
         }
         self.report.warnings.extend(warnings);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn native_hyperlink_escapes_are_decoded_without_rewriting_the_url() {
+        let mut n = Node {
+            name: "fieldBegin".into(),
+            ..Default::default()
+        };
+        n.attrs.insert("type".into(), "HYPERLINK".into());
+        n.attrs.insert("sourceControl".into(), "%hlk".into());
+        n.attrs
+            .insert("command".into(), r"http\://example.org/a\;b);1;0;0;".into());
+        assert_eq!(link_target(&n).as_deref(), Some("http://example.org/a;b)"));
+        n.attrs.insert(
+            "command".into(),
+            r"https\://example.org/a\\b\q;1;0;0;".into(),
+        );
+        assert_eq!(
+            link_target(&n).as_deref(),
+            Some(r"https://example.org/a\b\q")
+        );
+        n.attrs.remove("sourceControl");
+        n.attrs
+            .insert("command".into(), "https://example.org/a;b?x=1".into());
+        assert_eq!(
+            link_target(&n).as_deref(),
+            Some("https://example.org/a;b?x=1")
+        );
     }
 }

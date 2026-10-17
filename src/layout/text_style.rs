@@ -39,6 +39,16 @@ impl<'a> Engine<'a> {
         let bold = ch.child("bold").is_some();
         let italic = ch.child("italic").is_some();
         let mut font = self.document_font(name, bold, italic, override_font)?;
+        if !self.fonts.has(font, c)
+            && ('\u{f020}'..='\u{f0ff}').contains(&c)
+            && self.fonts.root.join("wingding.ttf").exists()
+        {
+            let symbol = self.fonts.get("wingding.ttf")?;
+            if self.fonts.has(symbol, c) {
+                font = symbol;
+                self.report.warnings.insert(format!("Legacy private-use symbol U+{:04X} resolved with Wingdings because the requested face has no glyph",c as u32));
+            }
+        }
         if !self.fonts.has(font, c) {
             for fallback in [
                 "malgun.ttf",
