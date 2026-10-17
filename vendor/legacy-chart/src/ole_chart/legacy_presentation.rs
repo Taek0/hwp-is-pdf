@@ -31,16 +31,36 @@ pub struct Presentation {
     pub series: Vec<Series>,
     pub extent: [f64; 4],
     pub plot: [f64; 4],
+    pub axis_fonts: [Option<Font>; 4],
+}
+
+#[derive(Clone, Debug)]
+pub struct Font {
+    pub face: String,
+    pub size: f64,
+    pub bold: bool,
+    pub italic: bool,
+    pub horizontal: u16,
+    pub vertical: u16,
 }
 
 enum Node {
     Empty,
     Count(usize),
     Array(Vec<Rc<Node>>),
-    Axis(Option<Axis>),
+    Text(String),
+    Font(Font),
+    Axis(Option<Axis>, Option<Font>),
     Series(Series),
     Section([f64; 4]),
-    Plot([Option<Axis>; 4], [f64; 4]),
+    Plot([Option<Axis>; 4], [f64; 4], [Option<Font>; 4]),
+}
+fn node_font(node: &Node) -> Option<Font> {
+    match node {
+        Node::Font(f) => Some(f.clone()),
+        Node::Array(a) => a.iter().find_map(|n| node_font(n)),
+        _ => None,
+    }
 }
 
 struct Reader<'a> {
@@ -204,15 +224,22 @@ impl<'a> Reader<'a> {
             }
             "VtString" => {
                 let len = self.u16()? as usize;
+                let mut value = String::new();
                 if len > 0 {
                     // Legacy archives reserve one trailing byte, but newer
                     // writers do not always zero it. Keep the length/bounds
                     // check without treating that byte as a NUL contract.
-                    self.skip(len + 1)?;
+                    let bytes = self.bytes(len + 1)?;
+                    let end = bytes[..len].iter().position(|b| *b == 0).unwrap_or(len);
+                    value = encoding_rs::EUC_KR.decode(&bytes[..end]).0.into_owned();
                 }
                 self.base("VtValue")?;
+                return Ok(Node::Text(value));
             }
-            "VtInteger" => { self.skip(4)?; self.base("VtValue")?; }
+            "VtInteger" => {
+                self.skip(4)?;
+                self.base("VtValue")?;
+            }
             "VtDouble" => {
                 self.skip(10)?;
                 self.base("VtValue")?;
@@ -246,18 +273,40 @@ impl<'a> Reader<'a> {
                 self.base("VtObject")?;
             }
             "VtFont" => {
-                self.object()?;
-                self.skip(14)?;
+                let name = self.object()?;
+                let info = self.bytes(14)?;
+                let size = f32::from_le_bytes(info[..4].try_into().map_err(|_| ())?) as f64;
+                if !size.is_finite() || size <= 0. || size > 1000. {
+                    return Err(());
+                }
+                let font = Font {
+                    face: match name.as_ref() {
+                        Node::Text(s) => s.clone(),
+                        _ => String::new(),
+                    },
+                    size,
+                    bold: info[4] != 0,
+                    italic: info[6] != 0,
+                    horizontal: 2,
+                    vertical: 2,
+                };
                 self.base("VtObject")?;
+                return Ok(Node::Font(font));
             }
             "VtTextBlock" => {
-                self.skip(12)?;
+                let prefix = self.bytes(12)?.to_vec();
                 self.object()?;
-                self.object()?;
+                let font = self.object()?;
                 self.skip(24)?;
                 self.object()?;
                 self.skip(26)?;
                 self.base("VtObject")?;
+                if let Node::Font(f) = font.as_ref() {
+                    let mut f = f.clone();
+                    f.horizontal = u16::from_le_bytes(prefix[4..6].try_into().map_err(|_| ())?);
+                    f.vertical = u16::from_le_bytes(prefix[6..8].try_into().map_err(|_| ())?);
+                    return Ok(Node::Font(f));
+                }
             }
             "VtChartText" => {
                 self.object()?;
@@ -301,27 +350,37 @@ impl<'a> Reader<'a> {
             "VtTextFormat" => {
                 self.base("VtObject")?;
                 self.skip(2)?;
-                self.object()?;
+                let value = self.object()?;
+                if let Node::Font(f) = value.as_ref() {
+                    return Ok(Node::Font(f.clone()));
+                }
             }
             "VtValueBlock" => {
-                self.object()?;
-                self.object()?;
+                let first = self.object()?;
+                let second = self.object()?;
                 self.skip(2)?;
-                self.object()?;
+                let third = self.object()?;
                 self.skip(3)?;
-                self.base("VtTextBlock")?;
+                let base = self.base("VtTextBlock")?;
+                for node in [first, second, third] {
+                    if let Node::Font(f) = node.as_ref() {
+                        return Ok(Node::Font(f.clone()));
+                    }
+                }
+                return Ok(base);
             }
             "VtAxisScaleBlock" => {
                 self.object()?;
                 self.skip(4)?;
-                self.base("VtValueBlock")?;
+                return self.base("VtValueBlock");
             }
             "VtAxis" => {
                 self.skip(6)?;
                 let manual = self.i16()? != 0;
                 self.skip(74)?;
-                self.object()?;
-                self.object()?;
+                let first_font = self.object()?;
+                let second_font = self.object()?;
+                let font = [second_font, first_font].iter().find_map(|n| node_font(n));
                 self.skip(34)?;
                 let axis = if manual {
                     let min = self.f64()?;
@@ -346,7 +405,7 @@ impl<'a> Reader<'a> {
                 };
                 self.skip(16)?;
                 self.base("VtObject")?;
-                return Ok(Node::Axis(axis));
+                return Ok(Node::Axis(axis, font));
             }
             "VtCLineItem" => {
                 self.skip(48)?;
@@ -368,12 +427,14 @@ impl<'a> Reader<'a> {
                 self.skip(136)?;
                 self.object()?;
                 let mut axes = [None; 4];
-                for axis in &mut axes {
+                let mut fonts = [None, None, None, None];
+                for (i, axis) in axes.iter_mut().enumerate() {
                     let object = self.object()?;
-                    let Node::Axis(value) = object.as_ref() else {
+                    let Node::Axis(value, font) = object.as_ref() else {
                         return Err(());
                     };
                     *axis = *value;
+                    fonts[i] = font.clone();
                 }
                 self.skip(30)?;
                 self.object()?;
@@ -381,7 +442,7 @@ impl<'a> Reader<'a> {
                 let Node::Section(rect) = self.base("VtChartSection")? else {
                     return Err(());
                 };
-                return Ok(Node::Plot(axes, rect));
+                return Ok(Node::Plot(axes, rect, fonts));
             }
             "VtSeries" => return self.series(),
             "VtWindow" => {
@@ -492,7 +553,7 @@ fn parse_inner(data: &[u8]) -> Result<Presentation> {
     if !(0..=26).contains(&chart_type) || reader.at != data.len() {
         return Err(());
     }
-    let Node::Plot(axes, plot) = plot.as_ref() else {
+    let Node::Plot(axes, plot, axis_fonts) = plot.as_ref() else {
         return Err(());
     };
     let Node::Array(items) = series.as_ref() else {
@@ -524,6 +585,6 @@ fn parse_inner(data: &[u8]) -> Result<Presentation> {
         series: styles,
         extent,
         plot: *plot,
+        axis_fonts: axis_fonts.clone(),
     })
 }
-
