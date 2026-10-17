@@ -1,6 +1,6 @@
 # Current-corpus validation — 2026-10-18
 
-Stage 44 converts 53 unique HWP5/HWPX documents into 260 pages. All 210 Rust
+Stage 45 converts 53 unique HWP5/HWPX documents into 260 pages. All 211 Rust
 tests and all-target Clippy pass. Source hashes are unchanged. All four geometry
 categories, missing-glyph warnings and unresolved link/reference warnings are
 empty. Stage 42 rasterized all 260 pages. Stage 43 changes six PDFs / 80 pages;
@@ -73,18 +73,31 @@ The page-43 Hangul deficit drops again, from 121 to 78; the full-report Hangul
 multisets match exactly at 31,899 characters. This verifies preservation, not
 identical page allocation. All 53 documents retain their stage-43 page counts.
 
+## Body flow after continued tables
+
+Saved single-column body flow now invalidates stale automatic page boundaries
+after a continued table shrinks as well as after it grows. Explicit page/column
+breaks, page-break-before styles and column-definition changes remain boundaries.
+Authored empty paragraphs participate in the repaired vertical flow, preserving
+intentional blank pages rather than silently collapsing them.
+
+In the report, page 4 now includes the first “더불어…” line; page 6 is empty except
+for its footer, as in Hancom; section 2 still starts on page 7. The title after
+the research table returns to page 47. Pages 47–48 now have matching Hangul
+multisets. The 50-page report is the only changed PDF; its changed rasters are
+pages 4–6, 25–29 and 47–48. Other 52 PDFs are byte-identical to stage 44.
+
 ## Still active
 
 The report remains 50 pages, and its research table remains on pages 46–47.
 There are still per-page text differences around pages 3–6, 20–29 and especially
-the merged body cells with notes on pages 35–43. Some text moves from page 47 to
-48; footer typography and finer line endings also differ. Geometry QA does not
+the merged body cells with notes on pages 35–43. Footer typography and finer line endings also differ. Geometry QA does not
 catch these. Continue reference comparison and general layout fixes; the user's
 request to resolve current document problems is not complete.
 
-Latest artifacts: `output/roadmap/44-character-borders/`, including `regression-final/`,
-`page-images/`, `all-verification.json`, `report-page-comparison.json`,
-`tests-final.log`, `clippy-final.log`, `report37.png` and five `contact-*.jpg` sheets.
+Latest artifacts: `output/roadmap/45-body-repagination/`, including `regression/`,
+`report-images/`, `all-verification.json`, `report-page-comparison.json`,
+`tests.log`, `clippy.log`, `changed-pages.json` and `changed-pages.jpg`.
 The FAQ source-cache evidence remains in stage 42.
 
 Hancom explains URC indent units and hanging-indent semantics at:

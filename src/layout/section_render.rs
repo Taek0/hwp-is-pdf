@@ -181,7 +181,7 @@ impl<'a> Engine<'a> {
                         let explicit_break = last.is_some()
                             && i == 0
                             && (p.a("pageBreak") == "1"
-                                || (blank_flow.is_some()
+                                || ((blank_flow.is_some() || repage_saved_tail)
                                     && self
                                         .doc
                                         .paras
@@ -191,7 +191,8 @@ impl<'a> Engine<'a> {
                                             matches!(b.a("pageBreakBefore"), "1" | "true")
                                         })));
                         let explicit_column = last.is_some() && i == 0 && p.a("columnBreak") == "1";
-                        if cached_break && repage_saved_tail && !explicit_break {
+                        if cached_break && repage_saved_tail && !explicit_break && !explicit_column
+                        {
                             // Changed table/note geometry invalidated the saved page boundary.
                             // Reuse cached line positions as continuous flow until an explicit break.
                             flow_shift = previous_end - self.top - y / 100.;
@@ -244,6 +245,11 @@ impl<'a> Engine<'a> {
                                 flow_shift.max(shift)
                             };
                             table_reflowed = true;
+                            if continued && cols == 1 && blank_flow.is_none() {
+                                // A continued table invalidates cached body-page
+                                // boundaries after shrinking as well as growing.
+                                repage_saved_tail = true;
+                            }
                             if spanning_floor.is_some_and(|(page, end)| {
                                 page == self.pages.len() && (end - bottom).abs() < 0.001
                             }) {
@@ -298,7 +304,7 @@ impl<'a> Engine<'a> {
                         } else {
                             line_slot
                         };
-                        if (visible || blank_flow.is_some())
+                        if (visible || blank_flow.is_some() || repage_saved_tail)
                             && (blank_flow.is_some()
                                 || repage_saved_tail
                                 || reserve > 0.
