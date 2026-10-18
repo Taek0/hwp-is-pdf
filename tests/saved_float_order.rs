@@ -121,10 +121,35 @@ fn report_anchor_precedes_table_and_research_table_returns_to_reference_page() {
         .iter()
         .find(|b| b.kind == "tbl" && b.id == "hwp-44c83" && b.page == 42)
         .unwrap();
+    // The reference body fragment is about 124pt high, so an absolute 100pt
+    // cap rejects restored text. Detect an actual empty tail instead.
+    let mut transforms = vec![hwp_engine::graphics::IDENTITY];
+    let mut last_baseline = tail.y;
+    for op in &e.pages[tail.page - 1].ops {
+        match op {
+            Op::TransformBegin { matrix } => transforms.push(hwp_engine::graphics::compose(
+                *transforms.last().unwrap(),
+                *matrix,
+            )),
+            Op::TransformEnd => {
+                assert!(transforms.len() > 1);
+                transforms.pop();
+            }
+            Op::Text { x, y, text, .. } | Op::Shaped { x, y, text, .. }
+                if !text.trim().is_empty() =>
+            {
+                let (x, y) = hwp_engine::graphics::point(*transforms.last().unwrap(), *x, *y);
+                if x >= tail.x && x <= tail.x + tail.w && y >= tail.y && y <= tail.y + tail.h {
+                    last_baseline = last_baseline.max(y);
+                }
+            }
+            _ => {}
+        }
+    }
     assert!(
-        tail.h < 100.,
-        "staggered merged cells should not leave whole-row gaps: {}",
-        tail.h
+        tail.y + tail.h - last_baseline < 12.,
+        "staggered merged cells left an empty tail: {}",
+        tail.y + tail.h - last_baseline
     );
     let q = qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
     assert!(q.text_overlaps.is_empty());

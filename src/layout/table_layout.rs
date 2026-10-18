@@ -295,22 +295,7 @@ impl<'a> Engine<'a> {
             self.border(c.a("borderFillIDRef"), xx, yy, ww, hh);
             let content_start = self.current.ops.len();
             let bounds_start = self.report.bounds.len();
-            if let Some(list) = c.child("subList") {
-                let m = if c.a("hasMargin") == "1" {
-                    margin(c, "cellMargin")
-                } else {
-                    margin(n, "inMargin")
-                };
-                let (min, mut max) = floating_extent(list);
-                max = max.max(self.measured_height(list)?);
-                let spare = (hh - m[2] - m[3] - (max - min)).max(0.);
-                let shift = match list.a("vertAlign") {
-                    "CENTER" => spare / 2.,
-                    "BOTTOM" => spare,
-                    _ => 0.,
-                };
-                self.local(list, xx + m[0], yy + m[2] + shift - min, ww - m[0] - m[1])?;
-            }
+            self.paint_whole_cell_content(n, c, xx, yy, ww, hh)?;
             if self.capture_table_headers && self.depth == 1 {
                 self.table_cells.push(TableCellPaint {
                     y: yy,

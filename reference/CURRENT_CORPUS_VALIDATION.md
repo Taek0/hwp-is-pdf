@@ -1,6 +1,6 @@
 # Current-corpus validation — 2026-10-18
 
-Stage 48 converts 53 unique HWP5/HWPX documents into 260 pages. All 218 Rust
+Stage 49 converts 53 unique HWP5/HWPX documents into 260 pages. All 224 Rust
 tests and all-target Clippy pass. Source hashes are unchanged. All four geometry
 categories, missing-glyph warnings and unresolved link/reference warnings are
 empty. Stage 42 rasterized all 260 pages. Stage 43 changes six PDFs / 80 pages;
@@ -137,19 +137,39 @@ In the report, the following text starts at 405.507pt on page 4 (Hancom 405.612)
 retain page counts and zero geometry findings. Three PDFs change, with eight
 changed page rasters; the remaining 50 PDFs are byte-identical to stage 47.
 
+## Merged row bands and stale single lines
+
+Closed vertical-merge bands now use fragment-local pagination when a side-effect-free
+preflight proves that every band stays whole. Oversized or boundary-crossing bands
+retain the vector path before any page is mutated. Shared complete-cell painting
+preserves original column widths, padding and alignment.
+
+Native BREAK cells can recover stale one-line text instead of squeezing its font.
+Plain paragraphs and supported automatic hanging bullets retain the original
+vertical metrics. Empty text and unusable margin regions decline optional recovery;
+a 0.1pt visible-advance tolerance excludes tiny font-realization differences.
+The notice remains 30 pages after a 0.085pt near-fit was verified separately.
+
+Report pages 20–23 now match the reference's per-page Hangul multisets. Page 23's
+`<시행령 추가>` is restored below the repeated header; the following caption returns
+to about 463.0pt. The report remains 50 pages and its research table remains on
+46–47. Five PDFs change, but two have identical page rasters; 21 page images change
+in the form, report and notice. All changed rasters were reviewed. The other 48
+PDFs are byte-identical to stage 48, including the math document and four variants.
+All 224 tests, all-target Clippy and 53-file / 260-page geometry regression pass.
+
 ## Still active
 
 The report remains 50 pages, and its research table remains on pages 46–47.
-There are still per-page text differences around pages 4–5, 21–29 and 31–32,
+There are still per-page text differences around pages 4–5, 24–29 and 31–32,
 and especially the merged body cells with notes on pages 35–45. Finer line
 endings and some cell/footnote placement still differ. Geometry QA does not
 catch these. Continue reference comparison and general layout fixes; the user's
 request to resolve current document problems is not complete.
 
-Latest artifacts: `output/roadmap/48-table-outside-margin/`, including `regression/`,
-`all-verification.json`, `tests.log`, `clippy.log`, `changed-pages.json`,
-`page-images/` and `margin-comparison.png`. The last per-page text audit remains
-in stage 47.
+Latest artifacts: `output/roadmap/49-merged-row-bands/`, including
+`regression-final/`, `all-verification.json`, `tests-final.log`, `clippy-final.log`,
+`changed-pages.json`, `page-images/` and `merged-row-comparison.png`.
 The FAQ source-cache evidence remains in stage 42.
 
 Hancom explains URC indent units and hanging-indent semantics at:

@@ -494,3 +494,5 @@ mod native_paragraph_cache;
 mod character_borders;
 
 mod page_numbers;
+
+mod table_cells;

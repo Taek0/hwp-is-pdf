@@ -69,7 +69,49 @@ fn main() -> Result<()> {
         );
         return Ok(());
     }
-    if a.get(2).is_some_and(|s| s == "paragraph") {
+    if a.get(2).is_some_and(|s| s == "cell-lines") {
+        let mut tables = Vec::new();
+        for sec in &d.sections {
+            sec.all("tbl", &mut tables);
+        }
+        for table in tables
+            .into_iter()
+            .filter(|t| a.get(3).is_none_or(|id| t.a("id") == id))
+        {
+            println!("TABLE {}", table.a("id"));
+            for c in table
+                .children_named("tr")
+                .flat_map(|r| r.children_named("tc"))
+            {
+                println!("CELL {:?}", c.child("cellAddr").map(|n| &n.attrs));
+                if let Some(list) = c.child("subList") {
+                    for p in list.children_named("p") {
+                        println!(
+                            "P {} {:?} {:?}",
+                            p.a("id"),
+                            hwp_engine::model::text(p)
+                                .chars()
+                                .take(80)
+                                .collect::<String>(),
+                            p.child("linesegarray").map(|a| a
+                                .children_named("lineseg")
+                                .map(|l| (
+                                    l.u("textpos"),
+                                    l.n("vertpos"),
+                                    l.n("vertsize"),
+                                    l.n("spacing")
+                                ))
+                                .collect::<Vec<_>>())
+                        );
+                    }
+                }
+            }
+        }
+        return Ok(());
+    }
+    if a.get(2)
+        .is_some_and(|s| s == "paragraph" || s == "paragraph-style")
+    {
         let query = a.get(3).map(String::as_str).unwrap_or("");
         for section in &d.sections {
             let mut ps = Vec::new();
@@ -80,7 +122,11 @@ fn main() -> Result<()> {
                     .flat_map(|r| r.children_named("t"))
                     .map(hwp_engine::model::text)
                     .collect::<String>();
-                if plain.contains(query) {
+                if if a[2] == "paragraph-style" {
+                    p.a("paraPrIDRef") == query
+                } else {
+                    plain.contains(query)
+                } {
                     println!(
                         "P {:?} TEXT {:?} LINES {:?} STYLE {:?}",
                         p.attrs,

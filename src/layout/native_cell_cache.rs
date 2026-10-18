@@ -1,6 +1,32 @@
-//! Recover native cell line boundaries when resolved fonts fit no more lines.
+//! Rebuild native cell line boundaries while retaining source vertical metrics.
 //! Retain source vertical metrics, explicit breaks, and inter-paragraph gaps.
 use super::*;
+/// A native saved line can differ by a fraction of a point after font
+/// realization. Grow only when visible advances exceed the wrap area by 0.1pt.
+fn materially_overflows(
+    units: &[crate::reflow::Unit],
+    saved: &[&Node],
+    width: f64,
+    s: &crate::reflow::Settings,
+) -> bool {
+    saved.iter().enumerate().any(|(i, line)| {
+        let end = saved
+            .get(i + 1)
+            .map(|l| l.u("textpos"))
+            .unwrap_or(usize::MAX);
+        let mut part: Vec<_> = units
+            .iter()
+            .filter(|u| u.pos >= line.u("textpos") && u.pos < end)
+            .collect();
+        while part.last().is_some_and(|u| u.ch == Some(' ')) {
+            part.pop();
+        }
+        let measured = part.iter().map(|u| u.width).sum::<f64>()
+            - part.last().map(|u| u.trailing).unwrap_or(0.);
+        let available = width - s.left - s.right - if i == 0 { s.indent } else { 0. };
+        measured > available + 0.1
+    })
+}
 impl<'a> Engine<'a> {
     pub(super) fn repair_native_cell_cache(&mut self, table: &mut Node) -> Result<bool> {
         let defaults = margin(table, "inMargin");
@@ -47,7 +73,14 @@ impl<'a> Engine<'a> {
                         .map(|h| h.a("type"))
                         .unwrap_or("");
                     let mut label_x = None;
-                    if saved.len() > 1
+                    let can_grow = matches!(heading, "" | "NONE")
+                        || (heading == "BULLET"
+                            && self.list_auto_indent(p)
+                            && settings.indent == 0.);
+                    if !saved.is_empty()
+                        && Self::items(p)
+                            .iter()
+                            .any(|i| matches!(i.kind,ItemKind::Char(c) if !c.is_whitespace()))
                         && heading != "NUMBER"
                         && p.find("lineBreak").is_none()
                         && saved.iter().all(|l| {
@@ -65,22 +98,28 @@ impl<'a> Engine<'a> {
                             settings.left = settings.left.max(anchor + reserved);
                             settings.indent = 0.;
                         }
-                        let units = self.paragraph_units(p)?;
-                        let wrapped = crate::reflow::wrap(&units, width, &settings)?;
-                        if wrapped.len() <= saved.len()
-                            && (wrapped.len() < saved.len()
-                                || wrapped
-                                    .iter()
-                                    .zip(&saved)
-                                    .any(|(a, b)| a.pos != b.u("textpos")))
-                        {
-                            starts = Some(
-                                wrapped
-                                    .iter()
-                                    .map(|l| (l.pos, l.left, l.width))
-                                    .collect::<Vec<_>>(),
-                            );
-                            any = true;
+                        // Recovery must not reject an otherwise usable saved
+                        // layout when its inherited margins define no wrap area.
+                        if width > settings.left + settings.right + settings.indent.max(0.) + 0.01 {
+                            let units = self.paragraph_units(p)?;
+                            let wrapped = crate::reflow::wrap(&units, width, &settings)?;
+                            let grow =
+                                can_grow && materially_overflows(&units, &saved, width, &settings);
+                            if (wrapped.len() <= saved.len() || grow)
+                                && (wrapped.len() != saved.len()
+                                    || wrapped
+                                        .iter()
+                                        .zip(&saved)
+                                        .any(|(a, b)| a.pos != b.u("textpos")))
+                            {
+                                starts = Some(
+                                    wrapped
+                                        .iter()
+                                        .map(|l| (l.pos, l.left, l.width))
+                                        .collect::<Vec<_>>(),
+                                );
+                                any = true;
+                            }
                         }
                     }
                     let ys: Vec<_> = flow
@@ -162,5 +201,52 @@ impl<'a> Engine<'a> {
             }
         }
         Ok(changed)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn line_growth_ignores_subpoint_fit_noise_and_wrapping_spaces() {
+        let line = crate::model::xml(br#"<lineseg textpos="0"/>"#).unwrap();
+        let mut units = vec![crate::reflow::Unit {
+            pos: 0,
+            ch: Some('A'),
+            width: 32.,
+            trailing: 2.,
+            ..Default::default()
+        }];
+        let settings = crate::reflow::Settings::default();
+        assert!(!materially_overflows(&units, &[&line], 29.95, &settings));
+        assert!(materially_overflows(&units, &[&line], 29.8, &settings));
+        units.push(crate::reflow::Unit {
+            pos: 1,
+            ch: Some(' '),
+            width: 5.,
+            ..Default::default()
+        });
+        assert!(!materially_overflows(&units, &[&line], 29.95, &settings));
+    }
+    #[test]
+    fn optional_cell_recovery_preserves_unusable_margin_regions() {
+        let mut d = Document::open(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("samples/reflow/contour-single.hwpx"),
+        )
+        .unwrap();
+        d.paras.insert(
+            "wide".into(),
+            crate::model::xml(
+                br#"<paraPr binaryHwp="1"><margin><left value="2000"/></margin></paraPr>"#,
+            )
+            .unwrap(),
+        );
+        for value in ["", "A"] {
+            let mut t=crate::model::xml(format!(r#"<tbl><tr><tc><cellSz width="1000" height="1000"/><subList lineWrap="BREAK"><p paraPrIDRef="wide"><run charPrIDRef="0"><t>{value}</t></run><linesegarray><lineseg textpos="0" vertpos="0" vertsize="1000" baseline="850" spacing="600" horzsize="1000"/></linesegarray></p></subList></tc></tr></tbl>"#).as_bytes()).unwrap();
+            let original = t.clone();
+            let mut e = Engine::new(&d, Path::new("."));
+            assert!(!e.repair_native_cell_cache(&mut t).unwrap());
+            assert_eq!(original, t);
+        }
     }
 }

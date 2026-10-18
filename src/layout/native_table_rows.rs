@@ -1,7 +1,10 @@
-//! Fragment-local layout for native plain-text rows without body row-spans.
+//! Fragment-local native plain-text rows and preflighted unbroken merged bands.
 //! Each fragment owns its padding and vertical alignment; consumed cell text
 //! is not repeated on following pages.
 use super::*;
+mod bands;
+mod plan;
+#[derive(Clone)]
 struct Cell<'b> {
     node: &'b Node,
     flow: Vec<(&'b Node, usize, f64, f64)>,
@@ -50,9 +53,11 @@ impl Cell<'_> {
         count
     }
 }
+#[derive(Clone)]
 struct Row<'b> {
     cells: Vec<Cell<'b>>,
     minimum: f64,
+    band: Option<(usize, usize)>,
 }
 impl Row<'_> {
     fn remaining(&self) -> f64 {
@@ -104,33 +109,40 @@ impl<'a> Engine<'a> {
             return Ok(false);
         }
         if cells.iter().any(|c| {
-            let a = c.child("cellAddr").unwrap();
-            (a.u("rowAddr") >= header_rows && c.child("cellSpan").unwrap().u("rowSpan") != 1)
-                || c.child("subList").is_some_and(|l| {
-                    l.a("savedColumns") == "1"
-                        || l.children_named("p").any(|p| {
-                            Self::items(p)
-                                .iter()
-                                .any(|i| !matches!(i.kind, ItemKind::Char(_) | ItemKind::Tab(_)))
-                                || self.doc.paras.get(p.a("paraPrIDRef")).is_some_and(|s| {
-                                    s.child("breakSetting").is_some_and(|b| {
-                                        ["keepLines", "keepWithNext", "widowOrphan"]
-                                            .iter()
-                                            .any(|k| b.a(k) == "1")
-                                    }) || s
-                                        .child("border")
-                                        .and_then(|b| self.doc.borders.get(b.a("borderFillIDRef")))
-                                        .is_some_and(|b| {
-                                            b.children.iter().any(|s| {
-                                                s.name.ends_with("Border") && s.a("type") != "NONE"
-                                            }) || b
-                                                .find("winBrush")
-                                                .is_some_and(|f| f.a("faceColor") != "none")
-                                        })
-                                })
-                        })
-                })
+            c.child("subList").is_some_and(|l| {
+                l.a("savedColumns") == "1"
+                    || l.children_named("p").any(|p| {
+                        Self::items(p)
+                            .iter()
+                            .any(|i| !matches!(i.kind, ItemKind::Char(_) | ItemKind::Tab(_)))
+                            || self.doc.paras.get(p.a("paraPrIDRef")).is_some_and(|s| {
+                                s.child("breakSetting").is_some_and(|b| {
+                                    ["keepLines", "keepWithNext", "widowOrphan"]
+                                        .iter()
+                                        .any(|k| b.a(k) == "1")
+                                }) || s
+                                    .child("border")
+                                    .and_then(|b| self.doc.borders.get(b.a("borderFillIDRef")))
+                                    .is_some_and(|b| {
+                                        b.children.iter().any(|s| {
+                                            s.name.ends_with("Border") && s.a("type") != "NONE"
+                                        }) || b
+                                            .find("winBrush")
+                                            .is_some_and(|f| f.a("faceColor") != "none")
+                                    })
+                            })
+                    })
+            })
         }) {
+            return Ok(false);
+        }
+        let row_bands = bands::ranges(&cells, header_rows, rh.len());
+        let has_merged = row_bands.iter().any(|(first, last)| last - first > 1);
+        if has_merged
+            && (!self.footnotes.is_empty()
+                || !self.continued_notes.is_empty()
+                || (self.column_top() - self.top).abs() > 0.01)
+        {
             return Ok(false);
         }
         let outside = margin(n, "outMargin");
@@ -141,7 +153,20 @@ impl<'a> Engine<'a> {
         }
         let defaults = margin(n, "inMargin");
         let mut rows = Vec::new();
-        for row in header_rows..rh.len() {
+        for (first, last) in row_bands {
+            if last - first > 1 {
+                let height = rh[first..last].iter().sum::<f64>();
+                if height > maximum + 0.01 {
+                    return Ok(false);
+                }
+                rows.push(Row {
+                    cells: Vec::new(),
+                    minimum: height,
+                    band: Some((first, last)),
+                });
+                continue;
+            }
+            let row = first;
             let mut content = Vec::new();
             let mut minimum = 0f64;
             for c in cells
@@ -178,7 +203,11 @@ impl<'a> Engine<'a> {
             rows.push(Row {
                 cells: content,
                 minimum,
+                band: None,
             });
+        }
+        if rows.is_empty() || rows.iter().all(Row::done) {
+            return Ok(false);
         }
         let declared = if n.a("nativeDeclaredHeight").is_empty() {
             val(n.child("sz"), "height")
@@ -189,6 +218,23 @@ impl<'a> Engine<'a> {
         // Preserve explicit extra table height with the existing vector paginator.
         // Assigning it to the final row can manufacture a header-only page.
         if declared > natural + 0.01 {
+            return Ok(false);
+        }
+        let cap = caption_extent(n);
+        if has_merged
+            && !plan::merged_bands_fit(
+                &rows,
+                plan::Budget {
+                    first_top: top,
+                    next_top: self.top + outside[2],
+                    bottom: self.ph - self.bottom,
+                    header: header_height,
+                    outside_bottom: outside[3],
+                    caption_top: cap[2],
+                    caption_bottom: cap[3],
+                },
+            )
+        {
             return Ok(false);
         }
         let mut header = n.clone();
@@ -212,7 +258,6 @@ impl<'a> Engine<'a> {
         below
             .children
             .retain(|c| c.name != "caption" || c.a("side") == "BOTTOM");
-        let cap = caption_extent(n);
         let mut row = 0usize;
         let mut page_top = top;
         let mut painted = false;
@@ -226,6 +271,10 @@ impl<'a> Engine<'a> {
             if row == rows.len() {
                 break;
             }
+            if rows[row].done() {
+                row += 1;
+                continue;
+            }
             let reserve = self.footnote_reservation(&[], x);
             let available = self.ph
                 - self.bottom
@@ -238,44 +287,7 @@ impl<'a> Engine<'a> {
             } else {
                 available
             };
-            let full = rows[row].remaining() <= last_room + 0.01;
-            let mut takes: Vec<_> = rows[row]
-                .cells
-                .iter()
-                .map(|c| {
-                    if full {
-                        c.flow.len() - c.at
-                    } else {
-                        c.fit(last_room)
-                    }
-                })
-                .collect();
-            // A fixed-height row may outlive its text. Retain the final visible
-            // line for its last fragment instead of creating a header-only tail.
-            if !full
-                && rows[row].minimum > last_room + 0.01
-                && takes
-                    .iter()
-                    .zip(&rows[row].cells)
-                    .all(|(take, c)| *take == c.flow.len() - c.at)
-                && let Some(i) = takes.iter().rposition(|take| *take > 0)
-            {
-                takes[i] -= 1;
-            }
-            let content = takes
-                .iter()
-                .zip(&rows[row].cells)
-                .map(|(take, c)| c.required(*take))
-                .fold(0., f64::max);
-            let height = if full {
-                rows[row].remaining()
-            } else {
-                content.max(rows[row].minimum.min(last_room.max(0.)))
-            };
-            if height <= 0.1
-                || (takes.iter().all(|n| *n == 0)
-                    && rows[row].cells.iter().any(|c| c.at < c.flow.len()))
-            {
+            let Some(step) = plan::fit(&rows[row], last_room) else {
                 anyhow::ensure!(
                     painted || top > self.top + outside[2] + cap[2] + 0.1 || reserve > 0.,
                     "Native table line cannot fit a page"
@@ -289,7 +301,8 @@ impl<'a> Engine<'a> {
                 page_top = top;
                 painted = false;
                 continue;
-            }
+            };
+            let height = step.height;
             if !painted {
                 if first {
                     self.paint_captions(&above, x, top, w, 0.)?;
@@ -303,44 +316,48 @@ impl<'a> Engine<'a> {
                 top += header_height;
                 painted = true;
             }
-            for (cell, take) in rows[row].cells.iter_mut().zip(takes) {
-                self.border(
-                    cell.node.a("borderFillIDRef"),
-                    x + cell.x,
-                    top,
-                    cell.width,
-                    height,
-                );
-                if take > 0 {
-                    let list = cell.node.child("subList").unwrap();
-                    let content = cell
-                        .content_height(take)
-                        .max(cell.ink_height(take) - cell.margin[3]);
-                    let spare = (height - cell.margin[2] - cell.margin[3] - content).max(0.);
-                    let alignment = match list.a("vertAlign") {
-                        "CENTER" => spare / 2.,
-                        "BOTTOM" => spare,
-                        _ => 0.,
-                    };
-                    let origin = if cell.at == 0 {
-                        0.
-                    } else {
-                        cell.flow[cell.at].2
-                    };
-                    self.depth += 1;
-                    for (p, i, y, _) in &cell.flow[cell.at..cell.at + take] {
-                        self.line(
-                            p,
-                            *i,
-                            x + cell.x + cell.margin[0],
-                            top + cell.margin[2] + alignment + y
-                                - origin
-                                - lines(p)[*i].n("vertpos") / 100.,
-                            cell.width - cell.margin[0] - cell.margin[1],
-                        )?;
+            if let Some(band) = rows[row].band {
+                self.paint_native_row_band(n, band, x, top, cw, rh)?;
+            } else {
+                for (cell, take) in rows[row].cells.iter_mut().zip(step.takes) {
+                    self.border(
+                        cell.node.a("borderFillIDRef"),
+                        x + cell.x,
+                        top,
+                        cell.width,
+                        height,
+                    );
+                    if take > 0 {
+                        let list = cell.node.child("subList").unwrap();
+                        let content = cell
+                            .content_height(take)
+                            .max(cell.ink_height(take) - cell.margin[3]);
+                        let spare = (height - cell.margin[2] - cell.margin[3] - content).max(0.);
+                        let alignment = match list.a("vertAlign") {
+                            "CENTER" => spare / 2.,
+                            "BOTTOM" => spare,
+                            _ => 0.,
+                        };
+                        let origin = if cell.at == 0 {
+                            0.
+                        } else {
+                            cell.flow[cell.at].2
+                        };
+                        self.depth += 1;
+                        for (p, i, y, _) in &cell.flow[cell.at..cell.at + take] {
+                            self.line(
+                                p,
+                                *i,
+                                x + cell.x + cell.margin[0],
+                                top + cell.margin[2] + alignment + y
+                                    - origin
+                                    - lines(p)[*i].n("vertpos") / 100.,
+                                cell.width - cell.margin[0] - cell.margin[1],
+                            )?;
+                        }
+                        self.depth -= 1;
+                        cell.at += take;
                     }
-                    self.depth -= 1;
-                    cell.at += take;
                 }
             }
             rows[row].minimum = (rows[row].minimum - height).max(0.);
@@ -365,6 +382,11 @@ impl<'a> Engine<'a> {
         self.split_caption_handled = n.child("caption").is_some();
         self.flow_floor = Some((self.pages.len(), self.last_table_end, false));
         self.report.warnings.insert("Native plain-text rows paginated with fragment-local cell padding and vertical alignment".into());
+        if has_merged {
+            self.report.warnings.insert(
+                "Native merged row bands kept unbroken after fragment-layout preflight".into(),
+            );
+        }
         Ok(true)
     }
     #[allow(clippy::too_many_arguments)]
