@@ -73,7 +73,7 @@ Page coordinate modules:
 - `layout/table_headers.rs`: explicit complete header bands, merged-cell boundaries and legacy first-row fallback shared by table pagination paths.
 
 Native saved-layout recovery:
-- `layout/native_cell_cache.rs`: bounded plain-text underflow recovery with preserved vertical metrics.
+- `layout/native_cell_cache.rs`: bounded native soft-line recovery across automatic cache resets, with preserved vertical metrics and no increase in line count.
 - `layout/native_paragraph_cache.rs`: native root paragraph wrapping and section-local height propagation.
 - `layout/native_table_rows.rs`: fragment-local plain-text rows, repeated complete headers, padding and vertical alignment; merged body rows and notes retain the vector path.
 - `layout/local_flow.rs`: nested text measurement including the height of TOP_AND_BOTTOM floating objects.

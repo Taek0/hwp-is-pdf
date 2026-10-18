@@ -21,10 +21,10 @@ impl<'a> Engine<'a> {
         }
         let mut base = n.clone();
         let mut changed = self.repair_nested_saved_tables(&mut base)?;
-        if base.a("binaryHwp") == "1" && self.repair_native_cell_underflow(&mut base)? {
+        if base.a("binaryHwp") == "1" && self.repair_native_cell_cache(&mut base)? {
             changed = true;
             self.report.warnings.insert(
-                "Rebuilt overlong native plain-text cell caches after resolving font metrics"
+                "Rebuilt native plain-text cell line caches after resolving fonts and margins"
                     .into(),
             );
         }

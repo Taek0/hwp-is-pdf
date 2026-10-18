@@ -80,14 +80,34 @@ fn flowing_lines(list: &Node) -> Vec<(&Node, usize, f64)> {
     let mut previous_text = false;
     for p in list.children_named("p") {
         let has_text = !text(p).trim().is_empty();
-        for (i, l) in lines(p).iter().enumerate() {
+        let cached = lines(p);
+        let mut recovering_stalled = false;
+        for (i, l) in cached.iter().enumerate() {
             let y = l.n("vertpos") / 100.;
+            // A stalled complete line is distinct from another horizontal
+            // segment of the same line. Retain its authored leading.
+            let separate_line = i > 0
+                && l.u("textpos") > cached[i - 1].u("textpos")
+                && l.n("horzpos") == cached[i - 1].n("horzpos")
+                && (l.u("flags") == 0 || l.u("flags") & (1 << 17) != 0)
+                && (cached[i - 1].u("flags") == 0 || cached[i - 1].u("flags") & (1 << 18) != 0);
             if last
                 .is_some_and(|last| y < last || (i == 0 && y == last && has_text && previous_text))
             {
                 shift = end - y;
+                recovering_stalled = false;
             }
-            let actual = y + shift;
+            if separate_line && y == cached[i - 1].n("vertpos") / 100. {
+                recovering_stalled = true;
+            }
+            let mut actual = y + shift;
+            if separate_line && recovering_stalled {
+                if actual < end {
+                    actual = end;
+                } else {
+                    recovering_stalled = false;
+                }
+            }
             out.push((p, i, actual));
             end = actual + (l.n("vertsize") + l.n("spacing")) / 100.;
             last = Some(y);
@@ -146,6 +166,32 @@ fn caption_extent(n: &Node) -> [f64; 4] {
 #[cfg(test)]
 mod regression_tests {
     use super::*;
+    #[test]
+    fn advancing_cached_lines_keep_their_authored_vertical_positions() {
+        let n=crate::model::xml(br#"<subList><p><run><t>AB</t></run><linesegarray><lineseg textpos="0" vertpos="0" horzpos="0" vertsize="1000" spacing="600"/><lineseg textpos="1" vertpos="900" horzpos="0" vertsize="1000" spacing="600"/></linesegarray></p></subList>"#).unwrap();
+        assert_eq!(
+            flowing_lines(&n).iter().map(|l| l.2).collect::<Vec<_>>(),
+            vec![0., 9.]
+        );
+    }
+    #[test]
+    fn stalled_lines_rejoin_the_source_grid_without_accumulating_a_shift() {
+        let n=crate::model::xml(br#"<subList><p><run><t>ABC</t></run><linesegarray><lineseg textpos="0" vertpos="0" horzpos="0" vertsize="1000" spacing="600"/><lineseg textpos="1" vertpos="0" horzpos="0" vertsize="1000" spacing="600"/><lineseg textpos="2" vertpos="1600" horzpos="0" vertsize="1000" spacing="600"/></linesegarray></p><p><run><t>D</t></run><linesegarray><lineseg textpos="0" vertpos="4800" horzpos="0" vertsize="1000" spacing="600"/></linesegarray></p></subList>"#).unwrap();
+        assert_eq!(
+            flowing_lines(&n).iter().map(|l| l.2).collect::<Vec<_>>(),
+            vec![0., 16., 32., 48.]
+        );
+    }
+    #[test]
+    fn repeated_complete_lines_keep_leading_without_moving_parallel_segments() {
+        for (x, columns, expected) in [(0, 0, 16.), (2000, 0, 0.), (0, 1, 0.)] {
+            let n=crate::model::xml(format!(r#"<subList savedColumns="{columns}"><p><run><t>AB</t></run><linesegarray><lineseg textpos="0" vertpos="0" horzpos="0" vertsize="1000" spacing="600" flags="393216"/><lineseg textpos="1" vertpos="0" horzpos="{x}" vertsize="1000" spacing="600" flags="393216"/></linesegarray></p></subList>"#).as_bytes()).unwrap();
+            let flow = flowing_lines(&n);
+            assert_eq!(flow[0].2, 0.);
+            assert_eq!(flow[1].2, expected);
+        }
+    }
+
     use crate::model::xml;
     #[test]
     fn stale_textbox_height_uses_current_geometry_and_content() {

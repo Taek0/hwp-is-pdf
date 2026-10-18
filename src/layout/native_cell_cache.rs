@@ -1,8 +1,8 @@
-//! Recover unnecessary saved cell lines when resolved fonts fit fewer lines.
+//! Recover native cell line boundaries when resolved fonts fit no more lines.
 //! Retain source vertical metrics, explicit breaks, and inter-paragraph gaps.
 use super::*;
 impl<'a> Engine<'a> {
-    pub(super) fn repair_native_cell_underflow(&mut self, table: &mut Node) -> Result<bool> {
+    pub(super) fn repair_native_cell_cache(&mut self, table: &mut Node) -> Result<bool> {
         let defaults = margin(table, "inMargin");
         let mut changed = false;
         for row in table.children.iter_mut().filter(|n| n.name == "tr") {
@@ -27,13 +27,13 @@ impl<'a> Engine<'a> {
                             || Self::items(p)
                                 .iter()
                                 .any(|i| !matches!(i.kind, ItemKind::Char(_)))
-                            || lines(p)
-                                .windows(2)
-                                .any(|w| w[1].n("vertpos") < w[0].n("vertpos"))
                     })
                 {
                     continue;
                 }
+                // Cell-local Y can reset at an automatic page boundary. Rebuild
+                // continuous positions before replacing soft line boundaries;
+                // explicit breaks and nested columns are excluded above.
                 let flow = flowing_lines(list);
                 let mut replacements = Vec::new();
                 let mut any = false;
@@ -67,7 +67,13 @@ impl<'a> Engine<'a> {
                         }
                         let units = self.paragraph_units(p)?;
                         let wrapped = crate::reflow::wrap(&units, width, &settings)?;
-                        if wrapped.len() < saved.len() {
+                        if wrapped.len() <= saved.len()
+                            && (wrapped.len() < saved.len()
+                                || wrapped
+                                    .iter()
+                                    .zip(&saved)
+                                    .any(|(a, b)| a.pos != b.u("textpos")))
+                        {
                             starts = Some(
                                 wrapped
                                     .iter()
