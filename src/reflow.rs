@@ -106,7 +106,7 @@ fn opportunity(a: Option<char>, b: Option<char>, s: &Settings) -> bool {
         return false;
     };
     if "([{<〈《「『【（［｛".contains(a)
-        || b.is_some_and(|c| ",.!?:;)]}>〉》」』】、。，！？：；）］｝".contains(c))
+        || b.is_some_and(|c| ",.!?:;)]}>〉》」』】、。，！？：；）］｝…‥".contains(c))
     {
         return false;
     }
@@ -425,6 +425,27 @@ fn wrap_exclusion(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn ellipsis_keeps_a_preceding_character_at_the_line_start_boundary() {
+        for mark in ['…', '‥'] {
+            let units: Vec<_> = ['가', '나', '다', mark]
+                .into_iter()
+                .enumerate()
+                .map(|(pos, ch)| Unit {
+                    pos,
+                    ch: Some(ch),
+                    width: 10.,
+                    em: 10.,
+                    ..Default::default()
+                })
+                .collect();
+            let wrapped = wrap(&units, 30., &Settings::default()).unwrap();
+            assert_eq!(
+                wrapped.iter().map(|l| l.pos).collect::<Vec<_>>(),
+                vec![0, 2]
+            );
+        }
+    }
     #[test]
     fn native_hanging_indent_keeps_first_line_at_left_margin() {
         let p=crate::model::xml(br#"<paraPr binaryHwp="1"><margin><left value="500"/><intent value="-1500"/></margin></paraPr>"#).unwrap();
