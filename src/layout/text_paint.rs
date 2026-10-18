@@ -454,7 +454,12 @@ impl<'a> Engine<'a> {
                             .iter()
                             .any(|i| matches!(i.kind,ItemKind::Char(c) if !c.is_whitespace()))
                     {
-                        line_y = self.last_table_end;
+                        line_y = self.last_table_end
+                            + if n.child("pos").is_some_and(|p| p.a("treatAsChar") != "1") {
+                                margin(n, "outMargin")[3]
+                            } else {
+                                0.
+                            };
                         let reserve = self.footnote_reservation(&[], ox);
                         if line_y + seg.n("vertsize") / 100. > self.ph - self.bottom - reserve {
                             self.finish()?;

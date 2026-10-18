@@ -1,6 +1,6 @@
 # Current-corpus validation — 2026-10-18
 
-Stage 47 converts 53 unique HWP5/HWPX documents into 260 pages. All 217 Rust
+Stage 48 converts 53 unique HWP5/HWPX documents into 260 pages. All 218 Rust
 tests and all-target Clippy pass. Source hashes are unchanged. All four geometry
 categories, missing-glyph warnings and unresolved link/reference warnings are
 empty. Stage 42 rasterized all 260 pages. Stage 43 changes six PDFs / 80 pages;
@@ -125,6 +125,18 @@ including the original math document and its four supplied variants, are
 byte-identical to stage 46. The four changed documents retain page counts and
 have zero geometry findings; their changed pages were reviewed as images.
 
+## Outside spacing after continued tables
+
+Floating tables now retain their bottom outside margin when they continue onto
+another page. The rule applies both to a following paragraph and to text after
+the table in the same paragraph. The regression probe first demonstrated a
+missing 15pt gap, then passed both paths after the correction.
+
+In the report, the following text starts at 405.507pt on page 4 (Hancom 405.612),
+430.079pt on page 20 (430.092), and 744.099pt on page 47 (744.132). All 53 files
+retain page counts and zero geometry findings. Three PDFs change, with eight
+changed page rasters; the remaining 50 PDFs are byte-identical to stage 47.
+
 ## Still active
 
 The report remains 50 pages, and its research table remains on pages 46–47.
@@ -134,10 +146,10 @@ endings and some cell/footnote placement still differ. Geometry QA does not
 catch these. Continue reference comparison and general layout fixes; the user's
 request to resolve current document problems is not complete.
 
-Latest artifacts: `output/roadmap/47-cell-line-boundaries/`, including `final/`,
-`all-verification.json`, `report-page-comparison.json`, `final-tests.log`,
-`final-clippy.log`, `changed-pages.json`, `page-images/` and
-`cell-continuation.png`.
+Latest artifacts: `output/roadmap/48-table-outside-margin/`, including `regression/`,
+`all-verification.json`, `tests.log`, `clippy.log`, `changed-pages.json`,
+`page-images/` and `margin-comparison.png`. The last per-page text audit remains
+in stage 47.
 The FAQ source-cache evidence remains in stage 42.
 
 Hancom explains URC indent units and hanging-indent semantics at:

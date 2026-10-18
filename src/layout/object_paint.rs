@@ -437,11 +437,7 @@ impl<'a> Engine<'a> {
                             } else {
                                 caption_extent(n)[3]
                             }
-                            + if !inline && self.pages.len() == previous_page {
-                                m[3]
-                            } else {
-                                0.
-                            },
+                            + if !inline { m[3] } else { 0. },
                         self.pages.len() > previous_page,
                     ));
                 }
