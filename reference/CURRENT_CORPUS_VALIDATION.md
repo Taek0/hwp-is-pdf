@@ -1,6 +1,6 @@
 # Current-corpus validation — 2026-10-18
 
-Stage 50 converts 53 unique HWP5/HWPX documents into 260 pages. All 225 Rust
+Stage 51 converts 53 unique HWP5/HWPX documents into 260 pages. All 227 Rust
 tests and all-target Clippy pass. Source hashes are unchanged. All four geometry
 categories, missing-glyph warnings and unresolved link/reference warnings are
 empty. Stage 42 rasterized all 260 pages. Stage 43 changes six PDFs / 80 pages;
@@ -176,18 +176,35 @@ The other 52 PDFs are byte-identical. Page count and geometry findings remain
 a focused follow-up also verifies that parallel line segments reserve no gap.
 This is an empirically validated native-row rule, not a claim about every writer.
 
+## Note-bearing body paragraphs across cached pages
+
+Same-count line-cache recovery now admits footnote/endnote markers whose widths
+are measured by the existing annotation path. Original Y slots, line heights,
+baselines and leading are retained. Recovered text must keep every annotation in
+its original cached page band; paragraph/line-count changes requiring note
+repagination remain outside this conservative path. Explicit breaks, other
+controls and parallel cached segments retain their existing handling.
+
+Report page-pair differences at 27–28, 31–32 and 44–45 are removed. Its 94 note
+bounds are exactly identical to stage 50; only body line endings change. Eight
+page rasters (25,27,28,31,32,43,44,45) were rendered and reviewed. All other 52 PDFs
+are byte-identical. The corpus remains 53 files / 260 pages with zero geometry
+findings, and 227 tests plus all-target Clippy pass. Thirty-nine of the report's
+50 pages now have matching per-page Hangul multisets; this is not a pixel metric.
+
 ## Still active
 
 The report remains 50 pages, and its research table remains on pages 46–47.
-There are still per-page text differences around pages 4–5, 27–28 and 31–32,
-and especially the merged body cells with notes on pages 35–45. Finer line
+There are still per-page text differences around pages 4–5 and the merged body
+cells with notes on pages 35–43. Finer line
 endings and some cell/footnote placement still differ. Geometry QA does not
 catch these. Continue reference comparison and general layout fixes; the user's
 request to resolve current document problems is not complete.
 
-Latest artifacts: `output/roadmap/50-cell-continuation-spacing/`, including
-`regression-final/`, `all-verification.json`, `tests.log`, `clippy.log`,
-`report-page-comparison.json`, `page-images/` and `paragraph-cut-comparison.png`.
+Latest artifacts: `output/roadmap/51-cross-page-line-cache/`, including
+`regression/`, `all-verification.json`, `tests.log`, `clippy.log`,
+`report-page-comparison.json`, `note-preservation.json`, `page-images/` and
+`note-paragraph-comparison.png`.
 The FAQ source-cache evidence remains in stage 42.
 
 Hancom explains URC indent units and hanging-indent semantics at:
