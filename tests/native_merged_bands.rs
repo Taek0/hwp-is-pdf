@@ -6,7 +6,7 @@ use hwp_engine::{
 };
 use std::path::Path;
 #[test]
-fn unbroken_merged_bands_use_preflight_and_rejected_bands_do_not_duplicate_content() {
+fn merged_bands_use_preflight_and_split_without_duplicating_content() {
     for fits in [true, false] {
         let mut d = Document::open(
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("samples/reflow/contour-single.hwpx"),
@@ -71,8 +71,11 @@ fn unbroken_merged_bands_use_preflight_and_rejected_bands_do_not_duplicate_conte
             .report
             .warnings
             .iter()
-            .any(|w| w.contains("merged row bands kept unbroken"));
-        assert_eq!(used, fits);
+            .any(|w| w.contains("merged row bands paginated"));
+        assert!(
+            used,
+            "both fitting and split bands must use the preflighted path"
+        );
         let texts: Vec<String> = e
             .pages
             .iter()
@@ -107,4 +110,81 @@ fn unbroken_merged_bands_use_preflight_and_rejected_bands_do_not_duplicate_conte
         assert!(q.outside_page.is_empty());
         assert_eq!(original, d.sections);
     }
+}
+
+#[test]
+fn long_spanning_cell_keeps_every_line_once_across_remaining_row_grids() {
+    let mut d = Document::open(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("samples/reflow/contour-single.hwpx"),
+    )
+    .unwrap();
+    d.header.attrs.insert("binaryHwp".into(), "1".into());
+    d.paras.insert(
+        "plain".into(),
+        xml(br#"<paraPr><align horizontal="LEFT"/></paraPr>"#).unwrap(),
+    );
+    d.chars
+        .get_mut("0")
+        .unwrap()
+        .attrs
+        .insert("height".into(), "1000".into());
+    let p = |label: String, y: usize| {
+        format!(
+            r#"<p paraPrIDRef="plain"><run charPrIDRef="0"><t>{label}</t></run><linesegarray><lineseg textpos="0" vertpos="{y}" vertsize="1000" baseline="850" spacing="600" horzsize="8800"/></linesegarray></p>"#
+        )
+    };
+    let cell = |r: usize, c: usize, span: usize, body: String| {
+        format!(
+            r#"<tc header="0" borderFillIDRef="1"><cellAddr rowAddr="{r}" colAddr="{c}"/><cellSpan rowSpan="{span}" colSpan="1"/><cellSz width="9000" height="0"/><subList vertAlign="CENTER">{body}</subList></tc>"#
+        )
+    };
+    let left = cell(
+        0,
+        0,
+        2,
+        (0..23)
+            .map(|i| p(format!("LINE{i:02}"), i * 1600))
+            .collect(),
+    );
+    let upper = cell(0, 1, 1, p("UPPER".into(), 0));
+    let lower = cell(1, 1, 1, p("LOWER".into(), 0));
+    d.sections=vec![xml(format!(r#"<sec><p paraPrIDRef="plain"><run charPrIDRef="0"><secPr><pagePr width="22000" height="22000"><margin left="2000" right="2000" top="2000" bottom="2000"/></pagePr></secPr><tbl id="long-band" binaryHwp="1" pageBreak="TABLE" repeatHeader="0" rowCnt="2" colCnt="2"><sz width="18000" height="0"/><pos treatAsChar="0" horzRelTo="PARA" vertRelTo="PARA"/><inMargin left="100" right="100" top="100" bottom="100"/><tr>{left}{upper}</tr><tr>{lower}</tr></tbl></run><linesegarray><lineseg textpos="0" vertpos="0" vertsize="1000" baseline="850" horzsize="18000"/></linesegarray></p></sec>"#).as_bytes()).unwrap()];
+    d.masters.clear();
+    let original = d.sections.clone();
+    let mut e = Engine::new(
+        &d,
+        Path::new(if cfg!(windows) {
+            "C:/Windows/Fonts"
+        } else {
+            "/mnt/c/Windows/Fonts"
+        }),
+    );
+    e.render().unwrap();
+    assert_eq!(e.pages.len(), 3);
+    assert!(
+        e.report
+            .warnings
+            .iter()
+            .any(|s| s.contains("merged row bands paginated"))
+    );
+    let text: String = e
+        .pages
+        .iter()
+        .flat_map(|p| &p.ops)
+        .filter_map(|o| match o {
+            Op::Text { text, .. } | Op::Shaped { text, .. } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect();
+    for i in 0..23 {
+        assert_eq!(text.matches(&format!("LINE{i:02}")).count(), 1);
+    }
+    for label in ["UPPER", "LOWER"] {
+        assert_eq!(text.matches(label).count(), 1);
+    }
+    assert_eq!(d.sections, original);
+    let q = qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
+    assert!(
+        q.text_overlaps.is_empty() && q.border_crossings.is_empty() && q.outside_page.is_empty()
+    );
 }

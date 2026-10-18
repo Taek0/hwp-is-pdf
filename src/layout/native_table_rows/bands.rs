@@ -27,35 +27,6 @@ pub(super) fn ranges(cells: &[&Node], first: usize, count: usize) -> Vec<(usize,
     }
     out
 }
-impl<'a> Engine<'a> {
-    pub(super) fn paint_native_row_band(
-        &mut self,
-        n: &Node,
-        band: (usize, usize),
-        x: f64,
-        y: f64,
-        cw: &[f64],
-        rh: &[f64],
-    ) -> Result<()> {
-        for c in n.children_named("tr").flat_map(|r| r.children_named("tc")) {
-            let a = c.child("cellAddr").unwrap();
-            let row = a.u("rowAddr");
-            if row < band.0 || row >= band.1 {
-                continue;
-            }
-            let col = a.u("colAddr");
-            let span = c.child("cellSpan").unwrap();
-            let xx = x + cw[..col].iter().sum::<f64>();
-            let yy = y + rh[band.0..row].iter().sum::<f64>();
-            let width = cw[col..col + span.u("colSpan")].iter().sum();
-            let height = rh[row..row + span.u("rowSpan")].iter().sum();
-            self.border(c.a("borderFillIDRef"), xx, yy, width, height);
-            self.paint_whole_cell_content(n, c, xx, yy, width, height)?;
-        }
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

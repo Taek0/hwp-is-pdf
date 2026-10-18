@@ -1,6 +1,6 @@
 # Current-corpus validation — 2026-10-18
 
-Stage 52 converts 53 unique HWP5/HWPX documents into 260 pages. All 228 Rust
+Stage 54 converts 53 unique HWP5/HWPX documents into 260 pages. All 230 Rust
 tests and all-target Clippy pass. Source hashes are unchanged. All four geometry
 categories, missing-glyph warnings and unresolved link/reference warnings are
 empty. Stage 42 rasterized all 260 pages. Stage 43 changes six PDFs / 80 pages;
@@ -211,19 +211,45 @@ All were rendered and reviewed. The other 50 PDFs are byte-identical to stage 51
 The 53 input hashes still match the original manifest, and the full corpus stays
 at 260 pages with zero geometry findings. All 228 tests and all-target Clippy pass.
 
+## Remaining-cell grids for split merged bands
+
+Closed merge bands now track each cell's unconsumed lines and minimum height.
+A fragment owns its padding and vertical alignment; the remaining row grid is
+remeasured after a cut. A pure preflight clones this state before any page is
+painted. Complete rows retain their measured grid heights, preventing small
+per-row height differences from accumulating across pages. Native table notes
+are deferred once to the table's final fragment; multirow headers with notes
+and oversized final note-bearing rows retain the established vector fallback.
+
+The new module is `src/layout/native_table_rows/merged.rs`. Synthetic checks cover
+both split fixed-height bands and a long spanning cell across three pages, with
+every source label/line appearing once, no geometry findings, and immutable input.
+The report's existing tests still require 50 pages, the research table on 46–47,
+and note 44's 3+1 lines across pages 44–45.
+
+Ellipsis/two-dot leaders can no longer start a wrapped line alone. Retaining the
+preceding character removes the final one-character page-pair difference at
+41–42. All 50 report pages now match Hancom's per-page Hangul multisets; this does
+not assert identical line endings or glyph metrics within each page.
+
+The full 53-file / 260-page corpus has zero geometry findings. Only the report
+and notice change: 25 page rasters were rendered and reviewed, and the other 51
+PDFs are byte-identical to stage 52. All 230 tests and all-target Clippy pass.
+
 ## Still active
 
 The report remains 50 pages, and its research table remains on pages 46–47.
-There are still per-page text differences in the merged body cells with notes
-on pages 35–43. Finer line
-endings and some cell/footnote placement still differ. Geometry QA does not
-catch these. Continue reference comparison and general layout fixes; the user's
-request to resolve current document problems is not complete.
+Its page-level Hangul distribution now matches the reference. Close inspection
+still finds narrow CJK corner brackets and some different line endings inside
+cells. In the reference those brackets select the symbol face; the current
+classifier sends them through OTHER. Continue font-slot and per-line comparison,
+then audit all supplied references. Geometry and character counts alone cannot
+establish that the user's request is complete.
 
-Latest artifacts: `output/roadmap/52-legacy-latin-fallback/`, including
-`regression/`, `all-verification.json`, `tests-final.log`, `clippy.log`,
-`report-page-comparison.json`, `row-label-positions.json`, `page-images/` and
-`latin-font-comparison.png`.
+Latest artifacts: `output/roadmap/54-merged-cell-fragments/`, including
+`regression/`, `all-verification.json`, `tests.log`, `clippy.log`,
+`report-page-comparison.json`, `page-images/` and `merged-cell-comparison.png`.
+Stage 53's annotation-cell experiment produced identical PDFs and was reverted.
 The FAQ source-cache evidence remains in stage 42.
 
 Hancom explains URC indent units and hanging-indent semantics at:

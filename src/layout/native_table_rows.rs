@@ -1,8 +1,9 @@
-//! Fragment-local native plain-text rows and preflighted unbroken merged bands.
+//! Fragment-local native rows and preflighted remaining-cell merged grids.
 //! Each fragment owns its padding and vertical alignment; consumed cell text
 //! is not repeated on following pages.
 use super::*;
 mod bands;
+mod merged;
 mod plan;
 #[derive(Clone)]
 struct Cell<'b> {
@@ -74,16 +75,22 @@ impl Cell<'_> {
 struct Row<'b> {
     cells: Vec<Cell<'b>>,
     minimum: f64,
-    band: Option<(usize, usize)>,
+    band: Option<merged::Band<'b>>,
 }
 impl Row<'_> {
     fn remaining(&self) -> f64 {
+        if let Some(band) = &self.band {
+            return band.height();
+        }
         self.cells
             .iter()
             .map(|c| c.required(c.flow.len() - c.at))
             .fold(self.minimum, f64::max)
     }
     fn done(&self) -> bool {
+        if let Some(band) = &self.band {
+            return band.done();
+        }
         self.minimum <= 0.01 && self.cells.iter().all(|c| c.at == c.flow.len())
     }
 }
@@ -105,7 +112,6 @@ impl<'a> Engine<'a> {
             || n.a("reflowTable") == "1"
             || n.a("pageBreak") != "TABLE"
             || total <= self.ph - self.bottom - top
-            || n.find("footNote").is_some()
             || n.find("endNote").is_some()
             || !n.child("pos").is_some_and(|p| {
                 p.a("treatAsChar") == "0"
@@ -129,31 +135,45 @@ impl<'a> Engine<'a> {
             c.child("subList").is_some_and(|l| {
                 l.a("savedColumns") == "1"
                     || l.children_named("p").any(|p| {
-                        Self::items(p)
-                            .iter()
-                            .any(|i| !matches!(i.kind, ItemKind::Char(_) | ItemKind::Tab(_)))
-                            || self.doc.paras.get(p.a("paraPrIDRef")).is_some_and(|s| {
-                                s.child("breakSetting").is_some_and(|b| {
-                                    ["keepLines", "keepWithNext", "widowOrphan"]
-                                        .iter()
-                                        .any(|k| b.a(k) == "1")
-                                }) || s
-                                    .child("border")
-                                    .and_then(|b| self.doc.borders.get(b.a("borderFillIDRef")))
-                                    .is_some_and(|b| {
-                                        b.children.iter().any(|s| {
-                                            s.name.ends_with("Border") && s.a("type") != "NONE"
-                                        }) || b
-                                            .find("winBrush")
-                                            .is_some_and(|f| f.a("faceColor") != "none")
-                                    })
-                            })
+                        Self::items(p).iter().any(|i| {
+                            !matches!(i.kind, ItemKind::Char(_) | ItemKind::Tab(_))
+                                && !matches!(&i.kind,ItemKind::Control(n) if n.name=="footNote")
+                        }) || self.doc.paras.get(p.a("paraPrIDRef")).is_some_and(|s| {
+                            s.child("breakSetting").is_some_and(|b| {
+                                ["keepLines", "keepWithNext", "widowOrphan"]
+                                    .iter()
+                                    .any(|k| b.a(k) == "1")
+                            }) || s
+                                .child("border")
+                                .and_then(|b| self.doc.borders.get(b.a("borderFillIDRef")))
+                                .is_some_and(|b| {
+                                    b.children.iter().any(|s| {
+                                        s.name.ends_with("Border") && s.a("type") != "NONE"
+                                    }) || b
+                                        .find("winBrush")
+                                        .is_some_and(|f| f.a("faceColor") != "none")
+                                })
+                        })
                     })
             })
         }) {
             return Ok(false);
         }
         let row_bands = bands::ranges(&cells, header_rows, rh.len());
+        if cells.iter().any(|c| {
+            c.child("cellAddr").unwrap().u("rowAddr") < header_rows && c.find("footNote").is_some()
+        }) || n
+            .children_named("caption")
+            .any(|c| c.find("footNote").is_some())
+        {
+            return Ok(false);
+        }
+        let mut deferred_notes = Vec::new();
+        n.all("footNote", &mut deferred_notes);
+        if !deferred_notes.is_empty() && header_rows > 1 {
+            return Ok(false);
+        }
+        let final_reserve = self.footnote_reservation(&deferred_notes, x);
         let has_merged = row_bands.iter().any(|(first, last)| last - first > 1);
         if has_merged
             && (!self.footnotes.is_empty()
@@ -170,16 +190,25 @@ impl<'a> Engine<'a> {
         }
         let defaults = margin(n, "inMargin");
         let mut rows = Vec::new();
+        let mut natural = header_height;
         for (first, last) in row_bands {
             if last - first > 1 {
-                let height = rh[first..last].iter().sum::<f64>();
-                if height > maximum + 0.01 {
+                let band = merged::Band::new(self, &cells, defaults, cw, rh, first, last)?;
+                if band.cells.iter().any(|c| {
+                    c.cell.flow.iter().any(|(p, i, _, h)| {
+                        (lines(p)[*i].n("vertsize") / 100.).max(*h)
+                            + c.cell.margin[2]
+                            + c.cell.margin[3]
+                            > maximum
+                    })
+                }) {
                     return Ok(false);
                 }
+                natural += band.height();
                 rows.push(Row {
                     cells: Vec::new(),
-                    minimum: height,
-                    band: Some((first, last)),
+                    minimum: 0.,
+                    band: Some(band),
                 });
                 continue;
             }
@@ -217,9 +246,13 @@ impl<'a> Engine<'a> {
                     margin: m,
                 });
             }
+            natural += content
+                .iter()
+                .map(|c| c.required(c.flow.len()))
+                .fold(minimum, f64::max);
             rows.push(Row {
                 cells: content,
-                minimum,
+                minimum: minimum.max(rh[row]),
                 band: None,
             });
         }
@@ -231,10 +264,18 @@ impl<'a> Engine<'a> {
         } else {
             n.n("nativeDeclaredHeight") / 100.
         };
-        let natural = header_height + rows.iter().map(Row::remaining).sum::<f64>();
         // Preserve explicit extra table height with the existing vector paginator.
         // Assigning it to the final row can manufacture a header-only page.
         if declared > natural + 0.01 {
+            return Ok(false);
+        }
+        // Oversized final rows with deferred notes retain the vector paginator,
+        // which can reserve note space only on their eventual final fragment.
+        if !deferred_notes.is_empty()
+            && rows
+                .last()
+                .is_some_and(|r| r.remaining() > maximum - final_reserve)
+        {
             return Ok(false);
         }
         let cap = caption_extent(n);
@@ -249,6 +290,7 @@ impl<'a> Engine<'a> {
                     outside_bottom: outside[3],
                     caption_top: cap[2],
                     caption_bottom: cap[3],
+                    final_reserve,
                 },
             )
         {
@@ -300,7 +342,7 @@ impl<'a> Engine<'a> {
                 - reserve
                 - if painted { 0. } else { header_height };
             let last_room = if row + 1 == rows.len() {
-                (available - cap[3]).max(0.)
+                (available - cap[3] - final_reserve.max(reserve) + reserve).max(0.)
             } else {
                 available
             };
@@ -333,48 +375,13 @@ impl<'a> Engine<'a> {
                 top += header_height;
                 painted = true;
             }
-            if let Some(band) = rows[row].band {
-                self.paint_native_row_band(n, band, x, top, cw, rh)?;
+            if let (Some(band), Some(part)) = (&mut rows[row].band, &step.band) {
+                self.paint_merged_fragment(band, part, x, top)?;
+                band.consume(part);
             } else {
                 for (cell, take) in rows[row].cells.iter_mut().zip(step.takes) {
-                    self.border(
-                        cell.node.a("borderFillIDRef"),
-                        x + cell.x,
-                        top,
-                        cell.width,
-                        height,
-                    );
-                    if take > 0 {
-                        let list = cell.node.child("subList").unwrap();
-                        let content = cell
-                            .content_height(take)
-                            .max(cell.ink_height(take) - cell.margin[3]);
-                        let spare = (height - cell.margin[2] - cell.margin[3] - content).max(0.);
-                        let alignment = match list.a("vertAlign") {
-                            "CENTER" => spare / 2.,
-                            "BOTTOM" => spare,
-                            _ => 0.,
-                        };
-                        let origin = if cell.at == 0 {
-                            0.
-                        } else {
-                            cell.flow[cell.at].2
-                        };
-                        self.depth += 1;
-                        for (p, i, y, _) in &cell.flow[cell.at..cell.at + take] {
-                            self.line(
-                                p,
-                                *i,
-                                x + cell.x + cell.margin[0],
-                                top + cell.margin[2] + alignment + y
-                                    - origin
-                                    - lines(p)[*i].n("vertpos") / 100.,
-                                cell.width - cell.margin[0] - cell.margin[1],
-                            )?;
-                        }
-                        self.depth -= 1;
-                        cell.at += take;
-                    }
+                    self.paint_native_fragment_cell(cell, take, x, top, height)?;
+                    cell.at += take;
                 }
             }
             rows[row].minimum = (rows[row].minimum - height).max(0.);
@@ -394,6 +401,9 @@ impl<'a> Engine<'a> {
         if painted {
             self.native_row_fragment_bound(n, x, page_top, top, w, first_bound, first);
         }
+        let (nx, nw) = self.footnote_area(x);
+        self.footnotes
+            .extend(deferred_notes.into_iter().map(|n| (n.clone(), nx, nw)));
         self.paint_captions(&below, x, top, w, 0.)?;
         self.last_table_end = top + cap[3];
         self.split_caption_handled = n.child("caption").is_some();
@@ -401,10 +411,64 @@ impl<'a> Engine<'a> {
         self.report.warnings.insert("Native plain-text rows paginated with fragment-local cell padding and vertical alignment".into());
         if has_merged {
             self.report.warnings.insert(
-                "Native merged row bands kept unbroken after fragment-layout preflight".into(),
+                "Native merged row bands paginated from remaining cell content after fragment-layout preflight".into(),
             );
         }
         Ok(true)
+    }
+    fn paint_native_fragment_cell(
+        &mut self,
+        cell: &Cell<'_>,
+        take: usize,
+        x: f64,
+        top: f64,
+        height: f64,
+    ) -> Result<()> {
+        self.border(
+            cell.node.a("borderFillIDRef"),
+            x + cell.x,
+            top,
+            cell.width,
+            height,
+        );
+        if take == 0 {
+            return Ok(());
+        }
+        let list = cell.node.child("subList").unwrap();
+        let content = cell
+            .content_height(take)
+            .max(cell.ink_height(take) - cell.margin[3]);
+        let spare = (height - cell.margin[2] - cell.margin[3] - content).max(0.);
+        let alignment = match list.a("vertAlign") {
+            "CENTER" => spare / 2.,
+            "BOTTOM" => spare,
+            _ => 0.,
+        };
+        let origin = if cell.at == 0 {
+            0.
+        } else {
+            cell.flow[cell.at].2
+        };
+        let previous = self.note_rendering;
+        self.note_rendering = true;
+        self.depth += 1;
+        let result = (|| {
+            for (p, i, y, _) in &cell.flow[cell.at..cell.at + take] {
+                self.line(
+                    p,
+                    *i,
+                    x + cell.x + cell.margin[0],
+                    top + cell.margin[2] + alignment + y
+                        - origin
+                        - lines(p)[*i].n("vertpos") / 100.,
+                    cell.width - cell.margin[0] - cell.margin[1],
+                )?;
+            }
+            Ok(())
+        })();
+        self.depth -= 1;
+        self.note_rendering = previous;
+        result
     }
     #[allow(clippy::too_many_arguments)]
     fn native_row_fragment_bound(

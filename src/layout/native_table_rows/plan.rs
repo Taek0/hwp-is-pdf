@@ -2,13 +2,19 @@
 use super::*;
 pub(super) struct Fit {
     pub takes: Vec<usize>,
+    pub band: Option<merged::Fragment>,
     pub height: f64,
 }
 pub(super) fn fit(row: &Row<'_>, room: f64) -> Option<Fit> {
-    let full = row.remaining() <= room + 0.01;
-    if row.band.is_some() && !full {
-        return None;
+    if let Some(band) = &row.band {
+        let part = band.fit(room)?;
+        return Some(Fit {
+            takes: Vec::new(),
+            height: part.height,
+            band: Some(part),
+        });
     }
+    let full = row.remaining() <= room + 0.01;
     let mut takes: Vec<_> = row
         .cells
         .iter()
@@ -45,7 +51,11 @@ pub(super) fn fit(row: &Row<'_>, room: f64) -> Option<Fit> {
     {
         return None;
     }
-    Some(Fit { takes, height })
+    Some(Fit {
+        takes,
+        height,
+        band: None,
+    })
 }
 pub(super) struct Budget {
     pub first_top: f64,
@@ -55,8 +65,9 @@ pub(super) struct Budget {
     pub outside_bottom: f64,
     pub caption_top: f64,
     pub caption_bottom: f64,
+    pub final_reserve: f64,
 }
-/// Admit merged bands only when each stays unbroken in the exact plain-row flow.
+/// Simulate the exact plain-row and remaining-cell fragment flow before painting.
 /// Unsupported placement returns before any page, operation or note is mutated.
 pub(super) fn merged_bands_fit(source: &[Row<'_>], b: Budget) -> bool {
     let mut rows = source.to_vec();
@@ -74,13 +85,10 @@ pub(super) fn merged_bands_fit(source: &[Row<'_>], b: Budget) -> bool {
         }
         let available = b.bottom - top - b.outside_bottom - if painted { 0. } else { b.header };
         let room = if index + 1 == rows.len() {
-            (available - b.caption_bottom).max(0.)
+            (available - b.caption_bottom - b.final_reserve).max(0.)
         } else {
             available
         };
-        if rows[index].band.is_some() && rows[index].remaining() > room + 0.01 {
-            return false;
-        }
         let Some(step) = fit(&rows[index], room) else {
             if !painted && top <= b.next_top + (if first { b.caption_top } else { 0. }) + 0.1 {
                 return false;
@@ -95,6 +103,9 @@ pub(super) fn merged_bands_fit(source: &[Row<'_>], b: Budget) -> bool {
         if !painted {
             top += b.header;
             painted = true;
+        }
+        if let (Some(band), Some(part)) = (&mut rows[index].band, &step.band) {
+            band.consume(part);
         }
         for (cell, take) in rows[index].cells.iter_mut().zip(step.takes) {
             cell.at += take;
