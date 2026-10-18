@@ -29,7 +29,9 @@ impl<'a> Engine<'a> {
         } else if lower.contains("arial") || lower.contains("helvetica") {
             "Arial"
         } else if name == "HCI Poppy" {
-            "함초롬돋움"
+            // Supplied Hancom PDFs embed Batang for unavailable HCI Poppy
+            // Latin runs; the sans-serif substitute changed line endings.
+            "바탕"
         } else {
             "함초롬바탕"
         };
@@ -45,5 +47,42 @@ impl<'a> Engine<'a> {
             .warnings
             .insert(format!("Font substitution: {name} -> {file}"));
         self.fonts.get(file)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn missing_legacy_latin_face_matches_reference_metrics_without_overriding_installed_faces() {
+        let d = Document::open(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("samples/reflow/contour-single.hwpx"),
+        )
+        .unwrap();
+        let mut e = Engine::new(
+            &d,
+            Path::new(if cfg!(windows) {
+                "C:/Windows/Fonts"
+            } else {
+                "/mnt/c/Windows/Fonts"
+            }),
+        );
+        let installed = e.fonts.family("HCI Poppy", false, false).unwrap();
+        let id = e.document_font("HCI Poppy", false, false, None).unwrap();
+        if let Some(original) = installed {
+            assert_eq!(id, original);
+        } else {
+            let batang = e.fonts.family("바탕", false, false).unwrap().unwrap();
+            assert_eq!(id, batang);
+            // Hancom prints 4.512 + 7.140 + 4.512pt at 12pt. Its
+            // quantized widths differ from native outlines by about 0.03pt.
+            assert!((e.fonts.width(id, "(2)", 12.) - 16.164).abs() < 0.04);
+        }
+        let requested = e.fonts.get("HANDotum.ttf").unwrap();
+        assert_eq!(
+            e.document_font("HCI Poppy", false, false, Some("HANDotum.ttf"))
+                .unwrap(),
+            requested
+        );
     }
 }

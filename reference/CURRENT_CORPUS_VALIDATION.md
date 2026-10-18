@@ -1,6 +1,6 @@
 # Current-corpus validation — 2026-10-18
 
-Stage 51 converts 53 unique HWP5/HWPX documents into 260 pages. All 227 Rust
+Stage 52 converts 53 unique HWP5/HWPX documents into 260 pages. All 228 Rust
 tests and all-target Clippy pass. Source hashes are unchanged. All four geometry
 categories, missing-glyph warnings and unresolved link/reference warnings are
 empty. Stage 42 rasterized all 260 pages. Stage 43 changes six PDFs / 80 pages;
@@ -192,19 +192,38 @@ are byte-identical. The corpus remains 53 files / 260 pages with zero geometry
 findings, and 227 tests plus all-target Clippy pass. Thirty-nine of the report's
 50 pages now have matching per-page Hangul multisets; this is not a pixel metric.
 
+## Missing legacy Latin font
+
+When HCI Poppy is unavailable, the renderer now uses Batang. The supplied Hancom
+PDF embeds Batang for those Latin runs; the previous HCR Dotum substitute made
+parentheses and digits too narrow. Installed original faces and explicit font
+requests continue to take precedence. The native record's default name repeats
+HCI Poppy and does not provide a different installed substitute.
+
+At 12pt the reference's `(2)` glyph widths total about 16.164pt; native Batang
+outlines total 16.195pt. The remaining 0.031pt difference is print-width
+quantization, rather than a reason to rescale glyphs. This restores page 4's
+last word boundary, removing the page-pair difference at 4–5. Forty-one of the
+report's 50 pages now have matching per-page Hangul multisets.
+
+Three PDFs change (report, public FAQ and notice), with 57 changed page rasters.
+All were rendered and reviewed. The other 50 PDFs are byte-identical to stage 51.
+The 53 input hashes still match the original manifest, and the full corpus stays
+at 260 pages with zero geometry findings. All 228 tests and all-target Clippy pass.
+
 ## Still active
 
 The report remains 50 pages, and its research table remains on pages 46–47.
-There are still per-page text differences around pages 4–5 and the merged body
-cells with notes on pages 35–43. Finer line
+There are still per-page text differences in the merged body cells with notes
+on pages 35–43. Finer line
 endings and some cell/footnote placement still differ. Geometry QA does not
 catch these. Continue reference comparison and general layout fixes; the user's
 request to resolve current document problems is not complete.
 
-Latest artifacts: `output/roadmap/51-cross-page-line-cache/`, including
-`regression/`, `all-verification.json`, `tests.log`, `clippy.log`,
-`report-page-comparison.json`, `note-preservation.json`, `page-images/` and
-`note-paragraph-comparison.png`.
+Latest artifacts: `output/roadmap/52-legacy-latin-fallback/`, including
+`regression/`, `all-verification.json`, `tests-final.log`, `clippy.log`,
+`report-page-comparison.json`, `row-label-positions.json`, `page-images/` and
+`latin-font-comparison.png`.
 The FAQ source-cache evidence remains in stage 42.
 
 Hancom explains URC indent units and hanging-indent semantics at:
