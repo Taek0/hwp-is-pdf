@@ -246,7 +246,7 @@ impl<'a> Engine<'a> {
                     if let Some(adjust) = self.pair_kerning(&items[i], &items[i + 1], a, b) {
                         (units[i].width + adjust).max(0.)
                     } else {
-                        if self.doc.header.a("binaryHwp") == "1" {
+                        if self.doc.header.a("binaryHwp") == "1" || a.shear != 0. || b.shear != 0. {
                             text_metrics::compatible_advance(units[i].width, a, b)
                         } else {
                             units[i].width.max(a.ink_right - b.ink_left + 0.02)

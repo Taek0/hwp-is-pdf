@@ -142,12 +142,14 @@ impl<'a> Engine<'a> {
         let width = advance * scale + spacing;
         let face = ttf_parser::Face::parse(&self.fonts.list[font].bytes, 0).unwrap();
         let shear = if italic && !face.is_italic() {
-            12f64.to_radians().tan()
+            // The supplied Hancom print uses c/a = 0.25651/0.75.
+            // Preserve native italic faces; only synthesize the missing style.
+            20f64.to_radians().sin() * scale
         } else {
             0.
         };
         if shear != 0. {
-            self.report.warnings.insert("Italic without native italic face uses 12-degree synthetic slant; exact Hancom angle unverified".into());
+            self.report.warnings.insert("Italic without native italic face uses Hancom-calibrated shear scaled with character width".into());
         }
         let bb = crate::pdf::glyph_id(&face, c).and_then(|id| face.glyph_bounding_box(id));
         let unit = size / face.units_per_em() as f64;
@@ -286,5 +288,80 @@ impl<'a> Engine<'a> {
         }
         Self::normalize_field_items(&mut items);
         items
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn synthetic_italic_matches_reference_transform_without_replacing_native_italic() {
+        let mut d = Document::open(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("samples/reflow/contour-single.hwpx"),
+        )
+        .unwrap();
+        let mut style = d.chars["0"].clone();
+        style
+            .children
+            .retain(|c| !matches!(c.name.as_str(), "bold" | "italic"));
+        style.children.push(Node {
+            name: "italic".into(),
+            ..Default::default()
+        });
+        node_mut(&mut style, "fontRef")
+            .attrs
+            .insert("hangul".into(), "probe-ko".into());
+        node_mut(&mut style, "fontRef")
+            .attrs
+            .insert("latin".into(), "probe-en".into());
+        d.fonts
+            .insert(("HANGUL".into(), "probe-ko".into()), "함초롬바탕".into());
+        d.fonts.insert(
+            ("LATIN".into(), "probe-en".into()),
+            "Times New Roman".into(),
+        );
+        let mut narrow = style.clone();
+        node_mut(&mut narrow, "ratio")
+            .attrs
+            .insert("hangul".into(), "75".into());
+        d.chars.insert("narrow".into(), narrow);
+        let mut upright = style.clone();
+        upright.children.retain(|c| c.name != "italic");
+        upright.children.push(Node {
+            name: "bold".into(),
+            ..Default::default()
+        });
+        d.chars.insert("upright".into(), upright);
+        d.chars.insert("probe".into(), style);
+        let mut e = Engine::new(
+            &d,
+            Path::new(if cfg!(windows) {
+                "C:/Windows/Fonts"
+            } else {
+                "/mnt/c/Windows/Fonts"
+            }),
+        );
+        let ko = e.glyph('가', "probe").unwrap();
+        assert!((ko.shear - 0.25651 / 0.75).abs() < 0.00001);
+        assert!(
+            (ko.width - e.fonts.width(ko.font, "가", ko.size) * ko.scale - ko.tracking).abs()
+                < 0.00001
+        );
+        let narrow = e.glyph('가', "narrow").unwrap();
+        assert!((narrow.shear - ko.shear * 0.75).abs() < 0.00001);
+        let last = e.glyph('임', "probe").unwrap();
+        let next = e.glyph('진', "upright").unwrap();
+        assert_eq!(
+            text_metrics::compatible_advance(last.width, &last, &next),
+            last.width
+        );
+        assert!(text_metrics::compatible_advance(0.1, &last, &next) > 0.1);
+        let en = e.glyph('A', "probe").unwrap();
+        assert_eq!(en.shear, 0.);
+        assert!(
+            ttf_parser::Face::parse(&e.fonts.list[en.font].bytes, 0)
+                .unwrap()
+                .is_italic()
+        );
     }
 }

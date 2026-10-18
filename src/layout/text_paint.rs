@@ -187,7 +187,10 @@ impl<'a> Engine<'a> {
                     if let Some(adjust) = self.pair_kerning(&its[i], &its[i + 1], left, right) {
                         (widths[i] + adjust).max(0.)
                     } else {
-                        if self.doc.header.a("binaryHwp") == "1" {
+                        if self.doc.header.a("binaryHwp") == "1"
+                            || left.shear != 0.
+                            || right.shear != 0.
+                        {
                             text_metrics::compatible_advance(widths[i], left, right)
                         } else {
                             widths[i].max(left.ink_right - right.ink_left + 0.02)
@@ -242,6 +245,7 @@ impl<'a> Engine<'a> {
                 for (i, g) in gs.iter_mut().enumerate() {
                     if let Some(g) = g {
                         g.scale *= factor;
+                        g.shear *= factor;
                         g.width *= factor;
                         widths[i] *= factor;
                     }

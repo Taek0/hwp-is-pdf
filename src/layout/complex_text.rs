@@ -307,6 +307,7 @@ impl<'a> Engine<'a> {
         });
         for mut run in runs {
             let g = &run.g;
+            let shear = g.shear * factor;
             for (id, text) in run.unicode {
                 self.fonts.list[g.font].used.entry(id).or_insert(text);
             }
@@ -325,9 +326,9 @@ impl<'a> Engine<'a> {
                     );
                 }
             }
-            if g.shear != 0. {
+            if shear != 0. {
                 self.current.ops.push(Op::TransformBegin {
-                    matrix: [1., 0., -g.shear, 1., g.shear * (base + g.shift), 0.],
+                    matrix: [1., 0., -shear, 1., shear * (base + g.shift), 0.],
                 });
             }
             let emphasis = self
@@ -356,7 +357,7 @@ impl<'a> Engine<'a> {
                 color: g.color,
                 glyphs: run.glyphs,
             });
-            if g.shear != 0. {
+            if shear != 0. {
                 self.current.ops.push(Op::TransformEnd);
             }
             if let Some(style) = self.doc.chars.get(&run.style) {

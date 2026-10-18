@@ -2,11 +2,13 @@
 use super::*;
 /// Same-face positive advances can legitimately have overlapping bounding boxes
 /// (serifs, side bearings and authored tracking). They are not ink collisions.
+/// Synthetic slant is also an overhang, including at an upright/bold boundary;
+/// it must not add spacing to an otherwise ordinary positive advance.
 pub(super) fn compatible_advance(width: f64, left: &Glyph, right: &Glyph) -> f64 {
     if width > (left.ink_right - left.ink_left).max(0.) * 0.5
-        && left.font == right.font
-        && left.size == right.size
-        && left.scale == right.scale
+        && (left.shear != 0.
+            || right.shear != 0.
+            || (left.font == right.font && left.size == right.size && left.scale == right.scale))
     {
         width
     } else {
