@@ -1,17 +1,22 @@
-# Remaining work agreed with the user — 2026-10-16
+# Priority status — 2026-10-18
 
-All six priorities remain in scope. A completed subtask does not mark its entire
-category complete. Each stage requires focused tests, the existing-document
-regression set, rendered images, a commit and a push.
+The currently identified supplied-document issues have passed the latest corpus
+checks. These categories also contain broader, unmeasured format work; a passing
+example set does not prove universal compatibility. Future stages should retain
+tests, image review, regression conversion, commits and pushes.
 
-| Priority | Scope | Current state / next concrete work |
+| Priority | Current-example result | Broader follow-up |
 |---|---|---|
-| 1 | Math document paragraph and column flow | All 26 math question starts remain aligned. Question 13's five internal line starts now match Hancom after Korean-break, punctuation and half-em Latin-tracking fixes (KOREAN_BREAKS_AND_TRACKING.md). Native same-page and nested column fixes remain verified. |
-| 2 | Font metrics, title and baseline positions | Inline-table margins, drawing-text CENTER/BOTTOM and final-character tracking corrected. Selected form/law title Y errors are 0.033/0.008pt; law title X error is 0.032pt. Generated italic labels remain. |
-| 3 | General paragraph line wrapping | Korean HWPX break semantics, mixed Latin/Korean boundaries and angle-bracket prohibitions are corrected. Bounded numbered-cache repair is verified against actual line starts. Broader stale-cache recovery and unmeasured justification cases remain. |
-| 4 | Complex table row splitting and vertical alignment | Explicit merged header bands implemented and tested. Independent cell continuation exists; exact reference row-fragment distribution remains. |
-| 5 | Watermarks, logos and borders | Grayscale/tone calibrated against four exports; native floating picture margins corrected. Optional PCX visibility compatibility reproduces the form's omitted logo while default conversion preserves it (PICTURE_PLACEMENT.md). Remaining: broader visibility/effects, wider tone parameter coverage and compound-rule fidelity. |
-| 6 | Additional formats | BinData mapping, native dual-axis combination chart rendering and supplied WMF record playback are implemented and tested (EMBEDDED_GRAPHICS.md). All 13 new references convert without geometry findings. This is not full WMF/EMF/OLE coverage; outline/shadow/emboss, vertical typography and broader equations remain. |
+| 1. Paragraph/column flow | Math question starts and supplied blank-column/offset probes verified | Other writer/cache patterns and additional independent column references |
+| 2. Font/style/position | Named page-number styles, CJK slots, legacy Latin/symbol fallbacks, synthetic italic/width scaling and generated labels corrected | Missing original faces, variable/color fonts and wider style calibration |
+| 3. Wrapping | Native hanging indents, word spacing, annotated same-count caches and ellipsis boundaries verified | Unmeasured stale caches, justification and protection combinations |
+| 4. Tables/notes | Remaining-cell merged grids, repeated headers, padding, table tails and supplied note-page distribution verified | Wider mixed-object structures; established fallback paths remain for unsupported fragment combinations |
+| 5. Pictures/borders | Supplied grayscale/contrast probes and placement verified; source PCX preserved with optional viewer-compatible hiding | Wider tone parameters, visibility policies and compound-rule variants |
+| 6. Formats/PDF semantics | Supplied chart/WMF/EMF/OLE examples and shaped ToUnicode strings verified | Complete metafile/chart families, outline/shadow/emboss, vertical typography and broader equation grammar |
 
-Keep excluded: password-encrypted documents, HWP 2.x/3.x and original-file editing.
-Do not substitute per-file coordinates or page-number conditions for format rules.
+See [CURRENT_CORPUS_VALIDATION.md](CURRENT_CORPUS_VALIDATION.md) for current evidence,
+[FORMAT_COVERAGE.md](../FORMAT_COVERAGE.md) for supported scope, and
+[CORPUS_VALIDATION_HISTORY.md](CORPUS_VALIDATION_HISTORY.md) for earlier findings.
+
+Keep excluded: password-encrypted documents, HWP 2.x/3.x and source-file editing.
+Do not replace format rules with filename-specific coordinates or page conditions.

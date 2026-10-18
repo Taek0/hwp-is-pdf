@@ -22,16 +22,19 @@ Hancom are not achieved.**
 
 ## Final validation
 
-233 Rust tests and all-target Clippy pass. The current unified corpus contains
-53 unique documents / 260 pages, with unchanged source hashes. FAQ now has
+235 Rust tests and all-target Clippy pass. The current unified corpus contains
+53 unique documents / 260 pages plus seven prior probes / 13 pages, with all
+60 source hashes unchanged. FAQ now has
 13 pages, matching its source cache bands rather than the old spurious 14-page output. It has zero findings in the four geometry
 classes, zero missing-glyph warnings and zero unresolved link/reference warnings.
 All pages were rasterized. The notice's formerly collapsed private-use character
 mappings were corrected to match its 28 original symbol occurrences.
 The report's research table
-fits pages 46–47, matching the reference range. The report now matches per-page Hangul distribution; finer font-slot and line-ending differences remain under investigation.
+fits pages 46–47, matching the reference range. Its per-page Hangul distribution
+matches, and its observed CJK bracket line-ending differences are corrected.
 Saved single-column short notes can continue when their first complete line fits
-with the anchor; exact note-line distribution still differs in some cases.
+with the anchor. The supplied note/page distributions are verified; wider
+unmeasured cases retain the documented limits.
 Native plain-text tables can carry staggered cell lines independently
 and close fragment bottoms using the source cell rule; transformed objects retain
 the shared-ink fallback. Earlier native-symbol repair
@@ -46,8 +49,10 @@ Subsequent layout corrections are verified separately from font subsetting.
 
 Centered Latin receipt-label wrapping, native inline-table outside-margin baselines
 and text-box vertical alignment are corrected. Selected form/law title Y errors are
-0.033/0.008pt. Known differences include internal report table/footnote page boundaries, some typography,
-watermark tone/geometry and border pattern details. The empty report TOC page is
+0.033/0.008pt. The observed report table/footnote boundaries and synthetic italic
+transforms are corrected.
+Printer-grid rounding, JPEG effects and unavailable original faces can still differ;
+compound border patterns and wider unmeasured cases remain bounded support. The empty report TOC page is
 also empty in Hancom. QA zero is not a compatibility percentage or proof of reading order.
 
 Latest corpus result: [CURRENT_CORPUS_VALIDATION.md](reference/CURRENT_CORPUS_VALIDATION.md).
