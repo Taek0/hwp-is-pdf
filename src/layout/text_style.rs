@@ -38,7 +38,7 @@ impl<'a> Engine<'a> {
             .unwrap_or("unknown");
         let bold = ch.child("bold").is_some();
         let italic = ch.child("italic").is_some();
-        let mut font = self.document_font(name, bold, italic, override_font)?;
+        let mut font = self.document_character_font(name, script, bold, italic, override_font)?;
         if !self.fonts.has(font, c)
             && ('\u{f020}'..='\u{f0ff}').contains(&c)
             && self.fonts.root.join("wingding.ttf").exists()
@@ -47,6 +47,21 @@ impl<'a> Engine<'a> {
             if self.fonts.has(symbol, c) {
                 font = symbol;
                 self.report.warnings.insert(format!("Legacy private-use symbol U+{:04X} resolved with Wingdings because the requested face has no glyph",c as u32));
+            }
+        }
+        // Native references use HCR Batang for the one-dot leader when
+        // an older requested face has no glyph. Keep the source size/style.
+        if c == '\u{2024}' && !self.fonts.has(font, c) {
+            let file = if bold {
+                "HANBatangB.ttf"
+            } else {
+                "HANBatang.ttf"
+            };
+            if self.fonts.root.join(file).exists() {
+                let fallback = self.fonts.get(file)?;
+                if self.fonts.has(fallback, c) {
+                    font = fallback;
+                }
             }
         }
         if !self.fonts.has(font, c) {

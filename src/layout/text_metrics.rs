@@ -45,7 +45,7 @@ pub(super) fn language(c: char) -> (&'static str, &'static str) {
         // Hancom selects the OTHER face for the one-dot leader, not the
         // symbol face. The supplied native reference embeds HCR Batang here.
         0x2024 => ("other", "OTHER"),
-        0x2000..=0x2bff | 0x3200..=0x33ff => ("symbol", "SYMBOL"),
+        0x2000..=0x2bff | 0x3008..=0x3011 | 0x3200..=0x33ff => ("symbol", "SYMBOL"),
         _ => ("other", "OTHER"),
     }
 }

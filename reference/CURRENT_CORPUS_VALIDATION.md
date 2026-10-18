@@ -1,6 +1,6 @@
 # Current-corpus validation — 2026-10-18
 
-Stage 54 converts 53 unique HWP5/HWPX documents into 260 pages. All 230 Rust
+Stage 55 converts 53 unique HWP5/HWPX documents into 260 pages. All 231 Rust
 tests and all-target Clippy pass. Source hashes are unchanged. All four geometry
 categories, missing-glyph warnings and unresolved link/reference warnings are
 empty. Stage 42 rasterized all 260 pages. Stage 43 changes six PDFs / 80 pages;
@@ -236,20 +236,47 @@ The full 53-file / 260-page corpus has zero geometry findings. Only the report
 and notice change: 25 page rasters were rendered and reviewed, and the other 51
 PDFs are byte-identical to stage 52. All 230 tests and all-target Clippy pass.
 
+## CJK punctuation font slots and missing leaders
+
+CJK bracket characters U+3008–U+3011 now select the SYMBOL font slot. Missing
+HFT HanYang Junggothic symbols resolve to Batang as in the supplied native PDF,
+while its Hangul/Latin fallback remains Dotum. Installed original faces and
+explicit font overrides retain precedence. The note's explicitly selected HCR
+Batang keeps its half-em brackets. This restores the report's cell-internal line
+endings, including the final law-name cell on page 42, without changing pages.
+
+When a requested face lacks U+2024, HCR Batang is tried before unrelated fallback
+faces. This corrects the three report leaders that previously used MS Gothic;
+U+2024 still belongs to OTHER, so existing font-slot rules are not conflated.
+
+The 231-test suite and all-target Clippy pass. A final leader-fallback follow-up
+passes both font-selection tests and a fresh 53-document / 260-page conversion.
+There are zero geometry findings. Five PDFs change, across 30 reviewed page
+rasters; the other 48 PDFs are byte-identical to stage 54.
+
+Seventeen supplied references were compared again. The original four documents,
+math variants, native footnotes/endnotes, comprehensive example, complex tables,
+chart and EMF/OLE retain matching per-page Hangul counts. The column reference
+renders the large labels as outlines; the engine preserves searchable text, and
+its blue-glyph raster extents agree within one pixel. Extra extracted WMF labels
+are likewise vector-text preservation, consistent with the earlier full 11-page
+raster review. The character-style example exposes one remaining text-extraction
+issue: shaping runs have ActualText but insufficient ToUnicode fallback mappings.
+
 ## Still active
 
-The report remains 50 pages, and its research table remains on pages 46–47.
-Its page-level Hangul distribution now matches the reference. Close inspection
-still finds narrow CJK corner brackets and some different line endings inside
-cells. In the reference those brackets select the symbol face; the current
-classifier sends them through OTHER. Continue font-slot and per-line comparison,
-then audit all supplied references. Geometry and character counts alone cannot
-establish that the user's request is complete.
+The report remains 50 pages, its research table remains on 46–47, and its
+page-level Hangul distribution matches the reference. CJK bracket selection is
+now corrected. Next repair ToUnicode mappings for shaped mixed-language runs:
+the character-style example displays correctly but readers that ignore ActualText
+extract replacement characters. Continue extraction and image regression before
+claiming the current-corpus request complete. Universal format fidelity remains
+outside what these examples can establish.
 
-Latest artifacts: `output/roadmap/54-merged-cell-fragments/`, including
-`regression/`, `all-verification.json`, `tests.log`, `clippy.log`,
-`report-page-comparison.json`, `page-images/` and `merged-cell-comparison.png`.
-Stage 53's annotation-cell experiment produced identical PDFs and was reverted.
+Latest artifacts: `output/roadmap/55-cjk-punctuation-fonts/`, including
+`regression-final/`, `all-verification.json`, `tests.log`, `font-tests-final.log`,
+`clippy-final.log`, `reference-comparison-final.json`, `reference-audit/`,
+`page-images/` and `punctuation-comparison.png`.
 The FAQ source-cache evidence remains in stage 42.
 
 Hancom explains URC indent units and hanging-indent semantics at:

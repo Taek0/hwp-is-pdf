@@ -22,7 +22,7 @@ Hancom are not achieved.**
 
 ## Final validation
 
-230 Rust tests and all-target Clippy pass. The current unified corpus contains
+231 Rust tests and all-target Clippy pass. The current unified corpus contains
 53 unique documents / 260 pages, with unchanged source hashes. FAQ now has
 13 pages, matching its source cache bands rather than the old spurious 14-page output. It has zero findings in the four geometry
 classes, zero missing-glyph warnings and zero unresolved link/reference warnings.
