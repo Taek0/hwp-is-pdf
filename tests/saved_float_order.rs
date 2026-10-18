@@ -115,6 +115,18 @@ fn report_anchor_precedes_table_and_research_table_returns_to_reference_page() {
             count
         );
     }
+    let law_lines: Vec<_> = e
+        .report
+        .bounds
+        .iter()
+        .filter(|b| b.kind == "line" && b.id == "hwp-35429")
+        .map(|b| b.page)
+        .collect();
+    assert_eq!(
+        law_lines,
+        vec![24, 25, 25, 25],
+        "internal paragraph split disagrees with the Hancom reference"
+    );
     let tail = e
         .report
         .bounds

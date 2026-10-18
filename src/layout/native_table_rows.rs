@@ -47,7 +47,24 @@ impl Cell<'_> {
     }
     fn fit(&self, height: f64) -> usize {
         let mut count = 0;
-        while self.at + count < self.flow.len() && self.required(count + 1) <= height + 0.01 {
+        while self.at + count < self.flow.len() {
+            let (p, i, y, _) = self.flow[self.at + count];
+            // At an internal paragraph cut, half the interline gap belongs
+            // to the outgoing line. Paragraph ends have no following leading.
+            // This is admission space, not extra painted row height.
+            let leading = if i + 1 < lines(p).len()
+                && self
+                    .flow
+                    .get(self.at + count + 1)
+                    .is_some_and(|next| next.2 > y + 0.01)
+            {
+                lines(p)[i].n("spacing").max(0.) / 200.
+            } else {
+                0.
+            };
+            if self.required(count + 1) + leading > height + 0.01 {
+                break;
+            }
             count += 1;
         }
         count
@@ -414,5 +431,48 @@ impl<'a> Engine<'a> {
         } else {
             self.report.bounds.push(b);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn internal_paragraph_cut_reserves_half_leading_but_paragraph_end_does_not() {
+        let p = crate::model::xml(br#"<p><linesegarray><lineseg vertsize="1000" spacing="600"/><lineseg vertsize="1000" spacing="600"/></linesegarray></p>"#).unwrap();
+        let q = crate::model::xml(
+            br#"<p><linesegarray><lineseg vertsize="1000" spacing="600"/></linesegarray></p>"#,
+        )
+        .unwrap();
+        let mut cell = Cell {
+            node: &p,
+            flow: vec![(&p, 0, 0., 10.), (&p, 1, 16., 10.)],
+            at: 0,
+            x: 0.,
+            width: 100.,
+            margin: [0., 0., 5., 5.],
+        };
+        assert_eq!(cell.fit(22.), 0);
+        assert_eq!(cell.fit(23.), 1);
+        assert_eq!(
+            cell.required(1),
+            20.,
+            "leading must not inflate the painted fragment"
+        );
+        assert_eq!(cell.fit(36.), 2);
+        cell.flow = vec![(&p, 0, 0., 10.), (&p, 1, 0., 10.), (&q, 0, 16., 10.)];
+        assert_eq!(cell.fit(20.), 2, "parallel segments have no interline gap");
+        cell.flow = vec![(&q, 0, 0., 10.), (&q, 0, 16., 10.)];
+        assert_eq!(
+            cell.fit(20.),
+            1,
+            "paragraph end must not reserve following leading"
+        );
+        cell.at = 1;
+        assert_eq!(
+            cell.fit(20.),
+            1,
+            "continued fragment has no inherited Y offset"
+        );
     }
 }
