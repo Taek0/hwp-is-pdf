@@ -15,6 +15,7 @@ struct Run {
     glyphs: Vec<crate::pdf::PositionedGlyph>,
     width: f64,
     metrics: Vec<(usize, f64, f64, f64)>,
+    unicode: BTreeMap<u16, String>,
 }
 fn complex(c: char) -> bool {
     matches!(c as u32,0x0300..=0x036f|0x0590..=0x08ff|0xfb1d..=0xfdff|0xfe70..=0xfeff)
@@ -155,6 +156,15 @@ impl<'a> Engine<'a> {
                         rustybuzz::Direction::LeftToRight
                     });
                     let shaped = rustybuzz::shape(&face, &[], buffer);
+                    let unicode = complex_unicode::mappings(
+                        &face,
+                        content,
+                        &shaped
+                            .glyph_infos()
+                            .iter()
+                            .map(|g| (g.glyph_id as u16, g.cluster as usize))
+                            .collect::<Vec<_>>(),
+                    );
                     let unit = g.size / face.units_per_em() as f64;
                     let mut cursor = 0.;
                     let mut glyphs = Vec::new();
@@ -191,6 +201,7 @@ impl<'a> Engine<'a> {
                         glyphs,
                         width: cursor,
                         metrics,
+                        unicode,
                     });
                 }
             }
@@ -296,6 +307,9 @@ impl<'a> Engine<'a> {
         });
         for mut run in runs {
             let g = &run.g;
+            for (id, text) in run.unicode {
+                self.fonts.list[g.font].used.entry(id).or_insert(text);
+            }
             for glyph in &mut run.glyphs {
                 glyph.x *= factor;
             }

@@ -3,7 +3,7 @@ use super::*;
 pub struct Font {
     pub bytes: Vec<u8>,
     pub name: String,
-    pub used: BTreeMap<u16, char>,
+    pub used: BTreeMap<u16, String>,
     pub synthetic_bold: bool,
 }
 pub struct Fonts {
@@ -90,7 +90,7 @@ impl Fonts {
         let mut result = String::new();
         for c in text.chars() {
             let gid = glyph_id(&f, c).map(|v| v.0).unwrap_or(0);
-            font.used.insert(gid, c);
+            font.used.insert(gid, c.to_string());
             result.push_str(&format!("{gid:04X}"));
         }
         result

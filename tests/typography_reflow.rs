@@ -41,6 +41,31 @@ fn shaped_text_preserves_logical_content_and_table_pagination() {
                 assert!(glyphs.iter().all(|g| g.id != 0));
             }
         }
+        assert!(
+            e.fonts
+                .list
+                .iter()
+                .flat_map(|f| f.used.values())
+                .any(|s| s == "لا"),
+            "the lam-alef ligature needs a multi-character ToUnicode mapping"
+        );
+        for op in e.pages.iter().flat_map(|p| &p.ops) {
+            if let Op::Shaped {
+                text, font, glyphs, ..
+            } = op
+                && text.is_ascii()
+            {
+                for g in glyphs {
+                    assert!(
+                        e.fonts.list[*font]
+                            .used
+                            .get(&g.id)
+                            .is_some_and(|s| s != "\u{fffd}"),
+                        "ASCII shaped glyph is unmapped"
+                    );
+                }
+            }
+        }
         let q = qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
         assert!(q.outside_page.is_empty(), "{name} {:?}", q.outside_page);
         assert!(q.text_overlaps.is_empty(), "{name} {:?}", q.text_overlaps);

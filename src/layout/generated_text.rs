@@ -49,7 +49,10 @@ impl<'a> Engine<'a> {
         let mut offset = 0.;
         let mut glyphs = vec![];
         for (c, id) in chars.iter().zip(ids) {
-            self.fonts.list[g.font].used.entry(id).or_insert(*c);
+            self.fonts.list[g.font]
+                .used
+                .entry(id)
+                .or_insert_with(|| c.to_string());
             glyphs.push(crate::pdf::PositionedGlyph {
                 id,
                 x: offset,

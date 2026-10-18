@@ -124,7 +124,10 @@ pub fn save(
                     }
                     let weight = if stroke > 0. { "2 Tr " } else { "" };
                     for glyph in glyphs {
-                        fonts.list[*font].used.entry(glyph.id).or_insert('\u{fffd}');
+                        fonts.list[*font]
+                            .used
+                            .entry(glyph.id)
+                            .or_insert_with(|| "\u{fffd}".into());
                         content.push_str(&format!("BT {weight}/F{font} {size:.4} Tf {:.4} Tz 1 0 0 1 {:.4} {:.4} Tm <{:04X}> Tj ET\n",scale*100.,x+glyph.x,page.height-y-glyph.y,glyph.id));
                     }
                     content.push_str("Q\n");
@@ -348,12 +351,7 @@ pub fn save(
         for chunk in pairs.chunks(100) {
             cm.push_str(&format!("{} beginbfchar\n", chunk.len()));
             for (gid, ch) in chunk {
-                let mut buf = [0; 2];
-                let utf: String = ch
-                    .encode_utf16(&mut buf)
-                    .iter()
-                    .map(|v| format!("{v:04X}"))
-                    .collect();
+                let utf: String = ch.encode_utf16().map(|v| format!("{v:04X}")).collect();
                 cm.push_str(&format!("<{gid:04X}> <{utf}>\n"));
             }
             cm.push_str("endbfchar\n");

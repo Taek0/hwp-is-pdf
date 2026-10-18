@@ -377,6 +377,7 @@ mod column_flow;
 mod column_geometry;
 mod column_notes;
 mod complex_text;
+mod complex_unicode;
 mod endnote_flow;
 mod equation_layout;
 mod field_navigation;

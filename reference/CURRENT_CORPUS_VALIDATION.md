@@ -1,6 +1,6 @@
 # Current-corpus validation — 2026-10-18
 
-Stage 55 converts 53 unique HWP5/HWPX documents into 260 pages. All 231 Rust
+Stage 56 converts 53 unique HWP5/HWPX documents into 260 pages. All 233 Rust
 tests and all-target Clippy pass. Source hashes are unchanged. All four geometry
 categories, missing-glyph warnings and unresolved link/reference warnings are
 empty. Stage 42 rasterized all 260 pages. Stage 43 changes six PDFs / 80 pages;
@@ -263,20 +263,40 @@ are likewise vector-text preservation, consistent with the earlier full 11-page
 raster review. The character-style example exposes one remaining text-extraction
 issue: shaping runs have ActualText but insufficient ToUnicode fallback mappings.
 
+## Unicode mappings for shaped runs
+
+Painted shaped runs now register cluster-aware ToUnicode mappings. Single-glyph
+clusters retain their complete source sequence, including ligatures and composed
+marks. Multi-glyph clusters use unambiguous nominal mappings instead of repeating
+the whole cluster for every mark. ActualText remains the authoritative logical
+span for ambiguous contextual clusters and bidirectional reading order. Font
+Unicode entries now hold strings so multi-character UTF-16 destinations survive
+PDF writing. Measurement-only runs do not add unused glyphs to the font subset.
+
+The supplied character-style PDF's extracted text now equals the Hancom reference,
+including Hangul, Latin font names and the Arabic character. It is the only
+changed PDF; its 1400px page raster is exactly identical to stage 55. The other
+52 PDFs are byte-identical. A full 53-document / 260-page extraction scan finds
+zero U+FFFD replacements or unresolved CID strings, and all input hashes match.
+
+All 233 tests and Clippy pass. Seventeen references / 147 pages retain matching
+page counts and have zero missing Hangul. Fifteen match per-page Hangul multisets;
+the two differences are the previously verified outline and WMF text preservation.
+
 ## Still active
 
-The report remains 50 pages, its research table remains on 46–47, and its
-page-level Hangul distribution matches the reference. CJK bracket selection is
-now corrected. Next repair ToUnicode mappings for shaped mixed-language runs:
-the character-style example displays correctly but readers that ignore ActualText
-extract replacement characters. Continue extraction and image regression before
-claiming the current-corpus request complete. Universal format fidelity remains
-outside what these examples can establish.
+The current corpus has no conversion, geometry or unmapped-character findings.
+The report's page allocation and CJK bracket line endings match the supplied
+reference. A final character-style matrix check identifies one further visual
+difference: synthetic italic uses 0.21256 shear, while the supplied print uses
+0.25651/0.75, approximately 0.34202. Calibrate that transform and verify the corpus
+before closing the current-example work. General format compatibility is not
+inferred from these checks.
 
-Latest artifacts: `output/roadmap/55-cjk-punctuation-fonts/`, including
-`regression-final/`, `all-verification.json`, `tests.log`, `font-tests-final.log`,
-`clippy-final.log`, `reference-comparison-final.json`, `reference-audit/`,
-`page-images/` and `punctuation-comparison.png`.
+Latest artifacts: `output/roadmap/56-shaped-unicode/`, including `regression/`,
+`all-verification.json`, `text-integrity.json`, `reference-comparison.json`,
+`reference-summary.json`, `tests.log`, `clippy.log`, `page-images/` and
+`character-text-proof.png`.
 The FAQ source-cache evidence remains in stage 42.
 
 Hancom explains URC indent units and hanging-indent semantics at:
