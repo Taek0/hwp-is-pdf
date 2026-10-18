@@ -254,6 +254,7 @@ struct Item {
 }
 #[derive(Clone)]
 struct Glyph {
+    outline: Option<text_outlines::Outline>,
     emphasis: Option<text_marks::Emphasis>,
     font: usize,
     size: f64,
@@ -378,6 +379,7 @@ mod column_geometry;
 mod column_notes;
 mod complex_text;
 mod complex_unicode;
+mod drawing_strokes;
 mod endnote_flow;
 mod equation_layout;
 mod field_navigation;
@@ -397,7 +399,6 @@ mod page_decorations;
 mod page_furniture;
 mod paragraph_borders;
 mod rectangles;
-mod drawing_strokes;
 mod reflow;
 mod reflow_objects;
 mod reflow_paragraph;
@@ -420,6 +421,7 @@ mod table_vectors;
 mod text_decorations;
 mod text_marks;
 mod text_metrics;
+mod text_outlines;
 mod text_paint;
 mod text_style;
 mod toc;

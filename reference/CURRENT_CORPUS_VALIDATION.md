@@ -1,4 +1,15 @@
-# Current-corpus validation — 2026-10-18
+# Current-corpus validation — 2026-10-19
+
+October 19 increment: all 60 inputs / 273 pages were reconverted; source hashes,
+page counts and per-page extracted text are unchanged, with zero conversion or
+four-class geometry findings. All-target tests now total 239 and Clippy passes.
+Only three PDFs changed from stage 57 (drawing fills/strokes); their eight
+changed page streams were rasterized and reviewed. Searchable character outlines
+were separately rendered and checked using a new synthetic fixture. Exact
+Hancom outline/dash calibration remains pending. See [TEXT_OUTLINES.md](TEXT_OUTLINES.md)
+and [DRAWING_STYLES.md](DRAWING_STYLES.md); artifacts are in
+output/roadmap/59-text-outlines/verification.json. The detailed earlier comparison
+below is retained as stage-57 evidence, not a fresh 24-reference rerun.
 
 ## Result
 

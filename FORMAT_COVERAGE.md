@@ -1,4 +1,4 @@
-# Current HWP/HWPX coverage — 2026-10-18
+# Current HWP/HWPX coverage — 2026-10-19
 
 본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 
@@ -11,7 +11,7 @@ Hancom are not achieved.**
 
 | Area | Implemented | Remaining limits |
 |---|---|---|
-| Text | Installed families/TTC faces, native/synthetic styles, scripts/offsets, language slots, kerning, half-em Latin tracking, positioned generated labels, Hancom/legacy symbol glyphs, vector emphasis, contiguous character borders and solid fills | Missing original fonts, exact synthetic/mark metrics, outline/shadow/emboss and vertical typography |
+| Text | Installed families/TTC faces, native/synthetic styles, scripts/offsets, language slots, kerning, half-em Latin tracking, positioned generated labels, Hancom/legacy symbol glyphs, vector emphasis, contiguous character borders and solid fills | Missing original fonts, exact synthetic/mark metrics, outline calibration, shadow/emboss and vertical typography |
 | Body layout | Saved-cache recovery, supported mixed reflow, floats/contours, native column bands/nested columns, Korean word/character semantics, punctuation and shared-note flows | All writer variants, ambiguous stale caches and unmeasured Hancom line/page cases |
 | Tables | Merged/nested cells, structural splitting, repeated headers/captions, mixed pictures/rotations/notes, stale text recovery and single automatic-row height allocation | Ambiguous multiple auto rows and exact row/paragraph composition |
 | Notes | Footnotes/endnotes, long-note continuation, source-driven placement and numbering | Some precise page distribution differs |
@@ -22,7 +22,7 @@ Hancom are not achieved.**
 
 ## Final validation
 
-235 Rust tests and all-target Clippy pass. The current unified corpus contains
+239 Rust tests and all-target Clippy pass. The current unified corpus contains
 53 unique documents / 260 pages plus seven prior probes / 13 pages, with all
 60 source hashes unchanged. FAQ now has
 13 pages, matching its source cache bands rather than the old spurious 14-page output. It has zero findings in the four geometry
@@ -56,6 +56,11 @@ compound border patterns and wider unmeasured cases remain bounded support. The 
 also empty in Hancom. QA zero is not a compatibility percentage or proof of reading order.
 
 Latest corpus result: [CURRENT_CORPUS_VALIDATION.md](reference/CURRENT_CORPUS_VALIDATION.md).
+The October 19 increment adds drawing dash patterns, explicit no-outline/fill-only
+paths, ellipse face fills and searchable character outlines. See
+[DRAWING_STYLES.md](reference/DRAWING_STYLES.md) and
+[TEXT_OUTLINES.md](reference/TEXT_OUTLINES.md). Outline widths and dash metrics
+await Hancom calibration; shadow/emboss and advanced fills remain unsupported.
 Latest additions: [NATIVE_COLUMN_BANDS.md](reference/NATIVE_COLUMN_BANDS.md),
 [EMBEDDED_GRAPHICS.md](reference/EMBEDDED_GRAPHICS.md),
 [KOREAN_BREAKS_AND_TRACKING.md](reference/KOREAN_BREAKS_AND_TRACKING.md) and

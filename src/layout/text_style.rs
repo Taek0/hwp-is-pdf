@@ -159,7 +159,12 @@ impl<'a> Engine<'a> {
             .flatten();
         let (mark_above, mark_below) = emphasis.map(|m| m.extent(size)).unwrap_or((0., 0.));
         let character_border = self.character_border_width(ch);
+        let outline = text_outlines::read(ch, size);
+        if outline.is_some() {
+            self.report.warnings.insert("Character outline uses vector PDF text with nominal stroke/dash metrics; exact Hancom calibration pending".into());
+        }
         let glyph = Glyph {
+            outline,
             emphasis,
             font,
             size,

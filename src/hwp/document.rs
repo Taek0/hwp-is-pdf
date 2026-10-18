@@ -107,6 +107,20 @@ pub fn open(path: &Path) -> Result<Document> {
                     ch.children.push(n("bold"));
                 }
                 let props = u32(d, 46)?;
+                if let Some(kind) = [
+                    "NONE",
+                    "SOLID",
+                    "DOT",
+                    "BOLD",
+                    "DASH",
+                    "DASH_DOT",
+                    "DASH_DOT_DOT",
+                ]
+                .get(((props >> 8) & 7) as usize)
+                .filter(|&&s| s != "NONE")
+                {
+                    ch.children.push(n("outline").at("type", kind));
+                }
                 // HWP table 35 uses CARON/TILDE order, unlike the OWPML enum.
                 if let Some(name) = [
                     "NONE",

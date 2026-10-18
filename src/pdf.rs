@@ -15,6 +15,26 @@ mod font_subset;
 mod fonts;
 mod kerning;
 pub use fonts::{Font, Fonts, glyph_id};
+fn text_paint_mode(outline: Option<&(f64, Vec<f64>)>, bold: f64, color: [f64; 3]) -> String {
+    if let Some((width, dash)) = outline {
+        let dash = dash
+            .iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>()
+            .join(" ");
+        format!(
+            "{} {} {} RG {width:.4} w [{dash}] 0 d 1 Tr ",
+            color[0], color[1], color[2]
+        )
+    } else if bold > 0. {
+        format!(
+            "{} {} {} RG {bold:.4} w 2 Tr ",
+            color[0], color[1], color[2]
+        )
+    } else {
+        String::new()
+    }
+}
 fn compress(b: &[u8]) -> Result<Vec<u8>> {
     let mut z = ZlibEncoder::new(Vec::new(), Compression::default());
     z.write_all(b)?;
@@ -80,8 +100,11 @@ pub fn save(
     for page in pages {
         let mut content = String::new();
         let mut actual_depth = 0usize;
+        let mut outline: Option<(f64, Vec<f64>)> = None;
+        let mut outline_stack = Vec::new();
         for op in &page.ops {
             match op {
+                Op::TextOutline { width, dash } => outline = Some((*width, dash.clone())),
                 Op::Link { .. } | Op::Destination { .. } => {}
                 Op::FieldText { .. } => anyhow::bail!("Unresolved PDF field value"),
                 Op::ActualTextBegin { text } => {
@@ -122,7 +145,13 @@ pub fn save(
                             color[0], color[1], color[2]
                         ));
                     }
-                    let weight = if stroke > 0. { "2 Tr " } else { "" };
+                    let weight = if outline.is_some() {
+                        text_paint_mode(outline.as_ref(), stroke, *color)
+                    } else if stroke > 0. {
+                        "2 Tr ".into()
+                    } else {
+                        String::new()
+                    };
                     for glyph in glyphs {
                         fonts.list[*font]
                             .used
@@ -135,16 +164,22 @@ pub fn save(
                         content.push_str("EMC\n");
                     }
                 }
-                Op::TransformBegin { matrix: m } => content.push_str(&format!(
-                    "q {} {} {} {} {} {} cm\n",
-                    m[0],
-                    -m[1],
-                    -m[2],
-                    m[3],
-                    m[4] + m[2] * page.height,
-                    page.height - m[5] - m[3] * page.height
-                )),
-                Op::TransformEnd => content.push_str("Q\n"),
+                Op::TransformBegin { matrix: m } => {
+                    outline_stack.push(outline.clone());
+                    content.push_str(&format!(
+                        "q {} {} {} {} {} {} cm\n",
+                        m[0],
+                        -m[1],
+                        -m[2],
+                        m[3],
+                        m[4] + m[2] * page.height,
+                        page.height - m[5] - m[3] * page.height
+                    ));
+                }
+                Op::TransformEnd => {
+                    outline = outline_stack.pop().unwrap_or(None);
+                    content.push_str("Q\n");
+                }
                 Op::Bezier {
                     start,
                     segments,
@@ -223,14 +258,7 @@ pub fn save(
                 } => {
                     let hex = fonts.encode(*font, text);
                     let stroke = fonts.ink_padding(*font, *size) * 2.;
-                    let weight = if stroke > 0. {
-                        format!(
-                            "{} {} {} RG {stroke:.4} w 2 Tr ",
-                            color[0], color[1], color[2]
-                        )
-                    } else {
-                        String::new()
-                    };
+                    let weight = text_paint_mode(outline.as_ref(), stroke, *color);
                     content.push_str(&format!("q {} {} {} rg BT {weight}/F{} {size:0.4} Tf {:0.4} Tz 1 0 0 1 {x:0.4} {:0.4} Tm <{hex}> Tj ET Q\n",color[0],color[1],color[2],font,scale*100.,page.height-y));
                 }
                 Op::Line {

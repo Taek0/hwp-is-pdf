@@ -8,6 +8,11 @@ pub struct PositionedGlyph {
 }
 #[derive(Clone, Debug, Serialize)]
 pub enum Op {
+    /// Scoped by TransformBegin/End; preserves searchable text for hollow glyphs.
+    TextOutline {
+        width: f64,
+        dash: Vec<f64>,
+    },
     Link {
         target: String,
         rect: [f64; 4],

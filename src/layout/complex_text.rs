@@ -347,6 +347,7 @@ impl<'a> Engine<'a> {
                     }
                 }
             }
+            text_outlines::begin(&mut self.current.ops, &g.outline);
             self.current.ops.push(Op::Shaped {
                 x,
                 y: base + g.shift,
@@ -357,6 +358,7 @@ impl<'a> Engine<'a> {
                 color: g.color,
                 glyphs: run.glyphs,
             });
+            text_outlines::end(&mut self.current.ops, &g.outline);
             if shear != 0. {
                 self.current.ops.push(Op::TransformEnd);
             }

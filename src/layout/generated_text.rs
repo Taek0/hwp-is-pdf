@@ -32,7 +32,10 @@ impl<'a> Engine<'a> {
                 matrix: [1., 0., -shear, 1., shear * base, 0.],
             });
         }
+        let outline = g.outline.clone();
+        text_outlines::begin(&mut self.current.ops, &outline);
         let result = self.paint_generated_glyphs(label, g, x, base);
+        text_outlines::end(&mut self.current.ops, &outline);
         if shear != 0. {
             self.current.ops.push(Op::TransformEnd);
         }

@@ -349,6 +349,7 @@ impl<'a> Engine<'a> {
                             matrix: [1., 0., -g.shear, 1., g.shear * (base + g.shift), 0.],
                         });
                     }
+                    text_outlines::begin(&mut self.current.ops, &g.outline);
                     self.current.ops.push(Op::Text {
                         x,
                         y: base + g.shift,
@@ -358,6 +359,7 @@ impl<'a> Engine<'a> {
                         scale: g.scale,
                         color: g.color,
                     });
+                    text_outlines::end(&mut self.current.ops, &g.outline);
                     if g.emphasis.is_some() {
                         let advance = self.fonts.width(g.font, &c.to_string(), g.size) * g.scale;
                         self.paint_emphasis(g, x, base + g.shift, advance);
