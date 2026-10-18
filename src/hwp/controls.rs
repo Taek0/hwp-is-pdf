@@ -413,7 +413,19 @@ pub(super) fn control(r: &Record) -> Result<Node> {
                     n("lineShape")
                         .at("color", rgb(u32(cd, off)?))
                         .at("width", i32(cd, off + 4)?)
-                        .at("style", if attrs & 63 == 0 { "NONE" } else { "SOLID" }),
+                        .at(
+                            "style",
+                            match attrs & 63 {
+                                0 => "NONE",
+                                1 => "SOLID",
+                                2 => "DASH",
+                                3 => "DOT",
+                                4 => "DASH_DOT",
+                                5 => "DASH_DOT_DOT",
+                                6 => "LONG_DASH",
+                                _ => "SOLID",
+                            },
+                        ),
                 );
                 if cd.len() >= off + 21 && u32(cd, off + 13)? & 1 != 0 {
                     let v = u32(cd, off + 17)?;

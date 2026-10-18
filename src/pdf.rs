@@ -205,9 +205,10 @@ pub fn save(
                             content.push_str("h\n")
                         }
                         if let Some(f) = fill {
-                            content.push_str(&format!("{} {} {} rg B Q\n", f[0], f[1], f[2]));
+                            let paint = if *width > 0. { "B" } else { "f" };
+                            content.push_str(&format!("{} {} {} rg {paint} Q\n", f[0], f[1], f[2]));
                         } else {
-                            content.push_str("S Q\n")
+                            content.push_str(if *width > 0. { "S Q\n" } else { "n Q\n" })
                         }
                     }
                 }

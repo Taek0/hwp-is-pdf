@@ -2,6 +2,7 @@
 use super::*;
 impl<'a> Engine<'a> {
     pub(super) fn paint_rectangle(&mut self, n: &Node, x: f64, y: f64, w: f64, h: f64) {
+        let paint_start = self.current.ops.len();
         let fill = n
             .child("fillBrush")
             .and_then(|b| b.child("winBrush"))
@@ -49,8 +50,24 @@ impl<'a> Engine<'a> {
                 self.current.ops.push(Op::Rect { x, y, w, h, fill });
             }
             if stroke {
-                self.box_lines(x, y, w, h, width, c);
+                if line.is_some_and(|s| {
+                    matches!(
+                        s.a("style"),
+                        "DASH" | "DOT" | "DASH_DOT" | "DASH_DOT_DOT" | "LONG_DASH"
+                    )
+                }) {
+                    self.current.ops.push(Op::Path {
+                        points: vec![(x, y), (x + w, y), (x + w, y + h), (x, y + h)],
+                        closed: true,
+                        width,
+                        color: c,
+                        fill: None,
+                    });
+                } else {
+                    self.box_lines(x, y, w, h, width, c);
+                }
             }
         }
+        drawing_strokes::apply(&mut self.current.ops, paint_start, line);
     }
 }

@@ -397,6 +397,7 @@ mod page_decorations;
 mod page_furniture;
 mod paragraph_borders;
 mod rectangles;
+mod drawing_strokes;
 mod reflow;
 mod reflow_objects;
 mod reflow_paragraph;

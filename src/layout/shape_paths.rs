@@ -2,6 +2,7 @@
 use super::*;
 impl<'a> Engine<'a> {
     pub(super) fn path_shape(&mut self, n: &Node, x: f64, y: f64, w: f64, h: f64) -> Result<()> {
+        let paint_start = self.current.ops.len();
         let ow = if n.n("originalWidth") > 0. {
             n.n("originalWidth")
         } else {
@@ -87,6 +88,7 @@ impl<'a> Engine<'a> {
                 fill,
             });
         }
+        drawing_strokes::apply(&mut self.current.ops, paint_start, line);
         Ok(())
     }
 }

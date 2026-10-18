@@ -445,6 +445,7 @@ impl<'a> Engine<'a> {
             }
             "line" => {
                 let s = n.child("lineShape");
+                let start = self.current.ops.len();
                 self.current.ops.push(Op::Line {
                     x,
                     y,
@@ -453,13 +454,37 @@ impl<'a> Engine<'a> {
                     width: val(s, "width").max(0.1),
                     color: color(s.map(|n| n.a("color")).unwrap_or("#000000")),
                 });
+                drawing_strokes::apply(&mut self.current.ops, start, s);
             }
             "ellipse" => {
                 let s = n.child("lineShape");
+                let start = self.current.ops.len();
+                let fill = n
+                    .child("fillBrush")
+                    .and_then(|b| b.child("winBrush"))
+                    .filter(|b| b.a("faceColor") != "none")
+                    .map(|b| color(b.a("faceColor")));
+                if let Some(fill) = fill {
+                    let points = (0..64)
+                        .map(|i| {
+                            let a = i as f64 * std::f64::consts::TAU / 64.;
+                            (x + w / 2. + w / 2. * a.cos(), y + h / 2. + h / 2. * a.sin())
+                        })
+                        .collect();
+                    self.current.ops.push(Op::Path {
+                        points,
+                        closed: true,
+                        width: 0.,
+                        color: fill,
+                        fill: Some(fill),
+                    });
+                }
                 let stroke = color(s.map(|n| n.a("color")).unwrap_or("#000000"));
+                let mut points = Vec::new();
                 for i in 0..64 {
                     let a = i as f64 * std::f64::consts::TAU / 64.;
                     let b = (i + 1) as f64 * std::f64::consts::TAU / 64.;
+                    points.push((x + w / 2. + w / 2. * a.cos(), y + h / 2. + h / 2. * a.sin()));
                     self.current.ops.push(Op::Line {
                         x: x + w / 2. + w / 2. * a.cos(),
                         y: y + h / 2. + h / 2. * a.sin(),
@@ -468,6 +493,19 @@ impl<'a> Engine<'a> {
                         width: val(s, "width").max(0.1),
                         color: stroke,
                     });
+                }
+                if s.is_some_and(|s| !matches!(s.a("style"), "" | "SOLID")) {
+                    self.current
+                        .ops
+                        .truncate(start + usize::from(fill.is_some()));
+                    self.current.ops.push(Op::Path {
+                        points,
+                        closed: true,
+                        width: val(s, "width").max(0.1),
+                        color: stroke,
+                        fill: None,
+                    });
+                    drawing_strokes::apply(&mut self.current.ops, start, s);
                 }
             }
             "rect" => {
