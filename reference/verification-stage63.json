@@ -1,0 +1,22 @@
+{
+  "documents": 73,
+  "pages": 308,
+  "conversion_errors": [],
+  "qa_findings": [],
+  "source_hash_mismatches": [],
+  "rust_hash_mismatches": [],
+  "reference_page_mismatches": [],
+  "tests_passed": 277,
+  "clippy_passed": true,
+  "byte_identical_to_previous_stage": 71,
+  "changed_pages": {
+    "law": [
+      1
+    ],
+    "government-notice": [
+      21,
+      22
+    ]
+  },
+  "text_changes": 0
+}
