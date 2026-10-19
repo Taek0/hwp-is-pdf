@@ -80,6 +80,46 @@ fn dynamic(n: &Node) -> Option<(&'static str, String)> {
 }
 impl<'a> Engine<'a> {
     pub(super) fn normalize_field_items(items: &mut [Item]) {
+        let mut hidden = Vec::new();
+        for (start, item) in items.iter().enumerate() {
+            if !matches!(&item.kind,ItemKind::Control(n) if n.name=="fieldBegin" && n.a("type")=="CLICK_HERE" && n.a("modified")=="0")
+            {
+                continue;
+            }
+            let mut depth = 1;
+            let mut end = None;
+            for (i, item) in items.iter().enumerate().skip(start + 1) {
+                if let ItemKind::Control(n) = &item.kind {
+                    if n.name == "fieldBegin" {
+                        depth += 1;
+                    }
+                    if n.name == "fieldEnd" {
+                        depth -= 1;
+                        if depth == 0 {
+                            end = Some(i);
+                            break;
+                        }
+                    }
+                }
+            }
+            if let Some(end) = end
+                && items[start + 1..end].iter().all(|i| {
+                    !matches!(i.kind, ItemKind::Object(_))
+                        && !matches!(&i.kind,ItemKind::Control(n) if n.name=="fieldBegin")
+                })
+            {
+                hidden
+                    .extend((start + 1..end).filter(|i| {
+                        matches!(items[*i].kind, ItemKind::Char(_) | ItemKind::Tab(_))
+                    }));
+            }
+        }
+        for i in hidden {
+            items[i].kind = ItemKind::Control(Node {
+                name: "nonPrinting".into(),
+                ..Default::default()
+            });
+        }
         let mut replace = Vec::new();
         for (i, item) in items.iter().enumerate() {
             let ItemKind::Control(n) = &item.kind else {

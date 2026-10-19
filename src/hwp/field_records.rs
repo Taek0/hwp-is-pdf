@@ -13,12 +13,16 @@ pub(super) fn field(r: &Record) -> Result<Node> {
         "%pat" => "PATH",
         "%fmu" => "FORMULA",
         "%toc" => "TABLEOFCONTENTS",
+        "%clk" => "CLICK_HERE",
         _ => "UNKNOWN",
     };
     let mut out = n("fieldBegin")
         .at("type", kind)
         .at("sourceControl", &source)
         .at("id", format!("hwp-{:x}", r.offset));
+    if d.len() >= 8 {
+        out = out.at("modified", (u32(d, 4)? >> 15) & 1);
+    }
     if d.len() >= 11 {
         let count = u16(d, 9)? as usize;
         if 15 + count * 2 <= d.len() {

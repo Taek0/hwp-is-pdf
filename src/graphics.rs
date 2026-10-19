@@ -1,6 +1,23 @@
 //! Page-space geometry uses x right, y down, and points (1/72 inch).
 pub type Matrix = [f64; 6];
 pub const IDENTITY: Matrix = [1., 0., 0., 1., 0., 0.];
+/// Rendering matrices are executable geometry; rotationInfo can be stale UI metadata.
+pub fn source_angle(n: &crate::model::Node) -> f64 {
+    if let Some(info) = n.child("renderingInfo") {
+        let rotations: Vec<_> = info.children_named("rotMatrix").collect();
+        if !rotations.is_empty()
+            && rotations
+                .iter()
+                .all(|m| m.n("e1").hypot(m.n("e4")) > 0.000001)
+        {
+            return rotations
+                .iter()
+                .map(|m| m.n("e4").atan2(m.n("e1")).to_degrees())
+                .sum();
+        }
+    }
+    n.child("rotationInfo").map(|r| r.n("angle")).unwrap_or(0.)
+}
 /// Adaptive cubic subdivision with a conservative page-space tolerance.
 pub(crate) fn flatten_cubics(start: (f64, f64), segments: &[[f64; 6]]) -> Vec<(f64, f64)> {
     fn split(p: [(f64, f64); 4], depth: usize, out: &mut Vec<(f64, f64)>) {

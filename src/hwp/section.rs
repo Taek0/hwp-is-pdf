@@ -17,6 +17,11 @@ pub(super) fn section_properties(r: &Record) -> Result<Node> {
     let (width, height) = (u32(d, 0)?, u32(d, 4)?);
     let landscape = u32(d, 36)? & 1 != 0;
     let page = n("pagePr")
+        .at(
+            "gutterType",
+            ["LEFT_ONLY", "LEFT_RIGHT", "TOP_BOTTOM", "LEFT_ONLY"]
+                [((u32(d, 36)? >> 1) & 3) as usize],
+        )
         .at("width", if landscape { height } else { width })
         .at("height", if landscape { width } else { height })
         .with(vec![margin]);

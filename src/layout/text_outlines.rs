@@ -7,13 +7,13 @@ pub(super) struct Outline {
 }
 pub(super) fn read(style: &Node, size: f64) -> Option<Outline> {
     let kind = style.child("outline")?.a("type");
-    let width = size * if kind == "BOLD" { 0.065 } else { 0.025 };
+    let width = size * if kind == "THICK" { 0.065 } else { 0.0125 };
     let dash: &[f64] = match kind {
-        "SOLID" | "BOLD" => &[],
-        "DOT" => &[1., 2.],
-        "DASH" => &[6., 3.],
-        "DASH_DOT" => &[6., 2., 1., 2.],
-        "DASH_DOT_DOT" => &[6., 2., 1., 2., 1., 2.],
+        "SOLID" | "THICK" => &[],
+        "DOT" => &[1., 1.],
+        "DASH" => &[6., 2.],
+        "DASH_DOT" => &[3., 2.],
+        "DASH_DOT_DOT" => &[3., 1.],
         _ => return None,
     };
     Some(Outline {
@@ -48,8 +48,12 @@ mod tests {
         };
         assert!(read(&style("NONE"), 20.).is_none());
         assert!(
-            read(&style("BOLD"), 20.).unwrap().width > read(&style("SOLID"), 20.).unwrap().width
+            read(&style("THICK"), 20.).unwrap().width > read(&style("SOLID"), 20.).unwrap().width
         );
-        assert_eq!(read(&style("DASH_DOT"), 20.).unwrap().dash.len(), 4);
+        assert!(read(&style("BOLD"), 20.).is_none());
+        assert_eq!(
+            read(&style("DASH_DOT"), 30.).unwrap().dash,
+            vec![1.125, 0.75]
+        );
     }
 }

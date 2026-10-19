@@ -8,6 +8,54 @@ pub struct PositionedGlyph {
 }
 #[derive(Clone, Debug, Serialize)]
 pub enum Op {
+    ClipPath {
+        points: Vec<(f64, f64)>,
+    },
+    ImageTile {
+        x: f64,
+        y: f64,
+        w: f64,
+        h: f64,
+        id: String,
+        tile_w: f64,
+        tile_h: f64,
+    },
+    DecorativeLine {
+        x: f64,
+        y: f64,
+        x2: f64,
+        y2: f64,
+        width: f64,
+        color: [f64; 3],
+    },
+    GlyphPaint {
+        x: f64,
+        y: f64,
+        font: usize,
+        glyph: u16,
+        size: f64,
+        scale: f64,
+        color: [f64; 3],
+    },
+    Gradient {
+        x: f64,
+        y: f64,
+        w: f64,
+        h: f64,
+        kind: String,
+        angle: f64,
+        center: [f64; 2],
+        padding: f64,
+        steps: usize,
+        step_center: f64,
+        colors: Vec<[f64; 3]>,
+    },
+    ClipRect {
+        x: f64,
+        y: f64,
+        w: f64,
+        h: f64,
+    },
     /// Scoped by TransformBegin/End; preserves searchable text for hollow glyphs.
     TextOutline {
         width: f64,

@@ -36,6 +36,16 @@ fn main() -> Result<()> {
             for n in ns {
                 let mut d = vec![];
                 ole.open_stream(&n)?.read_to_end(&mut d)?;
+                if n.to_string_lossy() == "/OOXMLChartContents"
+                    && let Some(target) = std::env::args().nth(2)
+                {
+                    std::fs::write(target, &d)?;
+                }
+                if n.to_string_lossy() == "/\u{2}OlePres000"
+                    && let Some(target) = std::env::args().nth(3)
+                {
+                    std::fs::write(target, &d)?;
+                }
                 println!(
                     "  {} len={} prefix={:02x?}",
                     n.display(),

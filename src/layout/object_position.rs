@@ -1,7 +1,7 @@
 //! Shared vertical reference semantics for saved and rebuilt object anchors.
 pub(super) fn within_paper(n: &crate::model::Node, area: [f64; 4], paper: [f64; 2]) -> bool {
     let [x, y, mut w, mut h] = area;
-    let angle = n.child("rotationInfo").map(|r| r.n("angle")).unwrap_or(0.);
+    let angle = crate::graphics::source_angle(n);
     let flip = n.child("flip");
     let fx = flip.is_some_and(|f| f.a("horizontal") == "1");
     let fy = flip.is_some_and(|f| f.a("vertical") == "1");

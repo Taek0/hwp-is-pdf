@@ -206,7 +206,7 @@ impl<'a> Engine<'a> {
             && let Some(bytes) = self.doc.binaries.get(img.a("binaryItemIDRef"))
             && let Some(rects) = crate::image_layout::alpha_rects(bytes, n)?
         {
-            let angle = n.child("rotationInfo").map(|a| a.n("angle")).unwrap_or(0.);
+            let angle = crate::graphics::source_angle(n);
             let flip = n.child("flip");
             let flipped = flip.is_some_and(|f| f.a("horizontal") == "1" || f.a("vertical") == "1");
             let native = n
@@ -291,7 +291,7 @@ impl<'a> Engine<'a> {
         let behind = n.a("textWrap") == "BEHIND_TEXT";
         let paint_start = self.current.ops.len();
         let bound_start = self.report.bounds.len();
-        let angle = n.child("rotationInfo").map(|r| r.n("angle")).unwrap_or(0.);
+        let angle = crate::graphics::source_angle(n);
         let flip = n.child("flip");
         let flip_x = flip.is_some_and(|f| f.a("horizontal") == "1");
         let flip_y = flip.is_some_and(|f| f.a("vertical") == "1");
@@ -311,15 +311,28 @@ impl<'a> Engine<'a> {
         };
         let mut captions_handled = false;
         match n.name.as_str() {
+            "checkBtn" => self.checkbox(n, x, y, w, h)?,
             "chart" => {
-                let (ops, warning) = crate::chart::draw(n, x, y, w, h, &mut self.fonts)?;
-                self.current.ops.extend(ops);
-                self.report.charts += 1;
-                if let Some(w) = warning {
-                    self.report.warnings.insert(w);
-                }
-                if n.a("axisEvidence") == "Inconclusive" {
-                    self.report.warnings.insert("Chart series orientation uses writer convention; axis evidence is inconclusive".into());
+                if !n.a("presentationIDRef").is_empty() {
+                    self.current.ops.push(Op::Image {
+                        x,
+                        y,
+                        w,
+                        h,
+                        id: n.a("presentationIDRef").into(),
+                    });
+                    self.report.charts += 1;
+                    self.report.warnings.insert("OOXML chart uses its complete source mask/color presentation; resolution is limited by the stored bitmap".into());
+                } else {
+                    let (ops, warning) = crate::chart::draw(n, x, y, w, h, &mut self.fonts)?;
+                    self.current.ops.extend(ops);
+                    self.report.charts += 1;
+                    if let Some(w) = warning {
+                        self.report.warnings.insert(w);
+                    }
+                    if n.a("axisEvidence") == "Inconclusive" {
+                        self.report.warnings.insert("Chart series orientation uses writer convention; axis evidence is inconclusive".into());
+                    }
                 }
             }
             "group" => {
@@ -455,59 +468,11 @@ impl<'a> Engine<'a> {
                     color: color(s.map(|n| n.a("color")).unwrap_or("#000000")),
                 });
                 drawing_strokes::apply(&mut self.current.ops, start, s);
+                self.current
+                    .ops
+                    .extend(arrowheads::paint(n, (x, y), (x + w, y + h)));
             }
-            "ellipse" => {
-                let s = n.child("lineShape");
-                let start = self.current.ops.len();
-                let fill = n
-                    .child("fillBrush")
-                    .and_then(|b| b.child("winBrush"))
-                    .filter(|b| b.a("faceColor") != "none")
-                    .map(|b| color(b.a("faceColor")));
-                if let Some(fill) = fill {
-                    let points = (0..64)
-                        .map(|i| {
-                            let a = i as f64 * std::f64::consts::TAU / 64.;
-                            (x + w / 2. + w / 2. * a.cos(), y + h / 2. + h / 2. * a.sin())
-                        })
-                        .collect();
-                    self.current.ops.push(Op::Path {
-                        points,
-                        closed: true,
-                        width: 0.,
-                        color: fill,
-                        fill: Some(fill),
-                    });
-                }
-                let stroke = color(s.map(|n| n.a("color")).unwrap_or("#000000"));
-                let mut points = Vec::new();
-                for i in 0..64 {
-                    let a = i as f64 * std::f64::consts::TAU / 64.;
-                    let b = (i + 1) as f64 * std::f64::consts::TAU / 64.;
-                    points.push((x + w / 2. + w / 2. * a.cos(), y + h / 2. + h / 2. * a.sin()));
-                    self.current.ops.push(Op::Line {
-                        x: x + w / 2. + w / 2. * a.cos(),
-                        y: y + h / 2. + h / 2. * a.sin(),
-                        x2: x + w / 2. + w / 2. * b.cos(),
-                        y2: y + h / 2. + h / 2. * b.sin(),
-                        width: val(s, "width").max(0.1),
-                        color: stroke,
-                    });
-                }
-                if s.is_some_and(|s| !matches!(s.a("style"), "" | "SOLID")) {
-                    self.current
-                        .ops
-                        .truncate(start + usize::from(fill.is_some()));
-                    self.current.ops.push(Op::Path {
-                        points,
-                        closed: true,
-                        width: val(s, "width").max(0.1),
-                        color: stroke,
-                        fill: None,
-                    });
-                    drawing_strokes::apply(&mut self.current.ops, start, s);
-                }
-            }
+            "ellipse" => self.paint_ellipse(n, x, y, w, h),
             "rect" => {
                 self.paint_rectangle(n, x, y, w, h);
                 if let Some(draw) = n.child("drawText")
@@ -577,8 +542,15 @@ impl<'a> Engine<'a> {
     }
     pub(super) fn border(&mut self, id: &str, x: f64, y: f64, w: f64, h: f64) {
         if let Some(b) = self.doc.borders.get(id) {
+            let complex_brush = brush_fills::complex(b);
+            if complex_brush {
+                self.current
+                    .ops
+                    .extend(brush_fills::paint(b, x, y, w, h, &self.doc.binaries));
+            }
             if let Some(fill) = b.find("winBrush")
                 && fill.a("faceColor") != "none"
+                && !complex_brush
             {
                 self.current.ops.push(Op::Rect {
                     x,

@@ -4,11 +4,14 @@ use super::*;
 pub(super) fn apply(ops: &mut Vec<Op>, start: usize, line: Option<&Node>) {
     let style = line.map(|n| n.a("style")).unwrap_or("SOLID");
     let pattern: &[f64] = match style {
-        "DASH" => &[6., 3.],
-        "DOT" => &[1., 2.],
-        "DASH_DOT" => &[6., 2., 1., 2.],
-        "DASH_DOT_DOT" => &[6., 2., 1., 2., 1., 2.],
-        "LONG_DASH" => &[12., 3.],
+        // Drawing styles have a different DASH/DOT ordering from character
+        // underlines. These lengths are measured from 100-HWPUNIT Hancom
+        // strokes (1.44/7.20/14.40pt segments), not CSS dash conventions.
+        "DASH" => &[1.44, 2.16],
+        "DOT" => &[7.2, 4.32],
+        "DASH_DOT" => &[14.4, 4.32, 1.44, 4.32],
+        "DASH_DOT_DOT" => &[14.4, 4.32, 1.44, 4.32, 1.44, 4.32],
+        "LONG_DASH" => &[14.4, 4.32],
         "NONE" => &[],
         _ => return,
     };

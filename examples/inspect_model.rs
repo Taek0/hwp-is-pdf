@@ -32,6 +32,56 @@ fn dump(n: &Node) {
 fn main() -> Result<()> {
     let a: Vec<_> = std::env::args().collect();
     let d = Document::open(std::path::Path::new(&a[1]))?;
+    if a.get(2).is_some_and(|s| s == "border-users") {
+        fn walk(
+            n: &Node,
+            d: &Document,
+            out: &mut std::collections::BTreeMap<String, usize>,
+            target: Option<&str>,
+        ) {
+            let mut ids = vec![n.a("borderFillIDRef")];
+            if n.name == "p"
+                && let Some(p) = d
+                    .paras
+                    .get(n.a("paraPrIDRef"))
+                    .and_then(|p| p.child("border"))
+            {
+                ids.push(p.a("borderFillIDRef"));
+            }
+            if n.name == "run"
+                && let Some(c) = d.chars.get(n.a("charPrIDRef"))
+            {
+                ids.push(c.a("borderFillIDRef"));
+            }
+            for id in ids {
+                if !id.is_empty() {
+                    *out.entry(id.into()).or_default() += 1;
+                    if target == Some(id) {
+                        println!(
+                            "USER {} {:?} size={:?} addr={:?} text={:?}",
+                            n.name,
+                            n.attrs,
+                            n.child("cellSz"),
+                            n.child("cellAddr"),
+                            hwp_engine::model::text(n)
+                                .chars()
+                                .take(55)
+                                .collect::<String>()
+                        );
+                    }
+                }
+            }
+            for c in &n.children {
+                walk(c, d, out, target);
+            }
+        }
+        let mut counts = std::collections::BTreeMap::new();
+        for s in d.sections.iter().chain(&d.masters) {
+            walk(s, &d, &mut counts, a.get(3).map(String::as_str));
+        }
+        println!("{counts:?}");
+        return Ok(());
+    }
     if a.get(2).is_some_and(|s| s == "pages") {
         for section in &d.sections {
             let mut previous = None;

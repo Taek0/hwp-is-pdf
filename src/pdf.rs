@@ -13,6 +13,8 @@ pub use operations::{Op, Page, PositionedGlyph};
 mod font_catalog;
 mod font_subset;
 mod fonts;
+mod glyph_paint;
+mod gradients;
 mod kerning;
 pub use fonts::{Font, Fonts, glyph_id};
 fn text_paint_mode(outline: Option<&(f64, Vec<f64>)>, bold: f64, color: [f64; 3]) -> String {
@@ -104,6 +106,94 @@ pub fn save(
         let mut outline_stack = Vec::new();
         for op in &page.ops {
             match op {
+                Op::ClipPath { points } => {
+                    if let Some((x, y)) = points.first() {
+                        content.push_str(&format!("{x} {} m\n", page.height - y));
+                        for (x, y) in points.iter().skip(1) {
+                            content.push_str(&format!("{x} {} l\n", page.height - y));
+                        }
+                        content.push_str("h W n\n");
+                    }
+                }
+                Op::GlyphPaint {
+                    x,
+                    y,
+                    font,
+                    glyph,
+                    size,
+                    scale,
+                    color,
+                } => {
+                    let face = ttf_parser::Face::parse(&fonts.list[*font].bytes, 0)?;
+                    let unit = size / face.units_per_em() as f64;
+                    let path = glyph_paint::path(&face, *glyph);
+                    let stroke = fonts.ink_padding(*font, *size) * 2.;
+                    let pen = if stroke > 0. {
+                        format!(
+                            "{} {} {} RG {} w\n",
+                            color[0],
+                            color[1],
+                            color[2],
+                            stroke / unit
+                        )
+                    } else {
+                        String::new()
+                    };
+                    let paint = if stroke > 0. { "B" } else { "f" };
+                    content.push_str(&format!(
+                        "q {} {} {} rg {} 0 0 {unit} {x} {} cm\n{pen}{path}{paint} Q\n",
+                        color[0],
+                        color[1],
+                        color[2],
+                        unit * scale,
+                        page.height - y
+                    ));
+                }
+                Op::ClipRect { x, y, w: iw, h } => {
+                    content.push_str(&format!("{x} {} {iw} {h} re W n\n", page.height - y - h))
+                }
+                Op::Gradient {
+                    x,
+                    y,
+                    w: iw,
+                    h,
+                    kind,
+                    angle,
+                    center,
+                    padding,
+                    steps,
+                    step_center,
+                    colors,
+                } => {
+                    anyhow::ensure!(
+                        colors.len() >= 2 && colors.len() <= 256,
+                        "Gradient requires 2..256 colors"
+                    );
+                    let aspect = h / iw.max(0.01);
+                    let normalized_padding = padding / iw.max(0.01);
+                    let key = format!(
+                        "gradient:{kind}:{angle}:{center:?}:{aspect}:{normalized_padding}:{steps}:{step_center}:{colors:?}"
+                    );
+                    if !image_ids.contains_key(&key) {
+                        let pixels = gradients::raster(
+                            kind,
+                            *angle,
+                            *center,
+                            aspect,
+                            normalized_padding,
+                            (*steps).clamp(2, 256),
+                            *step_center,
+                            colors,
+                        );
+                        let obj=w.stream("/Type /XObject /Subtype /Image /Width 256 /Height 256 /ColorSpace /DeviceRGB /BitsPerComponent 8",&pixels)?;
+                        image_ids.insert(key.clone(), (obj, image_ids.len()));
+                    }
+                    let (_, index) = image_ids[&key];
+                    content.push_str(&format!(
+                        "q {iw} 0 0 {h} {x} {} cm /I{index} Do Q\n",
+                        page.height - y - h
+                    ));
+                }
                 Op::TextOutline { width, dash } => outline = Some((*width, dash.clone())),
                 Op::Link { .. } | Op::Destination { .. } => {}
                 Op::FieldText { .. } => anyhow::bail!("Unresolved PDF field value"),
@@ -268,6 +358,14 @@ pub fn save(
                     y2,
                     width,
                     color,
+                }
+                | Op::DecorativeLine {
+                    x,
+                    y,
+                    x2,
+                    y2,
+                    width,
+                    color,
                 } => content.push_str(&format!(
                     "q {} {} {} RG {width:0.4} w {x:0.4} {:0.4} m {x2:0.4} {:0.4} l S Q\n",
                     color[0],
@@ -290,6 +388,9 @@ pub fn save(
                     page.height - y - h
                 )),
                 Op::Image { x, y, w: iw, h, id }
+                | Op::ImageTile {
+                    x, y, w: iw, h, id, ..
+                }
                 | Op::ImageClip {
                     x, y, w: iw, h, id, ..
                 } => {
@@ -309,6 +410,29 @@ pub fn save(
                         image_ids.insert(id.clone(), (obj, image_ids.len()));
                     }
                     let (_, index) = image_ids[id];
+                    if let Op::ImageTile { tile_w, tile_h, .. } = op {
+                        anyhow::ensure!(*tile_w > 0. && *tile_h > 0., "Invalid image tile size");
+                        let cols = (iw / tile_w).ceil() as usize;
+                        let rows = (h / tile_h).ceil() as usize;
+                        anyhow::ensure!(
+                            cols.checked_mul(rows).is_some_and(|n| n <= 16384),
+                            "Excessive image tiles"
+                        );
+                        content
+                            .push_str(&format!("q {x} {} {iw} {h} re W n\n", page.height - y - h));
+                        for row in 0..rows {
+                            for col in 0..cols {
+                                let xx = x + col as f64 * tile_w;
+                                let yy = y + row as f64 * tile_h;
+                                content.push_str(&format!(
+                                    "q {tile_w} 0 0 {tile_h} {xx} {} cm /I{index} Do Q\n",
+                                    page.height - yy - tile_h
+                                ));
+                            }
+                        }
+                        content.push_str("Q\n");
+                        continue;
+                    }
                     if let Op::ImageClip { source: s, .. } = op {
                         anyhow::ensure!(
                             s.iter().all(|v| v.is_finite()) && s[2] > s[0] && s[3] > s[1],

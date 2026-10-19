@@ -3,13 +3,29 @@ use super::*;
 
 impl<'a> Engine<'a> {
     pub(super) fn line(&mut self, p: &Node, li: usize, ox: f64, oy: f64, width: f64) -> Result<()> {
+        self.line_content(p, li, ox, oy, width)?;
+        if li == 0 && p.u("reflowStart") == 0 {
+            for item in Self::items(p) {
+                if let ItemKind::Object(n) = item.kind
+                    && n.a("reflowOverlay") == "1"
+                    && n.a("textWrap") == "IN_FRONT_OF_TEXT"
+                {
+                    let anchor_y = oy + lines(p)[li].n("vertpos") / 100.;
+                    self.object(&n, ox, anchor_y, anchor_y, ox, width)?;
+                }
+            }
+        }
+        Ok(())
+    }
+    fn line_content(&mut self, p: &Node, li: usize, ox: f64, oy: f64, width: f64) -> Result<()> {
         let segs = lines(p);
         let seg = segs[li];
         if li == 0 {
             for item in Self::items(p) {
                 if let ItemKind::Object(n) = item.kind
-                    && (n.a("reflowGeneral") == "1" || n.a("reflowBehind") == "1")
-                    && (p.u("reflowStart") == 0 || n.a("reflowBehind") != "1")
+                    && (n.a("reflowGeneral") == "1" || n.a("reflowOverlay") == "1")
+                    && (p.u("reflowStart") == 0 || n.a("reflowOverlay") != "1")
+                    && !(n.a("reflowOverlay") == "1" && n.a("textWrap") == "IN_FRONT_OF_TEXT")
                 {
                     let anchor_y = oy + seg.n("vertpos") / 100.;
                     self.object(&n, ox, anchor_y, anchor_y, ox, width)?;
@@ -35,7 +51,7 @@ impl<'a> Engine<'a> {
             .into_iter()
             .filter(|i|deferred.as_ref().is_none_or(|(pos,_)| i.pos!=*pos || !matches!(i.kind,ItemKind::Object(_))))
             .filter(|i| i.pos >= start && i.pos < end)
-            .filter(|i| !matches!(&i.kind,ItemKind::Object(n) if n.a("reflowGeneral")=="1" || n.a("reflowBehind")=="1"))
+            .filter(|i| !matches!(&i.kind,ItemKind::Object(n) if n.a("reflowGeneral")=="1" || n.a("reflowOverlay")=="1"))
             .filter(|i| p.a("reflowed") != "1" || !matches!(i.kind, ItemKind::Char('\n' | '\r')))
             .collect();
         // A wrapping space belongs to the break, not the visible line width.
@@ -72,9 +88,12 @@ impl<'a> Engine<'a> {
             avail = avail.min((width - seg.n("horzpos") / 100.).max(0.));
         }
         let style = self.doc.paras.get(p.a("paraPrIDRef"));
-        // Native caches store the full text region; paragraph margins remain separate.
+        // A full-width zero-origin cache leaves paragraph margins separate.
+        // HWPX hanging paragraphs use the same convention as native HWP.
         if p.a("reflowed") != "1"
-            && style.is_some_and(|s| s.a("binaryHwp") == "1")
+            && style.is_some_and(|s| {
+                s.a("binaryHwp") == "1" || crate::reflow::settings(Some(s)).indent < 0.
+            })
             && seg.n("horzpos") == 0.
             && (avail - width).abs() < 0.1
         {
@@ -229,7 +248,11 @@ impl<'a> Engine<'a> {
             }
         }
         let mut total: f64 = widths.iter().sum();
-        if self.doc.header.a("binaryHwp") == "1" {
+        let half_height_cell_cache = self.depth > 0
+            && seg.n("textheight") > 0.
+            && seg.n("baseline") <= seg.n("textheight") * 0.5 + 0.01
+            && its.iter().all(|i| !matches!(i.kind, ItemKind::Object(_)));
+        if self.doc.header.a("binaryHwp") == "1" || half_height_cell_cache {
             base = base.max(line_y + gs.iter().flatten().map(|g| g.raw_ascent).fold(0., f64::max));
         }
         if total > avail && !its.iter().any(|i| matches!(i.kind, ItemKind::Tab(_))) {
@@ -245,6 +268,7 @@ impl<'a> Engine<'a> {
                 for (i, g) in gs.iter_mut().enumerate() {
                     if let Some(g) = g {
                         g.scale *= factor;
+                        g.native_advance *= factor;
                         g.shear *= factor;
                         g.width *= factor;
                         widths[i] *= factor;
@@ -343,16 +367,41 @@ impl<'a> Engine<'a> {
                             strikes.push((it.style.clone(), x, end, g.size, g.shift));
                         }
                     }
-                    let grouped = g.shear != 0. || g.emphasis.is_some();
+                    let grouped = g.shear != 0. || g.emphasis.is_some() || g.shadow.is_some();
+                    let upright = vertical_text::upright(self.vertical_mode, *c);
+                    if upright {
+                        vertical_text::begin(
+                            &mut self.current.ops,
+                            g,
+                            x,
+                            base + g.shift,
+                            line_y,
+                            seg.n("vertsize") / 100.,
+                        );
+                    }
                     if grouped {
                         self.current.ops.push(Op::TransformBegin {
                             matrix: [1., 0., -g.shear, 1., g.shear * (base + g.shift), 0.],
                         });
                     }
                     text_outlines::begin(&mut self.current.ops, &g.outline);
+                    if g.shadow.is_some() {
+                        let face = ttf_parser::Face::parse(&self.fonts.list[g.font].bytes, 0)?;
+                        if let Some(id) = crate::pdf::glyph_id(&face, *c) {
+                            text_shadows::paint(
+                                &mut self.current.ops,
+                                g,
+                                id.0,
+                                x,
+                                base + g.shift,
+                                g.scale,
+                            );
+                        }
+                    }
+                    let (relief_x, relief_y) = text_shadows::main_offset(g);
                     self.current.ops.push(Op::Text {
-                        x,
-                        y: base + g.shift,
+                        x: x + relief_x,
+                        y: base + g.shift + relief_y,
                         text: c.to_string(),
                         font: g.font,
                         size: g.size,
@@ -365,6 +414,9 @@ impl<'a> Engine<'a> {
                         self.paint_emphasis(g, x, base + g.shift, advance);
                     }
                     if grouped {
+                        self.current.ops.push(Op::TransformEnd);
+                    }
+                    if upright {
                         self.current.ops.push(Op::TransformEnd);
                     }
                     if self

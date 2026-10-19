@@ -12,6 +12,25 @@ pub(crate) struct Atom {
 }
 pub(crate) fn bounds(op: &Op, fonts: &Fonts) -> Option<[f64; 4]> {
     match op {
+        Op::GlyphPaint {
+            x,
+            y,
+            font,
+            glyph,
+            size,
+            scale,
+            ..
+        } => {
+            let face = ttf_parser::Face::parse(&fonts.list[*font].bytes, 0).ok()?;
+            let b = face.glyph_bounding_box(ttf_parser::GlyphId(*glyph))?;
+            let u = size / face.units_per_em() as f64;
+            Some([
+                x + b.x_min as f64 * u * scale,
+                y - b.y_max as f64 * u,
+                x + b.x_max as f64 * u * scale,
+                y - b.y_min as f64 * u,
+            ])
+        }
         Op::FieldText {
             x, y, width, size, ..
         } => Some([*x, y - size * 1.2, x + width, y + size * 0.4]),
@@ -82,6 +101,8 @@ pub(crate) fn bounds(op: &Op, fonts: &Fonts) -> Option<[f64; 4]> {
         }
         Op::Rect { x, y, w, h, .. }
         | Op::Image { x, y, w, h, .. }
+        | Op::Gradient { x, y, w, h, .. }
+        | Op::ImageTile { x, y, w, h, .. }
         | Op::ImageClip { x, y, w, h, .. } => Some([*x, *y, x + w, y + h]),
         Op::Line {
             x,
@@ -158,6 +179,9 @@ pub(crate) fn atoms(ops: &[Op], fonts: &Fonts) -> Result<Vec<Atom>> {
                 let atomic = !stack.is_empty()
                     || match op {
                         Op::Image { .. }
+                        | Op::GlyphPaint { .. }
+                        | Op::Gradient { .. }
+                        | Op::ImageTile { .. }
                         | Op::ImageClip { .. }
                         | Op::Bezier { .. }
                         | Op::Shaped { .. }
@@ -202,6 +226,30 @@ pub(crate) fn atoms(ops: &[Op], fonts: &Fonts) -> Result<Vec<Atom>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn painted_glyphs_are_owned_by_the_splitter_instead_of_discarded() {
+        let mut fonts = Fonts::new(std::path::Path::new(if cfg!(windows) {
+            "C:/Windows/Fonts"
+        } else {
+            "/mnt/c/Windows/Fonts"
+        }));
+        let font = fonts.get("arial.ttf").unwrap();
+        let face = ttf_parser::Face::parse(&fonts.list[font].bytes, 0).unwrap();
+        let glyph = face.glyph_index('M').unwrap().0;
+        let op = Op::GlyphPaint {
+            x: 10.,
+            y: 100.,
+            font,
+            glyph,
+            size: 20.,
+            scale: 1.,
+            color: [0.; 3],
+        };
+        let a = atoms(&[op], &fonts).unwrap();
+        assert_eq!(a.len(), 1);
+        assert_eq!((a[0].start, a[0].end), (0, 1));
+        assert!(a[0].top < 100. && a[0].bottom >= 99.);
+    }
     #[test]
     fn transformed_text_reserves_actual_ink_not_a_full_em_padding_box() {
         let mut fonts = Fonts::new(std::path::Path::new(if cfg!(windows) {

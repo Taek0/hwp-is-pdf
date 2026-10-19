@@ -34,11 +34,11 @@ impl<'a> Engine<'a> {
         }
         let mut w = val(n.child("sz"), "width");
         let mut h = val(n.child("sz"), "height");
-        if w <= 0. || h <= 0. {
+        if w <= 0. || h <= 0. || n.a("measureEquation") == "1" {
             let script = n.child("script").map(text).unwrap_or_default();
             let measured = math::layout(&script, n.n("baseUnit") / 100., &mut self.fonts)?;
             w = measured.width.max(1.);
-            h = (measured.ascent + measured.descent).max(1.);
+            h = h.max(measured.ascent + measured.descent).max(1.);
             n.attrs
                 .insert("baseLine".into(), (100. * measured.ascent / h).to_string());
         }

@@ -72,6 +72,9 @@ pub fn xml(bytes: &[u8]) -> Result<Node> {
     Ok(own(doc.root_element()))
 }
 pub fn text(n: &Node) -> String {
+    if n.a("nonBody") == "1" {
+        return String::new();
+    }
     if n.name == "#text" {
         n.text.clone()
     } else {
@@ -79,6 +82,7 @@ pub fn text(n: &Node) -> String {
     }
 }
 
+#[derive(Clone)]
 pub struct Document {
     pub header: Node,
     pub sections: Vec<Node>,
@@ -163,7 +167,9 @@ impl Document {
                 .unwrap_or(0)
         });
         for (_, b) in section_files {
-            sections.push(xml(b)?)
+            let mut section = xml(b)?;
+            normalize_controls(&mut section);
+            sections.push(section)
         }
         for (n, b) in &files {
             if n.starts_with("Contents/masterpage") && n.ends_with(".xml") {
@@ -209,6 +215,32 @@ impl Document {
             borders,
             fonts,
         })
+    }
+}
+
+fn normalize_controls(node: &mut Node) {
+    if node.name == "pageNum" {
+        let position = match node.a("pos") {
+            "TOP_LEFT" => 1,
+            "TOP_CENTER" => 2,
+            "TOP_RIGHT" => 3,
+            "BOTTOM_LEFT" => 4,
+            "BOTTOM_CENTER" => 5,
+            "BOTTOM_RIGHT" => 6,
+            "OUTSIDE_TOP" => 7,
+            "OUTSIDE_BOTTOM" => 8,
+            "INSIDE_TOP" => 9,
+            "INSIDE_BOTTOM" => 10,
+            _ => 0,
+        };
+        node.name = "pageNumPos".into();
+        node.attrs.insert("position".into(), position.to_string());
+        if node.a("formatType") == "DIGIT" {
+            node.attrs.insert("format".into(), "0".into());
+        }
+    }
+    for child in &mut node.children {
+        normalize_controls(child);
     }
 }
 

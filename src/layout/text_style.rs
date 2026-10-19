@@ -139,7 +139,11 @@ impl<'a> Engine<'a> {
         } else {
             self.fonts.width(font, &c.to_string(), size)
         };
-        let width = advance * scale + spacing;
+        let width = if vertical_text::upright(self.vertical_mode, c) && !c.is_whitespace() {
+            size + spacing
+        } else {
+            advance * scale + spacing
+        };
         let face = ttf_parser::Face::parse(&self.fonts.list[font].bytes, 0).unwrap();
         let shear = if italic && !face.is_italic() {
             // The supplied Hancom print uses c/a = 0.25651/0.75.
@@ -160,10 +164,33 @@ impl<'a> Engine<'a> {
         let (mark_above, mark_below) = emphasis.map(|m| m.extent(size)).unwrap_or((0., 0.));
         let character_border = self.character_border_width(ch);
         let outline = text_outlines::read(ch, size);
+        if let Some(o) = ch
+            .child("outline")
+            .filter(|o| !matches!(o.a("type"), "" | "NONE"))
+            && outline.is_none()
+        {
+            self.report.warnings.insert(format!(
+                "Unknown character outline type {}; ordinary glyph retained",
+                o.a("type")
+            ));
+        }
         if outline.is_some() {
             self.report.warnings.insert("Character outline uses vector PDF text with nominal stroke/dash metrics; exact Hancom calibration pending".into());
         }
         let glyph = Glyph {
+            vertical_origin: crate::pdf::glyph_id(&face, c)
+                .and_then(|id| {
+                    face.glyph_y_origin(id).or_else(|| {
+                        face.glyph_bounding_box(id).and_then(|b| {
+                            face.glyph_ver_side_bearing(id)
+                                .map(|t| b.y_max.saturating_add(t))
+                        })
+                    })
+                })
+                .unwrap_or(face.ascender()) as f64
+                * unit,
+            native_advance: advance * scale,
+            shadow: text_shadows::read(ch, size),
             outline,
             emphasis,
             font,
@@ -260,7 +287,7 @@ impl<'a> Engine<'a> {
                         }
                     }
                     "tbl" | "pic" | "equation" | "rect" | "line" | "ellipse" | "polygon"
-                    | "curve" | "arc" | "group" | "chart" => {
+                    | "curve" | "arc" | "group" | "chart" | "checkBtn" => {
                         items.push(Item {
                             pos,
                             style: style.clone(),

@@ -29,13 +29,27 @@ pub(crate) fn group(s: &str) -> (&str, &str) {
 }
 fn top_keyword(s: &str, keyword: &str) -> Option<usize> {
     let mut d = 0;
+    let mut delimiters = 0usize;
     for (i, c) in s.char_indices() {
+        if s[i..]
+            .get(..4)
+            .is_some_and(|v| v.eq_ignore_ascii_case("left"))
+        {
+            delimiters += 1;
+        }
+        if s[i..]
+            .get(..5)
+            .is_some_and(|v| v.eq_ignore_ascii_case("right"))
+        {
+            delimiters = delimiters.saturating_sub(1);
+        }
         if c == '{' {
             d += 1
         } else if c == '}' {
             d -= 1
         }
         if d == 0
+            && delimiters == 0
             && s[i..]
                 .get(..keyword.len())
                 .is_some_and(|s| s.eq_ignore_ascii_case(keyword))
@@ -157,7 +171,7 @@ pub(crate) fn layout_inner(
 ) -> Result<MathBox> {
     anyhow::ensure!(depth < 64, "Equation nesting exceeds 64 levels");
     let s = script.trim();
-    let font = fonts.get("times.ttf")?;
+    let mut font = fonts.get("times.ttf")?;
     let mut result = MathBox {
         ascent: size * 0.85,
         descent: size * 0.2,
@@ -235,8 +249,54 @@ pub(crate) fn layout_inner(
     }
     let mut p = 0;
     let mut bar = false;
+    let mut italic = false;
+    let mut bold = false;
     while p < s.len() {
         let tail = &s[p..];
+        if let Some((b, used)) = crate::math_delimiters::parse(tail, size, fonts, depth + 1)? {
+            result
+                .ops
+                .extend(b.ops.into_iter().map(|o| moved(o, result.width, 0.)));
+            result.width += b.width;
+            result.ascent = result.ascent.max(b.ascent);
+            result.descent = result.descent.max(b.descent);
+            p += used;
+            continue;
+        }
+        if let Some((b, used)) = crate::math_relations::parse(tail, size, fonts, depth + 1)? {
+            result
+                .ops
+                .extend(b.ops.into_iter().map(|o| moved(o, result.width, 0.)));
+            result.width += b.width;
+            result.ascent = result.ascent.max(b.ascent);
+            result.descent = result.descent.max(b.descent);
+            p += used;
+            continue;
+        }
+        if let Some(key) = ["bold", "rm", "it"].into_iter().find(|k| {
+            tail.get(..k.len())
+                .is_some_and(|s| s.eq_ignore_ascii_case(k))
+                && (matches!(*k, "rm" | "bold")
+                    || tail[k.len()..]
+                        .chars()
+                        .next()
+                        .is_none_or(|c| c.is_whitespace() || c == '{'))
+        }) {
+            match key {
+                "bold" => bold = true,
+                "rm" => italic = false,
+                "it" => italic = true,
+                _ => {}
+            }
+            font = fonts.get(match (bold, italic) {
+                (true, true) => "timesbi.ttf",
+                (true, false) => "timesbd.ttf",
+                (false, true) => "timesi.ttf",
+                _ => "times.ttf",
+            })?;
+            p += key.len();
+            continue;
+        }
         if let Some((b, used)) = crate::math_accents::parse(tail, size, fonts, depth + 1)?
             .or(crate::math_stacks::prefix(tail, size, fonts, depth + 1)?)
         {
@@ -278,8 +338,6 @@ pub(crate) fn layout_inner(
         for (key, replacement) in [
             ("LEFT", ""),
             ("RIGHT", ""),
-            ("bold", ""),
-            ("rm", ""),
             ("ANGLE", "∠"),
             ("DEG", "°"),
             ("pi", "π"),

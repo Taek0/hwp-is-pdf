@@ -46,7 +46,7 @@ impl<'a> Engine<'a> {
         for item in items {
             let c = match &item.kind {
                 ItemKind::Char(c) => *c,
-                ItemKind::Object(n) if n.a("reflowBehind") == "1" => continue,
+                ItemKind::Object(n) if n.a("reflowOverlay") == "1" => continue,
                 ItemKind::Control(n)
                     if matches!(
                         n.name.as_str(),
@@ -55,6 +55,7 @@ impl<'a> Engine<'a> {
                             | "footer"
                             | "pageHiding"
                             | "pageNumPos"
+                            | "pageNumCtrl"
                             | "newNumber"
                             | "bookmark"
                             | "fieldBegin"
@@ -348,9 +349,20 @@ impl<'a> Engine<'a> {
                 }
             }
             text_outlines::begin(&mut self.current.ops, &g.outline);
+            for glyph in &run.glyphs {
+                text_shadows::paint(
+                    &mut self.current.ops,
+                    g,
+                    glyph.id,
+                    x + glyph.x,
+                    base + g.shift + glyph.y,
+                    g.scale * factor,
+                );
+            }
+            let (relief_x, relief_y) = text_shadows::main_offset(g);
             self.current.ops.push(Op::Shaped {
-                x,
-                y: base + g.shift,
+                x: x + relief_x,
+                y: base + g.shift + relief_y,
                 text: run.text,
                 font: g.font,
                 size: g.size,

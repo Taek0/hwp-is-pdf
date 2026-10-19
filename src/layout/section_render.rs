@@ -2,6 +2,9 @@
 use super::*;
 impl<'a> Engine<'a> {
     pub(super) fn render_mode(&mut self, force_reflow: bool) -> Result<()> {
+        if self.render_vertical()? {
+            return Ok(());
+        }
         let mut reflow_used = false;
         let mut note_start = (0., 0usize, 0., 0.);
         let mut prepared = self.prepare_field_sections()?;
@@ -21,6 +24,29 @@ impl<'a> Engine<'a> {
             let sec = section
                 .find("secPr")
                 .context("Missing section properties")?;
+            if let Some(start) = sec.child("startNum").filter(|n| n.u("page") > 0) {
+                self.page_base = start.u("page") as i64 - self.pages.len() as i64;
+            }
+            // pgct changes the displayed starting number, not the physical
+            // sheet count. Supplied EVEN/ODD prints retain both body pages.
+            if let Some(control) = section
+                .children_named("p")
+                .next()
+                .into_iter()
+                .flat_map(|p| p.children_named("run"))
+                .flat_map(|r| r.children_named("ctrl"))
+                .find_map(|c| c.child("pageNumCtrl"))
+            {
+                let number = self.pages.len() as i64 + self.page_base;
+                let mismatch = match control.a("pageStartsOn") {
+                    "EVEN" => number.rem_euclid(2) != 0,
+                    "ODD" => number.rem_euclid(2) != 1,
+                    _ => false,
+                };
+                if mismatch {
+                    self.page_base += 1;
+                }
+            }
             let p = sec.child("pagePr").context("Missing page size")?;
             self.pw = p.n("width") / 100.;
             self.ph = p.n("height") / 100.;
@@ -29,6 +55,16 @@ impl<'a> Engine<'a> {
             self.right = m[1];
             self.top = m[2] + val(p.child("margin"), "header");
             self.bottom = m[3] + val(p.child("margin"), "footer");
+            let gutter = val(p.child("margin"), "gutter");
+            if gutter > 0. {
+                if matches!(p.a("gutterType"), "" | "LEFT_ONLY") {
+                    self.left += gutter;
+                } else {
+                    self.report.warnings.insert(
+                        "Nonzero facing/top binding gutter requires page-side-aware layout".into(),
+                    );
+                }
+            }
             self.page_float_floor = self.top;
             self.header = val(p.child("margin"), "header");
             self.footer = val(p.child("margin"), "footer");

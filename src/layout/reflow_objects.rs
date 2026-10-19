@@ -9,13 +9,19 @@ impl<'a> Engine<'a> {
         nesting: usize,
     ) -> Result<()> {
         anyhow::ensure!(nesting < 64, "Excessive nested reflow");
+        let missing_cache = lines(p).is_empty();
         for run in p.children.iter_mut().filter(|r| r.name == "run") {
             for n in &mut run.children {
                 match n.name.as_str() {
-                    "equation" => self.prepare_equation(n, width)?,
+                    "equation" => {
+                        if missing_cache {
+                            n.attrs.insert("measureEquation".into(), "1".into());
+                        }
+                        self.prepare_equation(n, width)?;
+                    }
                     "tbl" | "pic" | "rect" | "ellipse" | "polygon" | "curve" | "group" | "line"
-                    | "arc" | "chart" => {
-                        let behind = n.a("textWrap") == "BEHIND_TEXT";
+                    | "arc" | "chart" | "checkBtn" => {
+                        let behind = Self::nonflow_object(n);
                         anyhow::ensure!(
                             !behind || (n.name != "tbl" && n.child("caption").is_none()),
                             "Background tables/captions require separate placement"
@@ -82,8 +88,7 @@ impl<'a> Engine<'a> {
                                 }
                             }
                             if n.name == "rect" {
-                                let angle =
-                                    n.child("rotationInfo").map(|r| r.n("angle")).unwrap_or(0.);
+                                let angle = crate::graphics::source_angle(n);
                                 let native_w = if angle != 0. {
                                     val(n.child("curSz"), "width")
                                 } else {
@@ -183,11 +188,16 @@ impl<'a> Engine<'a> {
         }
         Ok(())
     }
+    pub(super) fn nonflow_object(n: &Node) -> bool {
+        n.a("textWrap") == "BEHIND_TEXT"
+            || (n.a("textWrap") == "IN_FRONT_OF_TEXT"
+                && n.child("pos").is_some_and(|p| p.a("treatAsChar") != "1"))
+    }
     pub(super) fn general_objects(items: &[Item]) -> bool {
         let objects: Vec<_> = items
             .iter()
             .filter_map(|i| match &i.kind {
-                ItemKind::Object(n) if n.a("textWrap") != "BEHIND_TEXT" => Some((i.pos, n)),
+                ItemKind::Object(n) if !Self::nonflow_object(n) => Some((i.pos, n)),
                 _ => None,
             })
             .collect();
@@ -219,7 +229,7 @@ impl<'a> Engine<'a> {
         existing: &[crate::wrap_region::Region],
     ) -> Result<crate::wrap_region::Region> {
         let outer_margin = margin(n, "outMargin").map(|v| v.max(0.));
-        let angle = n.child("rotationInfo").map(|a| a.n("angle")).unwrap_or(0.);
+        let angle = crate::graphics::source_angle(n);
         let mut w = val(n.child("sz"), "width");
         let mut h = effective_height(n);
         let native = n

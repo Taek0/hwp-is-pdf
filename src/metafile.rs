@@ -2,6 +2,7 @@
 use anyhow::{Context, Result, ensure};
 use std::collections::BTreeMap;
 mod paint;
+pub(crate) mod presentation;
 mod raster;
 mod text;
 pub(crate) use paint::draw;

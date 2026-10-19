@@ -128,10 +128,7 @@ fn effective_height(n: &Node) -> f64 {
                 })
             })
             .unwrap_or(0.);
-        let current = if n
-            .child("rotationInfo")
-            .is_some_and(|r| r.n("angle").rem_euclid(360.).abs() > 0.001)
-        {
+        let current = if crate::graphics::source_angle(n).rem_euclid(360.).abs() > 0.001 {
             declared
         } else {
             val(n.child("curSz"), "height")
@@ -254,6 +251,9 @@ struct Item {
 }
 #[derive(Clone)]
 struct Glyph {
+    vertical_origin: f64,
+    native_advance: f64,
+    shadow: Option<text_shadows::Shadow>,
     outline: Option<text_outlines::Outline>,
     emphasis: Option<text_marks::Emphasis>,
     font: usize,
@@ -321,6 +321,7 @@ struct PlannedTableNote {
     op_index: usize,
 }
 pub struct Engine<'a> {
+    vertical_mode: u8,
     pub doc: &'a Document,
     pub fonts: Fonts,
     pub pages: Vec<Page>,
@@ -373,6 +374,8 @@ mod anchors;
 mod border_strokes;
 mod caption_layout;
 use caption_layout::side_caption_height;
+mod arrowheads;
+mod brush_fills;
 mod column_balance;
 mod column_flow;
 mod column_geometry;
@@ -380,11 +383,13 @@ mod column_notes;
 mod complex_text;
 mod complex_unicode;
 mod drawing_strokes;
+mod ellipses;
 mod endnote_flow;
 mod equation_layout;
 mod field_navigation;
 mod field_values;
 mod font_selection;
+mod form_controls;
 mod generated_text;
 mod list_labels;
 mod local_flow;
@@ -423,12 +428,15 @@ mod text_marks;
 mod text_metrics;
 mod text_outlines;
 mod text_paint;
+mod text_shadows;
 mod text_style;
 mod toc;
+mod vertical_text;
 
 impl<'a> Engine<'a> {
     pub fn new(doc: &'a Document, fonts: &Path) -> Self {
         Self {
+            vertical_mode: 0,
             doc,
             fonts: Fonts::new(fonts),
             pages: Vec::new(),

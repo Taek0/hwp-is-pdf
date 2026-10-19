@@ -61,11 +61,12 @@ impl<'a> Engine<'a> {
             }
         }
         let line = n.child("lineShape");
+        let complex_brush = brush_fills::complex(n);
         let fill = n
             .child("fillBrush")
             .and_then(|b| b.child("winBrush"))
             .or_else(|| n.child("winBrush"))
-            .filter(|f| f.a("faceColor") != "none")
+            .filter(|f| f.a("faceColor") != "none" && !complex_brush)
             .map(|f| color(f.a("faceColor")));
         if n.name == "curve" && !points.is_empty() {
             let segments = crate::graphics::curve(&points, &kinds);
@@ -88,7 +89,27 @@ impl<'a> Engine<'a> {
                 fill,
             });
         }
+        let clip = if complex_brush {
+            self.current.ops[paint_start..]
+                .iter()
+                .find_map(|o| match o {
+                    Op::Path { points, .. } => Some(points.clone()),
+                    Op::Bezier {
+                        start, segments, ..
+                    } => Some(crate::graphics::flatten_cubics(*start, segments)),
+                    _ => None,
+                })
+        } else {
+            None
+        };
         drawing_strokes::apply(&mut self.current.ops, paint_start, line);
+        if complex_brush && let Some(points) = clip.filter(|p| p.len() >= 3) {
+            let mut fill = brush_fills::paint(n, x, y, w, h, &self.doc.binaries);
+            if !fill.is_empty() {
+                fill.insert(2, Op::ClipPath { points });
+                self.current.ops.splice(paint_start..paint_start, fill);
+            }
+        }
         Ok(())
     }
 }

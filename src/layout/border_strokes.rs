@@ -1,5 +1,20 @@
 //! Vector border styles shared by cells, paragraphs and page frames.
 use super::*;
+pub(super) fn frame(n: &Node, rect: [f64; 4]) -> Vec<Op> {
+    let [x, y, w, h] = rect;
+    let mut ops = Vec::new();
+    for (name, a, b) in [
+        ("leftBorder", (x, y), (x, y + h)),
+        ("rightBorder", (x + w, y), (x + w, y + h)),
+        ("topBorder", (x, y), (x + w, y)),
+        ("bottomBorder", (x, y + h), (x + w, y + h)),
+    ] {
+        if let Some(s) = n.child(name).filter(|s| s.a("type") != "NONE") {
+            ops.extend(stroke(s, a, b));
+        }
+    }
+    ops
+}
 pub(super) fn stroke(style: &Node, start: (f64, f64), end: (f64, f64)) -> Vec<Op> {
     let width = style
         .a("width")

@@ -27,7 +27,8 @@ impl<'a> Engine<'a> {
         base: f64,
     ) -> Result<()> {
         let shear = g.shear;
-        if shear != 0. {
+        let grouped = shear != 0. || g.shadow.is_some();
+        if grouped {
             self.current.ops.push(Op::TransformBegin {
                 matrix: [1., 0., -shear, 1., shear * base, 0.],
             });
@@ -36,12 +37,26 @@ impl<'a> Engine<'a> {
         text_outlines::begin(&mut self.current.ops, &outline);
         let result = self.paint_generated_glyphs(label, g, x, base);
         text_outlines::end(&mut self.current.ops, &outline);
-        if shear != 0. {
+        if grouped {
             self.current.ops.push(Op::TransformEnd);
         }
         result
     }
     fn paint_generated_glyphs(&mut self, label: String, g: Glyph, x: f64, base: f64) -> Result<()> {
+        if g.shadow.is_some() {
+            let face = ttf_parser::Face::parse(&self.fonts.list[g.font].bytes, 0)?;
+            let mut at = x;
+            let first = label.chars().next().unwrap_or(' ');
+            for c in label.chars() {
+                if let Some(id) = crate::pdf::glyph_id(&face, c) {
+                    text_shadows::paint(&mut self.current.ops, &g, id.0, at, base, g.scale);
+                }
+                at += self.fonts.width(g.font, &c.to_string(), g.size) * g.scale
+                    + tracking_after(c, first, &g);
+            }
+        }
+        let (relief_x, relief_y) = text_shadows::main_offset(&g);
+        let (x, base) = (x + relief_x, base + relief_y);
         if g.tracking == 0. || label.chars().count() < 2 {
             self.current.ops.push(Op::Text {
                 x,

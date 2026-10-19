@@ -295,3 +295,6 @@ mod tests {
         assert!(inflate(&encoded).is_err());
     }
 }
+
+mod fill_records;
+mod ole_objects;

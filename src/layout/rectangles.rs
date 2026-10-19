@@ -3,11 +3,12 @@ use super::*;
 impl<'a> Engine<'a> {
     pub(super) fn paint_rectangle(&mut self, n: &Node, x: f64, y: f64, w: f64, h: f64) {
         let paint_start = self.current.ops.len();
+        let complex_brush = brush_fills::complex(n);
         let fill = n
             .child("fillBrush")
             .and_then(|b| b.child("winBrush"))
             .or_else(|| n.child("winBrush"))
-            .filter(|f| f.a("faceColor") != "none")
+            .filter(|f| f.a("faceColor") != "none" && !complex_brush)
             .map(|f| color(f.a("faceColor")));
         let line = n.child("lineShape");
         let stroke = line.is_none_or(|s| s.a("style") != "NONE");
@@ -24,7 +25,7 @@ impl<'a> Engine<'a> {
         };
         let r = w.min(h).max(0.) * ratio.clamp(0., 50.) / 100.;
         if r > 0.01 {
-            if !stroke && fill.is_none() {
+            if !stroke && fill.is_none() && !complex_brush {
                 return;
             }
             let k = 0.5522847498307936 * r;
@@ -68,6 +69,29 @@ impl<'a> Engine<'a> {
                 }
             }
         }
+        let clip = if complex_brush {
+            self.current.ops[paint_start..].iter().find_map(|o| {
+                if let Op::Bezier {
+                    start, segments, ..
+                } = o
+                {
+                    Some(crate::graphics::flatten_cubics(*start, segments))
+                } else {
+                    None
+                }
+            })
+        } else {
+            None
+        };
         drawing_strokes::apply(&mut self.current.ops, paint_start, line);
+        if complex_brush {
+            let mut fill = brush_fills::paint(n, x, y, w, h, &self.doc.binaries);
+            if let Some(points) = clip
+                && !fill.is_empty()
+            {
+                fill.insert(2, Op::ClipPath { points });
+            }
+            self.current.ops.splice(paint_start..paint_start, fill);
+        }
     }
 }

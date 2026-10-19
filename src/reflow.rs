@@ -66,12 +66,12 @@ pub(crate) fn settings(n: Option<&Node>) -> Settings {
         discard_boundary_space: n.is_some_and(|p| p.a("binaryHwp") == "1"),
         tabs: Vec::new(),
         tab_step: 40.,
-        left: value("left")
-            + if n.is_some_and(|p| p.a("binaryHwp") == "1") {
-                (-value("intent")).max(0.)
-            } else {
-                0.
-            },
+        left: if n.is_some_and(|p| p.a("binaryHwp") == "1") {
+            value("left") + (-value("intent")).max(0.)
+        } else {
+            // HWPX may already include the hanging inset in its left margin.
+            value("left").max(-value("intent"))
+        },
         right: value("right"),
         indent: value("intent"),
         before: value("prev").max(0.),
@@ -424,6 +424,17 @@ fn wrap_exclusion(
 }
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn hwpx_negative_indent_reserves_the_continuation_margin() {
+        let n = crate::model::xml(
+            br#"<paraPr><margin><intent value="-2382"/><left value="0"/></margin></paraPr>"#,
+        )
+        .unwrap();
+        let s = super::settings(Some(&n));
+        assert!((s.left - 23.82).abs() < 0.001);
+        assert!((s.left + s.indent).abs() < 0.001);
+    }
+
     use super::*;
     #[test]
     fn ellipsis_keeps_a_preceding_character_at_the_line_start_boundary() {

@@ -62,9 +62,9 @@ impl<'a> Engine<'a> {
             .iter_mut()
             .filter(|r| r.name == "run")
             .flat_map(|r| &mut r.children)
-            .filter(|n| n.a("textWrap") == "BEHIND_TEXT")
+            .filter(|n| Self::nonflow_object(n))
         {
-            n.attrs.insert("reflowBehind".into(), "1".into());
+            n.attrs.insert("reflowOverlay".into(), "1".into());
             n.attrs.insert("reflowFloat".into(), "1".into());
         }
         let number = self.paragraph_number(source, true)?;
@@ -85,7 +85,7 @@ impl<'a> Engine<'a> {
             .iter()
             .filter_map(|i| {
                 if let ItemKind::Object(n) = &i.kind
-                    && n.a("reflowBehind") != "1"
+                    && n.a("reflowOverlay") != "1"
                 {
                     Some((i.pos, n))
                 } else {
@@ -125,7 +125,7 @@ impl<'a> Engine<'a> {
             if eligible {
                 for run in p.children.iter_mut().filter(|r| r.name == "run") {
                     for n in &mut run.children {
-                        if n.a("reflowBehind") != "1"
+                        if n.a("reflowOverlay") != "1"
                             && objects.iter().any(|(_, object)| {
                                 n.a("id") == object.a("id") && n.name == object.name
                             })
@@ -182,7 +182,7 @@ impl<'a> Engine<'a> {
         let inherited = !exclusions.is_empty();
         let (mut occupied_left, mut occupied_right) = (0f64, 0f64);
         for object in Self::items(&p).iter().filter_map(|i| match &i.kind {
-            ItemKind::Object(n) if n.a("reflowFloat") == "1" && n.a("reflowBehind") != "1" => {
+            ItemKind::Object(n) if n.a("reflowFloat") == "1" && n.a("reflowOverlay") != "1" => {
                 Some(n)
             }
             _ => None,
@@ -203,7 +203,7 @@ impl<'a> Engine<'a> {
             for n in run.children.iter_mut().filter(|n| {
                 n.a("reflowFloat") == "1"
                     && n.a("reflowGeneral") != "1"
-                    && n.a("reflowBehind") != "1"
+                    && n.a("reflowOverlay") != "1"
             }) {
                 let m = margin(n, "outMargin").map(|v| v.max(0.));
                 let occupied = val(n.child("sz"), "width") + m[0] + m[1] + 1.;
@@ -345,7 +345,7 @@ impl<'a> Engine<'a> {
             grouped[0].descent = grouped[0].descent.max(g.descent);
             grouped[0].em = grouped[0].em.max(g.size);
         }
-        let wrapped = if !general.is_empty() {
+        let mut wrapped = if !general.is_empty() {
             crate::reflow::wrap_regions(&grouped, width, &settings, &general)?
         } else if !exclusions.is_empty() {
             if source.a("floatFlow") == "1" {
@@ -356,6 +356,36 @@ impl<'a> Engine<'a> {
         } else {
             crate::reflow::wrap(&grouped, width, &settings)?
         };
+        if self.vertical_mode == 0
+            && nesting == 0
+            && self.doc.header.a("binaryHwp") != "1"
+            && settings.spacing == "PERCENT"
+            && general.is_empty()
+            && exclusions.is_empty()
+        {
+            // HWPX text baselines precede the interline gap; adding half of
+            // that gap before the baseline shifts larger fonts further down.
+            let inline_positions:BTreeSet<_>=Self::items(&p).into_iter().filter_map(|item|matches!(&item.kind,ItemKind::Object(n) if n.child("pos").is_some_and(|p|p.a("treatAsChar")=="1")).then_some(item.pos)).collect();
+            for i in 0..wrapped.len() {
+                let end = wrapped.get(i + 1).map(|l| l.pos).unwrap_or(usize::MAX);
+                let begin = grouped.partition_point(|u| u.pos < wrapped[i].pos);
+                let stop = grouped.partition_point(|u| u.pos < end);
+                let units = &grouped[begin..stop];
+                let em = units.iter().map(|u| u.em).fold(0., f64::max);
+                let ascent = units.iter().map(|u| u.ascent).fold(0., f64::max);
+                let descent = units.iter().map(|u| u.descent).fold(0., f64::max);
+                let inline_object = inline_positions.range(wrapped[i].pos..end).next().is_some();
+                if inline_object && !wrapped[i].block {
+                    wrapped[i].height =
+                        (ascent + descent).max(em) + em * (settings.value / 100. - 1.).max(0.);
+                }
+                if em > 0. && !wrapped[i].block {
+                    wrapped[i].baseline = ascent
+                        .max(em * 0.85)
+                        .min((wrapped[i].height - descent).max(ascent));
+                }
+            }
+        }
         anyhow::ensure!(
             number.is_none() || !wrapped.first().is_some_and(|l| l.block),
             "List labels on leading block objects are not yet supported"

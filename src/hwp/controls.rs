@@ -41,6 +41,14 @@ pub(super) fn control(r: &Record) -> Result<Node> {
                 .at("type", u32(d, 4)? & 15)
                 .at("number", u16(d, 8)?),
         ])),
+        "pgct" => Ok(n("ctrl").with(vec![n("pageNumCtrl").at(
+            "pageStartsOn",
+            match u32(d, 4)? & 3 {
+                1 => "EVEN",
+                2 => "ODD",
+                _ => "BOTH",
+            },
+        )])),
         "pghd" => {
             let f = u16(d, 4)?;
             let mut h = n("pageHiding");
@@ -430,8 +438,43 @@ pub(super) fn control(r: &Record) -> Result<Node> {
                 if cd.len() >= off + 21 && u32(cd, off + 13)? & 1 != 0 {
                     let v = u32(cd, off + 17)?;
                     if v != u32::MAX {
-                        out.children
-                            .push(n("fillBrush").with(vec![n("winBrush").at("faceColor", rgb(v))]));
+                        let mut brush = n("winBrush").at("faceColor", rgb(v));
+                        if cd.len() >= off + 29 {
+                            brush = brush.at("hatchColor", rgb(u32(cd, off + 21)?)).at(
+                                "hatchStyle",
+                                [
+                                    "NONE",
+                                    "HORIZONTAL",
+                                    "VERTICAL",
+                                    "BACK_SLASH",
+                                    "SLASH",
+                                    "CROSS",
+                                    "CROSS_DIAGONAL",
+                                ]
+                                .get(u32(cd, off + 25)? as usize)
+                                .copied()
+                                .unwrap_or("NONE"),
+                            );
+                        }
+                        out.children.push(n("fillBrush").with(vec![brush]));
+                    }
+                }
+                if cd.len() >= off + 17
+                    && let Some(gradient) = super::fill_records::gradient(cd, off + 13)?
+                {
+                    if let Some(fill) = out.children.iter_mut().find(|c| c.name == "fillBrush") {
+                        fill.children.push(gradient);
+                    } else {
+                        out.children.push(n("fillBrush").with(vec![gradient]));
+                    }
+                }
+                if cd.len() >= off + 17
+                    && let Some(image) = super::fill_records::image(cd, off + 13)?
+                {
+                    if let Some(fill) = out.children.iter_mut().find(|c| c.name == "fillBrush") {
+                        fill.children.push(image);
+                    } else {
+                        out.children.push(n("fillBrush").with(vec![image]));
                     }
                 }
                 if let Some((hdr, ps)) = groups(&comp.children).first() {

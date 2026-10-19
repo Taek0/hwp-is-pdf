@@ -11,6 +11,21 @@ impl<'a> Engine<'a> {
             .flat_map(|r| r.children_named("tc"))
             .collect();
         let (cw, rh, total) = self.measure_table_grid(n, h)?;
+        // OWPML CELL permits continuation inside a cell. The binary adapter's
+        // historical TABLE spelling is separate; do not move a tall XML cell
+        // wholesale to the next page merely because it spans several rows.
+        if self.depth == 0
+            && n.a("binaryHwp") != "1"
+            && n.a("pageBreak") == "CELL"
+            && n.child("caption").is_none()
+            && n.find("footNote").is_none()
+            && cells.iter().filter_map(|c|c.child("subList")).flat_map(|l|l.children_named("p")).flat_map(Self::items).all(|i|!matches!(i.kind,ItemKind::Object(ref o) if effective_height(o)>self.ph-self.top-self.bottom))
+            && n.child("pos").is_none_or(|p| p.a("vertAlign") != "BOTTOM")
+            && total > self.ph - self.bottom - y
+        {
+            let mut candidate=n.clone();candidate.attrs.insert("xmlCellSplit".into(),"1".into());
+            if self.split_nested_vectors(&candidate,x,y,w,total)? {return Ok(());}
+        }
         if self.native_table_rows(n, x, y, w, &cw, &rh, total)? {
             return Ok(());
         }

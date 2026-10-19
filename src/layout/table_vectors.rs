@@ -48,7 +48,7 @@ impl<'a> Engine<'a> {
             return Ok(false);
         }
         if n.find("endNote").is_some()
-            || n.child("rotationInfo").is_some_and(|r| r.n("angle") != 0.)
+            || crate::graphics::source_angle(n).abs() > 0.001
             || n.child("flip")
                 .is_some_and(|r| r.a("horizontal") == "1" || r.a("vertical") == "1")
         {
@@ -353,9 +353,10 @@ impl<'a> Engine<'a> {
                     .iter()
                     .copied()
                     .filter(|v| {
-                        !(n.a("binaryHwp") == "1"
+                        !((n.a("binaryHwp") == "1"
                             && n.a("reflowTable") != "1"
                             && n.a("pageBreak") == "TABLE")
+                            || n.a("xmlCellSplit") == "1")
                             && *v > start + capacity * 0.5
                             && *v <= cut
                             && safe(*v)

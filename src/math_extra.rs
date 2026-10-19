@@ -72,14 +72,43 @@ pub fn parse(
         return Ok(None);
     };
     let (body, rest) = group(&tail[kind.len()..]);
+    let mut columns = Vec::new();
+    let mut cursor = body.trim();
+    while let Some(key) = ["lcol", "rcol", "col"].into_iter().find(|key| {
+        cursor
+            .get(..key.len())
+            .is_some_and(|s| s.eq_ignore_ascii_case(key))
+            && cursor[key.len()..].starts_with([' ', '{'])
+    }) {
+        let (content, remaining) = group(&cursor[key.len()..]);
+        columns.push((key, split(content, '#')));
+        cursor = remaining.trim();
+    }
+    let matrix_rows: Vec<Vec<&str>> = if !columns.is_empty() && cursor.is_empty() {
+        let count = columns.iter().map(|(_, c)| c.len()).max().unwrap_or(0);
+        (0..count)
+            .map(|i| {
+                columns
+                    .iter()
+                    .map(|(_, c)| c.get(i).copied().unwrap_or(""))
+                    .collect()
+            })
+            .collect()
+    } else {
+        columns.clear();
+        split(body, '#')
+            .into_iter()
+            .map(|r| split(r, '&'))
+            .collect()
+    };
     let mut rows = vec![];
     let mut widths = vec![];
     let mut heights = vec![];
-    for row in split(body, '#') {
+    for row in matrix_rows {
         let mut cells = vec![];
         let mut ascent = 0f64;
         let mut descent = 0f64;
-        for (i, cell) in split(row, '&').iter().enumerate() {
+        for (i, cell) in row.iter().enumerate() {
             let b = layout_inner(cell, size * 0.9, fonts, depth)?;
             if i >= widths.len() {
                 widths.push(0f64);
@@ -113,9 +142,11 @@ pub fn parse(
     for (i, row) in rows.into_iter().enumerate() {
         let mut xx = padding;
         for (j, cell) in row.into_iter().enumerate() {
-            let dx = if matches!(*kind, "cases" | "lpile") {
+            let dx = if matches!(*kind, "cases" | "lpile")
+                || columns.get(j).is_some_and(|c| c.0 == "lcol")
+            {
                 0.
-            } else if *kind == "rpile" {
+            } else if *kind == "rpile" || columns.get(j).is_some_and(|c| c.0 == "rcol") {
                 widths[j] - cell.width
             } else {
                 (widths[j] - cell.width) / 2.

@@ -17,10 +17,12 @@ fn main() -> anyhow::Result<()> {
             .join(item["group"].as_str().unwrap())
             .join(item["name"].as_str().unwrap())
             .with_extension("pdf");
-        let result = hwp_engine::convert(
+        let reflow = item["reflow"].as_bool().unwrap_or(false);
+        let result = hwp_engine::convert_with_reflow(
             std::path::Path::new(&source),
             &target,
             std::path::Path::new("/mnt/c/Windows/Fonts"),
+            reflow,
         );
         let r = match result {
             Ok(r) => r,
@@ -38,7 +40,7 @@ fn main() -> anyhow::Result<()> {
         let qa: serde_json::Value =
             serde_json::from_slice(&std::fs::read(target.with_extension("qa.json"))?)?;
         println!("{}: {} pages", item["name"], r.pages);
-        results.push(serde_json::json!({"group":item["group"],"name":item["name"],"pages":r.pages,"qa":qa,"warnings":r.warnings}));
+        results.push(serde_json::json!({"group":item["group"],"name":item["name"],"reflow":reflow,"pages":r.pages,"qa":qa,"warnings":r.warnings}));
         std::fs::write(
             out.join("corpus-report.json"),
             serde_json::to_vec_pretty(&results)?,

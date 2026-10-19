@@ -39,6 +39,7 @@ impl<'a> Engine<'a> {
                         })
                         || b.find("winBrush")
                             .is_some_and(|f| !matches!(f.a("faceColor"), "" | "none"))
+                        || brush_fills::complex(b)
                 })
         };
         let Some(b) = sec
@@ -85,11 +86,7 @@ impl<'a> Engine<'a> {
         let Some(style) = self.doc.borders.get(b.a("borderFillIDRef")) else {
             return;
         };
-        if fill
-            && let Some(brush) = style
-                .find("winBrush")
-                .filter(|f| !matches!(f.a("faceColor"), "" | "none"))
-        {
+        if fill {
             let [x, y, w, h] = match b.a("fillArea") {
                 "PAPER" => [0., 0., self.pw, self.ph],
                 "PAGE" => [
@@ -100,25 +97,38 @@ impl<'a> Engine<'a> {
                 ],
                 _ => rect,
             };
-            self.current.ops.push(Op::Rect {
-                x,
-                y,
-                w,
-                h,
-                fill: color(brush.a("faceColor")),
-            });
+            if brush_fills::complex(style) {
+                let ops = brush_fills::paint(style, x, y, w, h, &self.doc.binaries);
+                self.current.ops.splice(0..0, ops);
+                if style.find("imgBrush").is_some() {
+                    self.report.bounds.push(Bounds {
+                        page: self.pages.len() + 1,
+                        kind: "watermark".into(),
+                        id: format!("page-fill-{}", b.a("borderFillIDRef")),
+                        x,
+                        y,
+                        w,
+                        h,
+                    });
+                }
+            } else if let Some(brush) = style
+                .find("winBrush")
+                .filter(|f| !matches!(f.a("faceColor"), "" | "none"))
+            {
+                self.current.ops.insert(
+                    0,
+                    Op::Rect {
+                        x,
+                        y,
+                        w,
+                        h,
+                        fill: color(brush.a("faceColor")),
+                    },
+                );
+            }
         }
         if stroke {
-            // Reuse the common side painter but suppress its border-sized fill.
-            let start = self.current.ops.len();
-            self.border(b.a("borderFillIDRef"), rect[0], rect[1], rect[2], rect[3]);
-            let lines = self
-                .current
-                .ops
-                .drain(start..)
-                .filter(|o| !matches!(o, Op::Rect { .. }))
-                .collect::<Vec<_>>();
-            self.current.ops.extend(lines);
+            self.current.ops.extend(border_strokes::frame(style, rect));
         }
     }
 }

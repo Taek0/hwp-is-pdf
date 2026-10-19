@@ -1,6 +1,22 @@
 //! Convert styled text, controls and objects into measured wrapping units.
 use super::*;
 impl<'a> Engine<'a> {
+    fn inline_em(&self, style: &str) -> f64 {
+        self.doc
+            .chars
+            .get(style)
+            .map(|n| {
+                n.n("height") / 100. * text_metrics::property(n, "relSz", "latin", "latin", 100.)
+                    / 100.
+                    * if n.child("supscript").is_some() || n.child("subscript").is_some() {
+                        0.65
+                    } else {
+                        1.
+                    }
+            })
+            .filter(|v| *v > 0.)
+            .unwrap_or(12.)
+    }
     pub(super) fn paragraph_units(&mut self, p: &Node) -> Result<Vec<crate::reflow::Unit>> {
         let items = Self::items(p);
         if items.is_empty()
@@ -86,6 +102,11 @@ impl<'a> Engine<'a> {
                             } else {
                                 h * (1. - b) + m[2] + m[3]
                             },
+                            em: if !block && self.doc.header.a("binaryHwp") != "1" {
+                                self.inline_em(&item.style)
+                            } else {
+                                0.
+                            },
                             block,
                             ..Default::default()
                         },
@@ -105,6 +126,7 @@ impl<'a> Engine<'a> {
                             | "line"
                             | "arc"
                             | "chart"
+                            | "checkBtn"
                     ) =>
                 {
                     let block =
@@ -140,6 +162,11 @@ impl<'a> Engine<'a> {
                                 native * 0.15 + (side - native) + cap[3] + m[2] + m[3]
                             } else {
                                 h * 0.15
+                            },
+                            em: if !block && self.doc.header.a("binaryHwp") != "1" {
+                                self.inline_em(&item.style)
+                            } else {
+                                0.
                             },
                             block,
                             ..Default::default()
@@ -201,6 +228,7 @@ impl<'a> Engine<'a> {
                         c.name.as_str(),
                         "colPr"
                             | "pageNumPos"
+                            | "pageNumCtrl"
                             | "pageHiding"
                             | "newNumber"
                             | "header"

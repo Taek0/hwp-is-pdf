@@ -89,20 +89,30 @@ fn supplied_math_document_has_complete_object_coverage_and_repaired_box() {
             l.page == b.page
                 && l.kind == "line"
                 && l.x > b.x + 1.
-                && l.x < b.x + 10.
+                && l.x < b.x + b.w - 1.
                 && l.y >= b.y
                 && l.y < b.y + b.h
         })
         .collect();
-    assert!(internal.len() >= 4);
+    assert_eq!(internal.len(), 4);
+    // The reference has hanging continuation lines; requiring every line at
+    // the left inset would reject the corrected HWPX paragraph margins.
+    assert!(internal[1].x > internal[0].x + 20.);
+    assert!(internal[3].x > internal[2].x + 20.);
     assert!(internal.iter().all(|l| l.y + l.h <= b.y + b.h + 0.01));
     // Following answer line must start below the box, not through it.
-    let answer = engine
-        .report
-        .bounds
+    let answer = engine.pages[5]
+        .ops
         .iter()
-        .filter(|l| l.page == 6 && l.kind == "line" && l.x > b.x + 10. && l.y > b.y + 40.)
-        .min_by(|a, b| a.y.total_cmp(&b.y))
+        .filter_map(|op| match op {
+            hwp_engine::pdf::Op::Text { x, y, text, .. }
+                if text.contains('①') && *x >= b.x - 1. && *y > b.y =>
+            {
+                Some(*y)
+            }
+            _ => None,
+        })
+        .min_by(f64::total_cmp)
         .unwrap();
-    assert!(answer.y >= b.y + b.h);
+    assert!(answer >= b.y + b.h);
 }

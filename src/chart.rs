@@ -5,6 +5,7 @@ use crate::{
 };
 use anyhow::{Result, ensure};
 mod native_combo;
+mod ooxml;
 fn rgb(s: &str) -> [f64; 3] {
     let c = u32::from_str_radix(s.trim_start_matches('#'), 16).unwrap_or(0x4472c4);
     [
@@ -21,6 +22,14 @@ pub fn draw(
     h: f64,
     fonts: &mut Fonts,
 ) -> Result<(Vec<Op>, Option<String>)> {
+    if let Some(root) = n.child("chartSpace") {
+        let ops = if root.find("bar3DChart").is_some() {
+            ooxml::bars3d(root, x, y, w, h, fonts)?
+        } else {
+            ooxml::scatter(root, x, y, w, h, fonts)?
+        };
+        return Ok((ops,Some("OOXML chart uses numeric cached coordinates; automatic plot, 3D projection and legend metrics may differ from Hancom".into())));
+    }
     if n.a("nativeType") == "9" && n.child("nativeLayout").is_some() {
         return native_combo::draw(n, x, y, w, h, fonts).map(|ops| (ops, None));
     }
