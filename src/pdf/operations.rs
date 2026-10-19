@@ -8,6 +8,9 @@ pub struct PositionedGlyph {
 }
 #[derive(Clone, Debug, Serialize)]
 pub enum Op {
+    StrokeDash {
+        pattern: Vec<f64>,
+    },
     ClipPath {
         points: Vec<(f64, f64)>,
     },

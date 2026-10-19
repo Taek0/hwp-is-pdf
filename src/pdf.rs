@@ -259,6 +259,10 @@ pub fn save(
                         content.push_str("EMC\n");
                     }
                 }
+                Op::StrokeDash { pattern } => {
+                    let values: Vec<_> = pattern.iter().map(|v| format!("{v:.4}")).collect();
+                    content.push_str(&format!("[{}] 0 d\n", values.join(" ")));
+                }
                 Op::TransformBegin { matrix: m } => {
                     outline_stack.push(outline.clone());
                     content.push_str(&format!(

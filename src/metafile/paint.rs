@@ -75,7 +75,9 @@ pub(crate) fn draw(bytes: &[u8], id: &str, target: [f64; 4], fonts: &mut Fonts) 
         at: (0., 0.),
     };
     let mut objects = vec![];
-    let mut out = vec![];
+    let mut out = vec![Op::TransformBegin {
+        matrix: crate::graphics::IDENTITY,
+    }];
     for r in records(bytes)? {
         let d = r.data;
         match r.kind {
@@ -135,7 +137,18 @@ pub(crate) fn draw(bytes: &[u8], id: &str, target: [f64; 4], fonts: &mut Fonts) 
                         .context("Invalid WMF object reference")?
                     {
                         Object::Pen(style, width, c) => {
-                            ensure!(matches!(style, 0 | 5), "Unsupported WMF pen style");
+                            ensure!(*style <= 6, "Unsupported WMF pen style {style:#x}");
+                            let unit = (*width * s.sx().abs()).max(0.5);
+                            let pattern: &[f64] = match style {
+                                1 => &[6., 2.],
+                                2 => &[1., 2.],
+                                3 => &[6., 2., 1., 2.],
+                                4 => &[6., 2., 1., 2., 1., 2.],
+                                _ => &[],
+                            };
+                            out.push(Op::StrokeDash {
+                                pattern: pattern.iter().map(|v| v * unit).collect(),
+                            });
                             s.pen = if *style == 5 {
                                 None
                             } else {
@@ -216,6 +229,26 @@ pub(crate) fn draw(bytes: &[u8], id: &str, target: [f64; 4], fonts: &mut Fonts) 
                     });
                 }
             }
+            0x418 => {
+                let (left, top) = s.xy(i16(d, 6)? as f64, i16(d, 4)? as f64);
+                let (right, bottom) = s.xy(i16(d, 2)? as f64, i16(d, 0)? as f64);
+                let (cx, cy) = ((left + right) / 2., (top + bottom) / 2.);
+                let (rx, ry) = ((right - left) / 2., (bottom - top) / 2.);
+                let k = 0.5522847498307936;
+                out.push(Op::Bezier {
+                    start: (right, cy),
+                    segments: vec![
+                        [right, cy + k * ry, cx + k * rx, bottom, cx, bottom],
+                        [cx - k * rx, bottom, left, cy + k * ry, left, cy],
+                        [left, cy - k * ry, cx - k * rx, top, cx, top],
+                        [cx + k * rx, top, right, cy - k * ry, right, cy],
+                    ],
+                    closed: true,
+                    width: s.pen.map(|p| (p.0 * s.sx().abs()).max(0.1)).unwrap_or(0.),
+                    color: s.pen.map(|p| p.1).unwrap_or([0.; 3]),
+                    fill: s.brush,
+                });
+            }
             0xf43 => {
                 ensure!(
                     u32(d, 0)? == 0x00cc0020 && i16(d, 10)? == 0 && i16(d, 12)? == 0,
@@ -240,5 +273,6 @@ pub(crate) fn draw(bytes: &[u8], id: &str, target: [f64; 4], fonts: &mut Fonts) 
             _ => anyhow::bail!("Unsupported WMF drawing record 0x{:04x}", r.kind),
         }
     }
+    out.push(Op::TransformEnd);
     Ok(out)
 }

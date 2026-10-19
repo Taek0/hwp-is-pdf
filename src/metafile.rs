@@ -43,8 +43,13 @@ fn records(b: &[u8]) -> Result<Vec<Record<'_>>> {
         0
     };
     ensure!(u16(b, header + 2)? == 9, "Invalid WMF header");
+    let words = u32(b, header + 6)? as usize;
+    // Some writers emit an empty placeable metafile with a zero mtSize.
+    // Accept only the complete header + EOF form, never an unbounded stream.
+    let empty =
+        words == 0 && b.len() == header + 24 && b.get(header + 18..) == Some(&[3, 0, 0, 0, 0, 0]);
     let end = header
-        + (u32(b, header + 6)? as usize)
+        + (if empty { 12 } else { words })
             .checked_mul(2)
             .context("WMF size overflow")?;
     ensure!(end <= b.len() && end >= header + 18, "Truncated WMF file");
@@ -90,6 +95,20 @@ pub(crate) fn prepare(images: &mut BTreeMap<String, Vec<u8>>) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn zero_size_is_allowed_only_for_a_complete_empty_metafile() {
+        let mut b = vec![0; 24];
+        b[0] = 1;
+        b[2] = 9;
+        b[5] = 3;
+        b[18] = 3;
+        assert_eq!(records(&b).unwrap().len(), 1);
+        b[22] = 1;
+        assert!(records(&b).is_err());
+        b[22] = 0;
+        b.push(0);
+        assert!(records(&b).is_err());
+    }
     #[test]
     fn malformed_lengths_fail_without_playback() {
         let mut b = vec![0; 24];

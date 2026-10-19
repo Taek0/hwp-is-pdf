@@ -86,6 +86,15 @@ pub(super) fn normalize(
                     .take(LIMIT as u64 + 1)
                     .read_to_end(&mut contents)?;
                 ensure!(contents.len() <= LIMIT, "Chart data too large");
+                if crate::metafile::is_wmf(&contents) {
+                    let image_id = format!("{id}-ole-metafile");
+                    drop(storage);
+                    binaries.insert(image_id.clone(), contents);
+                    node.name = "pic".into();
+                    node.attrs.insert("staticOLE".into(), "1".into());
+                    node.children.push(n("img").at("binaryItemIDRef", image_id));
+                    continue;
+                }
                 let chart = hwp_legacy_chart::parse_ole_chart_contents(&contents)?;
                 let presentation =
                     hwp_legacy_chart::ole_chart::legacy_presentation::parse(&contents);

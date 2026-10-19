@@ -490,7 +490,6 @@ pub fn open(path: &Path) -> Result<Document> {
     ensure!(!sections.is_empty(), "Missing BodyText");
     super::images::mark_pcx(&mut sections, &pcx_ids);
     super::images::mark_pcx(&mut masters, &pcx_ids);
-    crate::metafile::prepare(&mut binaries)?;
     crate::image_effects::apply(&mut sections, &mut binaries)?;
     crate::image_effects::apply(&mut masters, &mut binaries)?;
     crate::image_effects::apply(std::slice::from_mut(&mut header), &mut binaries)?;
@@ -499,6 +498,7 @@ pub fn open(path: &Path) -> Result<Document> {
     }
     super::ole_objects::normalize(&mut sections, &mut binaries)?;
     super::ole_objects::normalize(&mut masters, &mut binaries)?;
+    crate::metafile::prepare(&mut binaries)?;
     Ok(Document {
         header,
         sections,

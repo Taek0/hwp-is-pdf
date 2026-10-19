@@ -1,5 +1,6 @@
 use anyhow::{Context, Result, bail};
 use std::{collections::BTreeMap, fs::File, io::Read, path::Path};
+mod alternate;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Node {
@@ -169,11 +170,14 @@ impl Document {
         for (_, b) in section_files {
             let mut section = xml(b)?;
             normalize_controls(&mut section);
+            alternate::resolve(&mut section, &mut binaries)?;
             sections.push(section)
         }
         for (n, b) in &files {
             if n.starts_with("Contents/masterpage") && n.ends_with(".xml") {
-                masters.push(xml(b)?);
+                let mut master = xml(b)?;
+                alternate::resolve(&mut master, &mut binaries)?;
+                masters.push(master);
             }
         }
         if sections.is_empty() {
