@@ -9,6 +9,66 @@ fn fonts() -> Fonts {
         "/mnt/c/Windows/Fonts"
     }))
 }
+
+#[test]
+fn limits_stay_outside_explicit_fraction_numerators() {
+    let mut f = fonts();
+    let b = math::layout("lim _{h ``rarrow`` 0} {f(h)} over {h}", 20., &mut f).unwrap();
+    let (lx, ly, lw) = b
+        .ops
+        .iter()
+        .find_map(|op| match op {
+            Op::Text {
+                text,
+                x,
+                y,
+                font,
+                size,
+                scale,
+                ..
+            } if text == "lim" => Some((*x, *y, f.width(*font, text, *size) * scale)),
+            _ => None,
+        })
+        .unwrap();
+    let bar = b
+        .ops
+        .iter()
+        .filter_map(|op| match op {
+            Op::Line { x, x2, .. } => Some((*x, *x2)),
+            _ => None,
+        })
+        .max_by(|a, b| (a.1 - a.0).total_cmp(&(b.1 - b.0)))
+        .unwrap();
+    assert!(bar.0 >= lx + lw);
+    assert!(
+        b.ops
+            .iter()
+            .any(|op| matches!(op,Op::Text{text,x,y,..} if text=="→" && *x<bar.0 && *y>ly))
+    );
+    assert!(
+        !b.ops
+            .iter()
+            .any(|op| matches!(op,Op::Text{text,..} if text=="r"))
+    );
+    let b = math::layout("y= {a+b} over {c}", 20., &mut f).unwrap();
+    let prefix = b
+        .ops
+        .iter()
+        .find_map(|op| match op {
+            Op::Text { text, y, .. } if text == "y" => Some(*y),
+            _ => None,
+        })
+        .unwrap();
+    let numerator = b
+        .ops
+        .iter()
+        .find_map(|op| match op {
+            Op::Text { text, y, .. } if text == "a" => Some(*y),
+            _ => None,
+        })
+        .unwrap();
+    assert!(numerator < prefix);
+}
 #[test]
 fn math_styles_are_scoped_and_inherited_by_structures() {
     let mut f = fonts();

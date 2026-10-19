@@ -1,6 +1,8 @@
 //! HWP equation-script subset. Unrecognized text is preserved literally.
 use crate::pdf::{Fonts, Op};
 use anyhow::Result;
+mod fractions;
+mod limits;
 mod operators;
 mod placement;
 pub(crate) mod style;
@@ -112,7 +114,7 @@ pub(crate) fn layout_inner(
     };
     if let Some(i) = top_keyword(s, "over") {
         let left = s[..i].trim();
-        let num = left;
+        let (prefix, num) = fractions::numerator(left);
         let (den, rest) = group(&s[i + 4..]);
         let n = layout_inner(num, size, fonts, depth + 1, style)?;
         let d = layout_inner(den, size, fonts, depth + 1, style)?;
@@ -147,6 +149,17 @@ pub(crate) fn layout_inner(
                 .map(|o| moved(o, width + size * 0.1, 0.)),
         );
         result.width += tail.width + size * 0.1;
+        if !prefix.is_empty() {
+            let mut before = layout_inner(prefix, size, fonts, depth + 1, style)?;
+            let offset = before.width;
+            before.ascent = before.ascent.max(result.ascent);
+            before.descent = before.descent.max(result.descent);
+            before.width += result.width;
+            before
+                .ops
+                .extend(result.ops.into_iter().map(|op| moved(op, offset, 0.)));
+            return Ok(before);
+        }
         return Ok(result);
     }
     for keyword in ["atop", "choose"] {
@@ -189,7 +202,9 @@ pub(crate) fn layout_inner(
             p += used;
             continue;
         }
-        if let Some((b, used)) = operators::parse(tail, size, fonts, depth + 1, style)? {
+        if let Some((b, used)) = limits::parse(tail, size, fonts, depth + 1, style)?
+            .or(operators::parse(tail, size, fonts, depth + 1, style)?)
+        {
             result
                 .ops
                 .extend(b.ops.into_iter().map(|o| moved(o, result.width, 0.)));

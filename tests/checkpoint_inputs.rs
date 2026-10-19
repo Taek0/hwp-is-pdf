@@ -224,3 +224,29 @@ fn nested_table_matches_printed_fragments_and_following_text_positions() {
         q.outside_page.is_empty() && q.text_overlaps.is_empty() && q.border_crossings.is_empty()
     );
 }
+
+#[test]
+fn limit_reference_preserves_arrow_and_has_no_script_fraction_collision() {
+    let path = input("11_equation__limits.hwp");
+    if !path.exists() || !fonts().exists() {
+        return;
+    }
+    let d = Document::open(&path).unwrap();
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    assert_eq!(e.pages.len(), 1);
+    assert_eq!(e.report.equations, 1);
+    let text = e.pages[0]
+        .ops
+        .iter()
+        .filter_map(|op| match op {
+            Op::Text { text, .. } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect::<String>();
+    assert!(text.contains("lim") && text.contains('→') && !text.contains("rarrow"));
+    let q = hwp_engine::qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
+    assert!(
+        q.text_overlaps.is_empty() && q.border_crossings.is_empty() && q.outside_page.is_empty()
+    );
+}
