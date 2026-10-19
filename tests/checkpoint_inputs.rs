@@ -35,9 +35,13 @@ fn alternate_charts_are_visible_once_with_original_geometry() {
         let d = Document::open(&path).unwrap();
         let chart = d.sections[0].find("chart").unwrap();
         let id = chart.a("presentationIDRef");
-        assert!(!id.is_empty());
-        let pixels = image::load_from_memory(&d.binaries[id]).unwrap();
-        assert!(pixels.width() > 100 && pixels.height() > 100);
+        let direct = !name.starts_with("17_") && !name.starts_with("18_");
+        assert_eq!(chart.child("chartSpace").is_some(), direct, "{name}");
+        if !direct {
+            assert!(!id.is_empty());
+            let pixels = image::load_from_memory(&d.binaries[id]).unwrap();
+            assert!(pixels.width() > 100 && pixels.height() > 100);
+        }
         let mut e = Engine::new(&d, fonts());
         e.render().unwrap();
         assert_eq!(e.pages.len(), 1, "{name}");
@@ -53,7 +57,30 @@ fn alternate_charts_are_visible_once_with_original_geometry() {
             })
             .collect();
         let sz = chart.child("sz").unwrap();
-        assert_eq!(images, vec![(sz.n("width") / 100., sz.n("height") / 100.)]);
+        if direct {
+            assert!(images.is_empty());
+            let text = e.pages[0]
+                .ops
+                .iter()
+                .filter_map(|o| match o {
+                    Op::Text { text, .. } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect::<String>();
+            assert!(!text.contains("차트 제목"));
+            assert!(text.contains(if name.starts_with("19_") {
+                "종가"
+            } else {
+                "계열 1"
+            }));
+            let bounds = e.report.bounds.iter().find(|b| b.kind == "chart").unwrap();
+            assert_eq!(
+                (bounds.w, bounds.h),
+                (sz.n("width") / 100., sz.n("height") / 100.)
+            );
+        } else {
+            assert_eq!(images, vec![(sz.n("width") / 100., sz.n("height") / 100.)]);
+        }
     }
 }
 
@@ -279,4 +306,70 @@ fn sparse_native_drawing_recovers_without_modifying_source_and_keeps_line_direct
             .any(|op| matches!(op,Op::Line{x,y,x2,y2,..} if x2>x && y2<y))
     );
     assert_eq!(std::fs::read(&path).unwrap(), source);
+}
+
+#[test]
+fn native_ooxml_columns_are_drawn_as_a_chart_instead_of_a_fallback_grid() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("output/roadmap-reference-downloads/chart__bar_vertical_hwp5.hwp");
+    if !path.exists() || !fonts().exists() {
+        return;
+    }
+    let d = Document::open(&path).unwrap();
+    assert!(d.sections.iter().any(|s| s.find("barChart").is_some()));
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    assert_eq!(e.pages.len(), 1);
+    assert_eq!(e.report.charts, 1);
+    assert!(
+        !e.report
+            .warnings
+            .iter()
+            .any(|w| w.contains("labelled table"))
+    );
+}
+
+#[test]
+fn hwpx_ole_equation_is_source_text_not_a_blank_placeholder() {
+    let path = input("12_equation__ole.hwpx");
+    if !path.exists() || !fonts().exists() {
+        return;
+    }
+    let d = Document::open(&path).unwrap();
+    let eq = d.sections.iter().find_map(|s| s.find("equation")).unwrap();
+    assert_eq!(eq.a("oleEquation"), "1");
+    let script = hwp_engine::model::text(eq.child("script").unwrap());
+    assert!(script.contains("over") && script.contains("times") && !script.contains("TAB"));
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    assert_eq!(e.pages.len(), 2);
+    assert!(e.report.equations > 0);
+}
+
+#[test]
+fn hwpx_static_emf_ole_restores_logo_and_declared_font_keeps_one_page() {
+    let path = input("unused")
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("Hancom-Essential-7/07_emf_ole.hwpx");
+    if !path.exists() || !fonts().exists() {
+        return;
+    }
+    let d = Document::open(&path).unwrap();
+    assert!(d.binaries.keys().any(|k| k.ends_with("-ole-enhanced")));
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    assert_eq!(e.pages.len(), 1);
+    assert!(
+        e.pages[0]
+            .ops
+            .iter()
+            .any(|o| matches!(o,Op::Image{id,..} if id.ends_with("-ole-enhanced")))
+    );
+    let q = hwp_engine::qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
+    assert!(q.text_overlaps.is_empty() && q.outside_page.is_empty());
 }

@@ -6,6 +6,18 @@ use crate::{
 use anyhow::{Result, ensure};
 mod native_combo;
 mod ooxml;
+pub(crate) fn supports_source_chart(root: &Node) -> bool {
+    ooxml::cartesian::supported(root)
+        || root
+            .find("scatterChart")
+            .and_then(|n| n.child("scatterStyle"))
+            .is_some_and(|n| n.a("val") == "marker")
+        || root.find("bar3DChart").is_some_and(|n| {
+            n.child("barDir").is_some_and(|n| n.a("val") == "col")
+                && n.child("grouping")
+                    .is_some_and(|n| n.a("val") == "clustered")
+        })
+}
 fn rgb(s: &str) -> [f64; 3] {
     let c = u32::from_str_radix(s.trim_start_matches('#'), 16).unwrap_or(0x4472c4);
     [
@@ -23,7 +35,9 @@ pub fn draw(
     fonts: &mut Fonts,
 ) -> Result<(Vec<Op>, Option<String>)> {
     if let Some(root) = n.child("chartSpace") {
-        let ops = if root.find("bar3DChart").is_some() {
+        let ops = if ooxml::cartesian::supported(root) {
+            ooxml::cartesian::draw(root, x, y, w, h, fonts)?
+        } else if root.find("bar3DChart").is_some() {
             ooxml::bars3d(root, x, y, w, h, fonts)?
         } else {
             ooxml::scatter(root, x, y, w, h, fonts)?

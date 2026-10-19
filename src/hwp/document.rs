@@ -524,5 +524,6 @@ pub fn open(path: &Path) -> Result<Document> {
         paras,
         borders,
         fonts,
+        font_substitutes: BTreeMap::new(),
     })
 }

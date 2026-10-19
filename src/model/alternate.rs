@@ -6,11 +6,15 @@ use std::{
     io::{Cursor, Read},
 };
 
-pub(super) fn resolve(node: &mut Node, binaries: &mut BTreeMap<String, Vec<u8>>) -> Result<()> {
+pub(super) fn resolve(
+    node: &mut Node,
+    binaries: &mut BTreeMap<String, Vec<u8>>,
+    files: &BTreeMap<String, Vec<u8>>,
+) -> Result<()> {
     let mut children = Vec::new();
     for mut child in std::mem::take(&mut node.children) {
         if child.name != "switch" {
-            resolve(&mut child, binaries)?;
+            resolve(&mut child, binaries, files)?;
             children.push(child);
             continue;
         }
@@ -21,6 +25,19 @@ pub(super) fn resolve(node: &mut Node, binaries: &mut BTreeMap<String, Vec<u8>>)
             })
             .find_map(|case| case.child("chart"));
         if let Some(chart) = chart {
+            if let Some(bytes) = files.get(chart.a("chartIDRef")) {
+                let mut source = super::xml(bytes)?;
+                if crate::chart::supports_source_chart(&source) {
+                    source.attrs.insert("nonBody".into(), "1".into());
+                    if let Some(child) = source.children.iter_mut().find(|n| n.name == "chart") {
+                        child.name = "ooxmlChart".into();
+                    }
+                    let mut chart = chart.clone();
+                    chart.children.push(source);
+                    children.push(chart);
+                    continue;
+                }
+            }
             let ole = child
                 .child("default")
                 .and_then(|d| d.child("ole"))
@@ -57,7 +74,7 @@ pub(super) fn resolve(node: &mut Node, binaries: &mut BTreeMap<String, Vec<u8>>)
                 .child("default")
                 .cloned()
                 .context("Unsupported HWPX switch without default")?;
-            resolve(&mut fallback, binaries)?;
+            resolve(&mut fallback, binaries, files)?;
             children.extend(fallback.children);
         }
     }
@@ -69,15 +86,25 @@ pub(super) fn resolve(node: &mut Node, binaries: &mut BTreeMap<String, Vec<u8>>)
 mod tests {
     use super::*;
     #[test]
+    fn supported_source_chart_does_not_require_an_ole_preview() {
+        let mut node=super::super::xml(br#"<run><switch><case required-namespace="http://www.hancom.co.kr/hwpml/2016/ooxmlchart"><chart chartIDRef="Chart/chart1.xml"/></case></switch></run>"#).unwrap();
+        let source=br#"<chartSpace><chart><plotArea><barChart><grouping val="clustered"/></barChart><catAx/><valAx/></plotArea></chart></chartSpace>"#.to_vec();
+        let files = BTreeMap::from([("Chart/chart1.xml".into(), source)]);
+        resolve(&mut node, &mut BTreeMap::new(), &files).unwrap();
+        let chart = node.child("chart").unwrap();
+        assert!(chart.child("chartSpace").is_some());
+        assert!(chart.a("presentationIDRef").is_empty());
+    }
+    #[test]
     fn unknown_extension_selects_default_once() {
         let mut node = crate::model::xml(br#"<run><switch><case required-namespace="unknown"><t>wrong</t></case><default><t>visible</t></default></switch></run>"#).unwrap();
-        resolve(&mut node, &mut BTreeMap::new()).unwrap();
+        resolve(&mut node, &mut BTreeMap::new(), &BTreeMap::new()).unwrap();
         assert_eq!(crate::model::text(&node), "visible");
         assert_eq!(node.children.len(), 1);
     }
     #[test]
     fn missing_alternate_is_an_error_not_silent_empty_output() {
         let mut node = crate::model::xml(b"<run><switch><case/></switch></run>").unwrap();
-        assert!(resolve(&mut node, &mut BTreeMap::new()).is_err());
+        assert!(resolve(&mut node, &mut BTreeMap::new(), &BTreeMap::new()).is_err());
     }
 }

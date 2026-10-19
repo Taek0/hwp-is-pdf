@@ -38,6 +38,21 @@ impl<'a> Engine<'a> {
             .unwrap_or("unknown");
         let bold = ch.child("bold").is_some();
         let italic = ch.child("italic").is_some();
+        let substitute = self
+            .doc
+            .font_substitutes
+            .get(&(langkey.into(), fontref.into()));
+        let name = if override_font.is_none()
+            && let Some(replacement) = substitute.map(String::as_str)
+            && self.fonts.family(name, bold, italic)?.is_none()
+        {
+            self.report.warnings.insert(format!(
+                "Document-declared font substitute: {name} -> {replacement}"
+            ));
+            replacement
+        } else {
+            name
+        };
         let mut font = self.document_character_font(name, script, bold, italic, override_font)?;
         if !self.fonts.has(font, c)
             && ('\u{f020}'..='\u{f0ff}').contains(&c)
@@ -142,6 +157,20 @@ impl<'a> Engine<'a> {
             size * 0.5
         } else {
             self.fonts.width(font, &c.to_string(), size)
+        };
+        let metric_advance = if override_font.is_none()
+            && !(c == ' ' && ch.a("useFontSpace") == "0")
+            && self.fonts.family(name, bold, italic)?.is_none()
+        {
+            legacy_font_metrics::advance(name, c, size)
+        } else {
+            None
+        };
+        let scale = if let Some(target) = metric_advance.filter(|_| advance > 0.) {
+            self.report.warnings.insert("Missing classic Haansoft Batang: ASCII advances preserved with horizontally fitted substitute outlines; non-ASCII metrics remain substituted".into());
+            scale * target / advance
+        } else {
+            scale
         };
         let width = if self.vertical_mode > 0 && c == ' ' {
             nominal_size * 0.5 * scale + spacing

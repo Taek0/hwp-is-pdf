@@ -2,6 +2,7 @@ use anyhow::{Context, Result, bail};
 use std::{collections::BTreeMap, fs::File, io::Read, path::Path};
 mod alternate;
 mod damaged_images;
+mod groups;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Node {
@@ -94,6 +95,7 @@ pub struct Document {
     pub paras: BTreeMap<String, Node>,
     pub borders: BTreeMap<String, Node>,
     pub fonts: BTreeMap<(String, String), String>,
+    pub font_substitutes: BTreeMap<(String, String), String>,
 }
 impl Document {
     pub fn open(path: &Path) -> Result<Self> {
@@ -171,19 +173,23 @@ impl Document {
         for (_, b) in section_files {
             let mut section = xml(b)?;
             normalize_controls(&mut section);
-            alternate::resolve(&mut section, &mut binaries)?;
+            alternate::resolve(&mut section, &mut binaries, &files)?;
+            groups::normalize(&mut section)?;
             sections.push(section)
         }
         for (n, b) in &files {
             if n.starts_with("Contents/masterpage") && n.ends_with(".xml") {
                 let mut master = xml(b)?;
-                alternate::resolve(&mut master, &mut binaries)?;
+                alternate::resolve(&mut master, &mut binaries, &files)?;
+                groups::normalize(&mut master)?;
                 masters.push(master);
             }
         }
         if sections.is_empty() {
             bail!("No sections")
         }
+        crate::hwp::normalize_ole(&mut sections, &mut binaries)?;
+        crate::hwp::normalize_ole(&mut masters, &mut binaries)?;
         let software = crate::metafile::prepare(&mut binaries)?;
         crate::metafile::mark_software(&mut sections, &software);
         crate::metafile::mark_software(&mut masters, &software);
@@ -204,6 +210,7 @@ impl Document {
         let paras = collect("paraPr");
         let borders = collect("borderFill");
         let mut fonts = BTreeMap::new();
+        let mut font_substitutes = BTreeMap::new();
         let mut faces = Vec::new();
         header.all("fontface", &mut faces);
         for face in faces {
@@ -212,6 +219,16 @@ impl Document {
                     (face.a("lang").to_string(), font.a("id").to_string()),
                     font.a("face").to_string(),
                 );
+                if let Some(substitute) = font
+                    .child("substFont")
+                    .map(|n| n.a("face"))
+                    .filter(|s| !s.is_empty() && *s != font.a("face"))
+                {
+                    font_substitutes.insert(
+                        (face.a("lang").to_string(), font.a("id").to_string()),
+                        substitute.to_string(),
+                    );
+                }
             }
         }
         Ok(Self {
@@ -223,6 +240,7 @@ impl Document {
             paras,
             borders,
             fonts,
+            font_substitutes,
         })
     }
 }

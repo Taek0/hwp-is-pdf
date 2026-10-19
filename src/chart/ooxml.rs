@@ -59,6 +59,7 @@ fn marker(x: f64, y: f64, i: usize, c: [f64; 3]) -> Op {
     }
 }
 mod bars3d;
+pub(crate) mod cartesian;
 pub(super) use bars3d::draw as bars3d;
 pub(super) fn scatter(
     root: &Node,

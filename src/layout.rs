@@ -393,6 +393,8 @@ mod field_values;
 mod font_selection;
 mod form_controls;
 mod generated_text;
+mod group_transform;
+mod legacy_font_metrics;
 mod line_geometry;
 mod list_labels;
 mod local_flow;

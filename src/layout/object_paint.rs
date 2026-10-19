@@ -345,6 +345,7 @@ impl<'a> Engine<'a> {
                     }
                 }
             }
+            "group" if n.a("hwpxContainer") == "1" => self.hwpx_group(n, x, y, w, h)?,
             "group" => {
                 anyhow::ensure!(self.depth < 64, "Excessive nested group layout");
                 let fitted = n.n("reflowScale") > 0. && n.n("reflowScale") < 1.;

@@ -1,6 +1,6 @@
 //! Non-executing static OLE and chart presentation normalization.
 use super::*;
-pub(super) fn normalize(
+pub(crate) fn normalize(
     nodes: &mut [Node],
     binaries: &mut BTreeMap<String, Vec<u8>>,
 ) -> Result<()> {
@@ -8,8 +8,9 @@ pub(super) fn normalize(
         if node.name == "ole" {
             let id = node
                 .child("oleRef")
-                .context("OLE reference")?
-                .a("binaryItemIDRef")
+                .map(|n| n.a("binaryItemIDRef"))
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| node.a("binaryItemIDRef"))
                 .to_string();
             let raw = binaries.get(&id).context("OLE binary missing")?;
             let raw = if raw.get(4..12) == Some(&[0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]) {
@@ -26,23 +27,14 @@ pub(super) fn normalize(
                     .read_to_end(&mut xml)?;
                 ensure!(xml.len() <= LIMIT, "Oversized OOXML chart");
                 let mut source = crate::model::xml(&xml)?;
-                if source
-                    .find("scatterChart")
-                    .and_then(|c| c.child("scatterStyle"))
-                    .is_some_and(|s| s.a("val") == "marker")
-                    || source.find("bar3DChart").is_some_and(|c| {
-                        c.child("barDir").is_some_and(|v| v.a("val") == "col")
-                            && c.child("grouping")
-                                .is_some_and(|v| v.a("val") == "clustered")
-                    })
-                {
+                if crate::chart::supports_source_chart(&source) {
                     node.name = "chart".into();
                     node.attrs.insert(
                         "nativeType".into(),
-                        if source.find("bar3DChart").is_some() {
-                            "0"
-                        } else {
+                        if source.find("scatterChart").is_some() {
                             "16"
+                        } else {
+                            "0"
                         }
                         .into(),
                     );
@@ -86,6 +78,34 @@ pub(super) fn normalize(
                     .take(LIMIT as u64 + 1)
                     .read_to_end(&mut contents)?;
                 ensure!(contents.len() <= LIMIT, "Chart data too large");
+                if let Some(script) = super::ole_equations::script(&contents)? {
+                    let height = node.child("sz").map(|n| n.n("height")).unwrap_or(0.);
+                    ensure!(
+                        height.is_finite() && height > 0. && height <= 200000.,
+                        "Invalid OLE equation extent"
+                    );
+                    let baseline = if node.n("eqBaseLine") > 0. {
+                        node.n("eqBaseLine")
+                    } else {
+                        63.
+                    };
+                    node.name = "equation".into();
+                    node.attrs.insert("baseLine".into(), baseline.to_string());
+                    node.attrs.insert("baseUnit".into(), height.to_string());
+                    node.attrs.insert("textColor".into(), "#000000".into());
+                    node.attrs.insert("oleEquation".into(), "1".into());
+                    node.children.push(n("script").with(vec![txt(script)]));
+                    continue;
+                }
+                if let Some(png) = crate::metafile::enhanced_contents_picture(&contents)? {
+                    let image_id = format!("{id}-ole-enhanced");
+                    drop(storage);
+                    binaries.insert(image_id.clone(), png);
+                    node.name = "pic".into();
+                    node.attrs.insert("staticOLE".into(), "1".into());
+                    node.children.push(n("img").at("binaryItemIDRef", image_id));
+                    continue;
+                }
                 if crate::metafile::is_wmf(&contents) {
                     let image_id = format!("{id}-ole-metafile");
                     drop(storage);

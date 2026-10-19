@@ -9,6 +9,36 @@ pub(crate) mod presentation;
 mod raster;
 mod text;
 pub(crate) use paint::draw;
+pub(crate) fn enhanced_contents_picture(data: &[u8]) -> Result<Option<Vec<u8>>> {
+    let valid = |b: &[u8]| {
+        b.len() >= 88
+            && u32(b, 0).ok() == Some(1)
+            && b.get(40..44) == Some(b" EMF")
+            && u32(b, 48).ok() == Some(b.len() as u32)
+    };
+    let emf = if valid(data) {
+        Some(data)
+    } else if data.len() >= 112 && u32(data, 0).is_ok_and(|n| (88..=4096).contains(&n)) {
+        let header = u32(data, 0)? as usize;
+        let offset = 4 + header;
+        data.get(offset..)
+            .filter(|b| valid(b) && data.get(4..offset) == b.get(..header))
+    } else {
+        None
+    };
+    let Some(emf) = emf else { return Ok(None) };
+    ensure!(
+        u32(emf, 8)? == 0 && u32(emf, 12)? == 0,
+        "Unsupported nonzero static EMF origin"
+    );
+    let w = u32(emf, 16)? as f64 + 1.;
+    let h = u32(emf, 20)? as f64 + 1.;
+    ensure!(
+        w > 0. && h > 0. && w <= 16384. && h <= 16384.,
+        "Invalid static EMF extent"
+    );
+    Ok(Some(emf::render_nested(emf, w as f32, h as f32, 0)?))
+}
 
 pub(crate) fn is_wmf(b: &[u8]) -> bool {
     b.starts_with(&[0xd7, 0xcd, 0xc6, 0x9a])
