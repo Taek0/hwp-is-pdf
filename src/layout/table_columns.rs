@@ -141,7 +141,12 @@ mod tests {
     #[test]
     fn small_complete_native_row_resize_is_normalized_before_crossing_merges() {
         let n=crate::model::xml(br#"<tbl binaryHwp="1" colCnt="3"><sz width="10000"/><tr><tc><cellAddr colAddr="0"/><cellSpan colSpan="1"/><cellSz width="1980"/></tc><tc><cellAddr colAddr="1"/><cellSpan colSpan="2"/><cellSz width="7920"/></tc></tr><tr><tc><cellAddr colAddr="0"/><cellSpan colSpan="2"/><cellSz width="6000"/></tc><tc><cellAddr colAddr="2"/><cellSpan colSpan="1"/><cellSz width="4000"/></tc></tr></tbl>"#).unwrap();
-        let widths=reconcile(&n, &[19.8, 40.2, 40.]).unwrap();
-        assert!(widths.iter().zip([20.,40.,40.]).all(|(a,b)|(a-b).abs()<1e-9));
+        let widths = reconcile(&n, &[19.8, 40.2, 40.]).unwrap();
+        assert!(
+            widths
+                .iter()
+                .zip([20., 40., 40.])
+                .all(|(a, b)| (a - b).abs() < 1e-9)
+        );
     }
 }

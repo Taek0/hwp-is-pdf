@@ -32,7 +32,7 @@ impl<'a> Engine<'a> {
                 }
             }
         }
-        self.paint_paragraph_border(p, li, ox, oy, width);
+        self.paint_paragraph_border(p, li, ox, oy, width)?;
         if self.paint_complex_line(p, li, ox, oy, width)? {
             return Ok(());
         }

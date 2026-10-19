@@ -65,6 +65,16 @@ impl<'a> Engine<'a> {
             .map(|pair| joined(&n.children[pair[0]], &n.children[pair[1]]))
             .collect();
         for (at, &index) in indices.iter().enumerate() {
+            let next_top = indices.get(at + 1).and_then(|next| {
+                let next = &n.children[*next];
+                let last = lines(&n.children[index]).last().copied()?;
+                let first = lines(next).first().copied()?;
+                (next.a("pageBreak") != "1"
+                    && first.n("vertpos") >= last.n("vertpos")
+                    && (first.n("horzpos") - last.n("horzpos")).abs() <= 100.
+                    && first.n("textheight") > 0.)
+                    .then(|| first.n("vertpos") + first.n("baseline") - first.n("textheight"))
+            });
             let next_gap = if joins.get(at) == Some(&true) {
                 lines(&n.children[index])
                     .last()
@@ -75,6 +85,9 @@ impl<'a> Engine<'a> {
                 0.
             };
             let p = &mut n.children[index];
+            if let Some(top) = next_top {
+                p.attrs.insert("borderNextTextTop".into(), top.to_string());
+            }
             p.attrs.insert(
                 "borderFirst".into(),
                 usize::from(at == 0 || !joins[at - 1]).to_string(),
@@ -98,15 +111,15 @@ impl<'a> Engine<'a> {
         ox: f64,
         oy: f64,
         width: f64,
-    ) {
+    ) -> Result<()> {
         let Some(style) = self.doc.paras.get(p.a("paraPrIDRef")) else {
-            return;
+            return Ok(());
         };
         let Some(border) = style.child("border") else {
-            return;
+            return Ok(());
         };
         let Some(def) = self.doc.borders.get(border.a("borderFillIDRef")) else {
-            return;
+            return Ok(());
         };
         if !def
             .children
@@ -114,7 +127,7 @@ impl<'a> Engine<'a> {
             .any(|s| s.name.ends_with("Border") && s.a("type") != "NONE")
             && def.find("winBrush").is_none()
         {
-            return;
+            return Ok(());
         }
         let ls = lines(p);
         let line = ls[li];
@@ -142,7 +155,7 @@ impl<'a> Engine<'a> {
         let x2 = ox + width - right + border.n("offsetRight") / 100.;
         let first = li == 0 && p.u("reflowStart") == 0 && p.a("borderFirst") != "0";
         let last = li + 1 == ls.len() && p.a("borderLast") != "0";
-        let y = oy + line.n("vertpos") / 100.
+        let mut y = oy + line.n("vertpos") / 100.
             - if first {
                 border.n("offsetTop") / 100.
             } else {
@@ -166,11 +179,60 @@ impl<'a> Engine<'a> {
             } else {
                 0.
             };
+        // A saved line box can be shallower than the realized font's ink.
+        // Zero/positive border padding must still enclose that ink, especially
+        // in HWPX exports with independent paragraph borders.
+        let begin = line.u("textpos");
+        let end = ls.get(li + 1).map(|l| l.u("textpos")).unwrap_or(usize::MAX);
+        let items: Vec<_> = Self::items(p)
+            .into_iter()
+            .filter(|i| i.pos >= begin && i.pos < end)
+            .collect();
+        let plain = items.iter().all(|i| match &i.kind {
+            ItemKind::Char(_) | ItemKind::Control(_) => true,
+            ItemKind::Object(n) => n.child("pos").is_some_and(|p| p.a("treatAsChar") != "1"),
+            _ => false,
+        });
+        let mut ink_bottom = y;
+        if plain {
+            let mut glyphs = Vec::new();
+            for item in &items {
+                if let ItemKind::Char(c) = item.kind
+                    && !c.is_whitespace()
+                {
+                    glyphs.push(self.glyph(c, &item.style)?);
+                }
+            }
+            let origin = oy + line.n("vertpos") / 100.;
+            let mut base = origin + line.n("baseline") / 100.;
+            if self.doc.header.a("binaryHwp") == "1" {
+                base = base.max(origin + glyphs.iter().map(|g| g.raw_ascent).fold(0., f64::max));
+            }
+            if first && border.n("offsetTop") >= 0. {
+                for g in &glyphs {
+                    y = y.min(base + g.shift - g.raw_ascent - border.n("offsetTop") / 100. - 0.2);
+                }
+            }
+            if last && border.n("offsetBottom") >= 0. {
+                for g in &glyphs {
+                    ink_bottom = ink_bottom.max(base + g.shift + g.raw_descent);
+                    y2 = y2.max(
+                        base + g.shift + g.raw_descent + border.n("offsetBottom") / 100. + 0.2,
+                    );
+                }
+            }
+        }
+        if plain && last && p.a("reflowed") != "1" && p.attrs.contains_key("borderNextTextTop") {
+            let limit = oy + p.n("borderNextTextTop") / 100. - 0.2;
+            if limit >= ink_bottom + 0.2 {
+                y2 = y2.min(limit);
+            }
+        }
         if self.depth == 0 {
             y2 = y2.min(self.ph - self.bottom);
         }
         if x2 <= x || y2 <= y {
-            return;
+            return Ok(());
         }
         if let Some(fill) = def.find("winBrush").filter(|f| f.a("faceColor") != "none") {
             self.current.ops.push(Op::Rect {
@@ -193,5 +255,6 @@ impl<'a> Engine<'a> {
                     .extend(border_strokes::stroke(s, (a, b), (c, d)));
             }
         }
+        Ok(())
     }
 }
