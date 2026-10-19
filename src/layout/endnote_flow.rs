@@ -7,6 +7,11 @@ impl<'a> Engine<'a> {
         start: (f64, usize, f64, f64),
     ) -> Result<()> {
         let (mut y, mut col, _, gap) = start;
+        let rule_space = if self.doc.header.a("binaryHwp") == "1" {
+            0.
+        } else {
+            1.
+        };
         let above = self.note_gap(true, "aboveLine", 0.);
         let below = self.note_gap(true, "belowLine", 0.);
         let between = self.note_gap(true, "betweenNotes", 8.);
@@ -30,7 +35,11 @@ impl<'a> Engine<'a> {
                                 !row.block,
                                 "Block objects inside reflow endnotes require mixed-note pagination"
                             );
-                            let overhead = if separator { above + below + 1. } else { 0. };
+                            let overhead = if separator {
+                                above + below + rule_space
+                            } else {
+                                0.
+                            };
                             if y + overhead + row.height
                                 > self.ph - self.bottom - self.footnote_reservation(&[], x) + 0.001
                             {

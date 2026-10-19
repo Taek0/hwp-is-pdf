@@ -221,6 +221,11 @@ impl<'a> Engine<'a> {
             return self.render_reflow_endnotes(notes, start);
         }
         let (mut y, mut col, width, gap) = start;
+        let rule_space = if self.doc.header.a("binaryHwp") == "1" {
+            0.
+        } else {
+            1.
+        };
         let above = self.note_gap(true, "aboveLine", 0.);
         let below = self.note_gap(true, "belowLine", 0.);
         let between = self.note_gap(true, "betweenNotes", 8.);
@@ -229,7 +234,13 @@ impl<'a> Engine<'a> {
         for n in notes {
             if let Some(list) = n.child("subList") {
                 let h = content_height(list);
-                if y + h + if separator { above + below + 1. } else { 0. } > self.ph - self.bottom
+                if y + h
+                    + if separator {
+                        above + below + rule_space
+                    } else {
+                        0.
+                    }
+                    > self.ph - self.bottom
                     && y > self.top + 0.1
                 {
                     self.next_note_column(&mut col, &mut y, gap)?;
@@ -243,7 +254,7 @@ impl<'a> Engine<'a> {
                         y + above,
                         width,
                     );
-                    y += above + below + 1.;
+                    y += above + below + rule_space;
                     separator = false;
                 }
                 let x = self.left + col as f64 * (width + gap);
@@ -275,7 +286,7 @@ impl<'a> Engine<'a> {
                                 y + above,
                                 width,
                             );
-                            y += above + below + 1.;
+                            y += above + below + rule_space;
                         }
                         self.line(
                             p,

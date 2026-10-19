@@ -441,8 +441,29 @@ impl<'a> Engine<'a> {
                             self.report.warnings.insert(format!("Repaired stale inline shape height: paragraph {}, +{growth:.2}pt; subsequent lines shifted",p.a("id")));
                             flow_shift += growth;
                         }
+                        // An empty explicit page-break paragraph at the end of
+                        // a native section retains its height, but its trailing
+                        // interline leading is not part of the endnote gap.
+                        let endnote_insertion_anchor = self.doc.header.a("binaryHwp") == "1"
+                            && p.a("pageBreak") == "1"
+                            && ls.len() == 1
+                            && y.abs() < 0.01
+                            && !self.notes.is_empty()
+                            && Self::items(p).is_empty()
+                            && section
+                                .children_named("p")
+                                .last()
+                                .is_some_and(|last| last.a("id") == p.a("id"));
                         note_start = (
-                            self.top + flow_shift + (y + l.n("vertsize") + l.n("spacing")) / 100.,
+                            self.top
+                                + flow_shift
+                                + (y + l.n("vertsize")
+                                    + if endnote_insertion_anchor {
+                                        0.
+                                    } else {
+                                        l.n("spacing")
+                                    })
+                                    / 100.,
                             col,
                             cw,
                             gap,

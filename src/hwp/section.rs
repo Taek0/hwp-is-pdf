@@ -76,7 +76,14 @@ pub(super) fn section_properties(r: &Record) -> Result<Node> {
                     .at("prefixChar", char_at(6)?)
                     .at("suffixChar", char_at(8)?),
                 n("noteLine")
-                    .at("length", i16::from_le_bytes(bytes(d, 12, 2)?.try_into()?))
+                    .at(
+                        "length",
+                        if extra == 2 {
+                            i32(d, 12)?
+                        } else {
+                            i16::from_le_bytes(bytes(d, 12, 2)?.try_into()?) as i32
+                        },
+                    )
                     .at(
                         "type",
                         if bytes(d, 20 + extra, 1)?[0] == 0 {
@@ -161,6 +168,44 @@ fn page_border(d: &[u8], kind: &str) -> Result<Node> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn modern_note_rules_keep_all_four_length_bytes_and_legacy_rules_remain_signed() {
+        for (size, length) in [(28, 100000i32), (28, -1), (26, -1)] {
+            let mut note = vec![0; size];
+            if size == 28 {
+                note[12..16].copy_from_slice(&length.to_le_bytes());
+            } else {
+                note[12..14].copy_from_slice(&(length as i16).to_le_bytes());
+            }
+            let r = Record {
+                tag: 71,
+                level: 0,
+                offset: 0,
+                data: vec![0; 30],
+                children: vec![
+                    Record {
+                        tag: 73,
+                        level: 1,
+                        offset: 0,
+                        data: vec![0; 40],
+                        children: vec![],
+                    },
+                    Record {
+                        tag: 74,
+                        level: 1,
+                        offset: 0,
+                        data: note,
+                        children: vec![],
+                    },
+                ],
+            };
+            let section = section_properties(&r).unwrap();
+            assert_eq!(
+                section.find("noteLine").unwrap().signed("length"),
+                length as f64
+            );
+        }
+    }
     #[test]
     fn page_border_record_preserves_flags_offsets_and_rejects_truncation() {
         let d = [23, 0, 0, 0, 100, 0, 200, 0, 44, 1, 144, 1, 7, 0];
