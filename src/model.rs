@@ -159,6 +159,7 @@ impl Document {
                 binaries.insert(item.a("id").to_string(), b.clone());
             }
         }
+        alternate::resolve(&mut header, &mut binaries, &files)?;
         let mut sections = Vec::new();
         let mut masters = Vec::new();
         let mut section_files: Vec<_> = files

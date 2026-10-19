@@ -18,6 +18,17 @@ pub(super) fn resolve(
             children.push(child);
             continue;
         }
+        // Modern character-unit properties include explicit HWPUNIT values.
+        // Select one representation before consumers enumerate direct children
+        // (notably tab stops); recursively searching both branches is ambiguous.
+        if let Some(case) = child.children_named("case").find(|case| {
+            case.a("required-namespace") == "http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"
+        }) {
+            let mut selected = case.clone();
+            resolve(&mut selected, binaries, files)?;
+            children.extend(selected.children);
+            continue;
+        }
         let chart = child
             .children_named("case")
             .filter(|case| {
@@ -85,6 +96,23 @@ pub(super) fn resolve(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn character_unit_tabs_and_margins_select_one_supported_branch() {
+        let mut node = crate::model::xml(br#"<head><tabPr><switch><case required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><tabItem pos="5000" unit="HWPUNIT"/></case><default><tabItem pos="10000"/></default></switch></tabPr><paraPr><switch><case required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><margin><left value="1600"/></margin></case><default><margin><left value="3200"/></margin></default></switch></paraPr></head>"#).unwrap();
+        resolve(&mut node, &mut BTreeMap::new(), &BTreeMap::new()).unwrap();
+        let tabs = node.child("tabPr").unwrap();
+        assert_eq!(tabs.children_named("tabItem").count(), 1);
+        assert_eq!(tabs.child("tabItem").unwrap().n("pos"), 5000.);
+        assert_eq!(
+            node.child("paraPr")
+                .unwrap()
+                .find("left")
+                .unwrap()
+                .n("value"),
+            1600.
+        );
+        assert!(node.find("switch").is_none());
+    }
     #[test]
     fn supported_source_chart_does_not_require_an_ole_preview() {
         let mut node=super::super::xml(br#"<run><switch><case required-namespace="http://www.hancom.co.kr/hwpml/2016/ooxmlchart"><chart chartIDRef="Chart/chart1.xml"/></case></switch></run>"#).unwrap();
