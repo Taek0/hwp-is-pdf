@@ -7,6 +7,39 @@ use hwp_engine::{
 use std::path::Path;
 
 #[test]
+fn an_empty_saved_document_still_has_one_printable_page() {
+    let mut d = Document::open(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("samples/reflow/contour-single.hwpx"),
+    )
+    .unwrap();
+    d.masters.clear();
+    d.sections=vec![xml(br#"<sec><p id="empty" paraPrIDRef="0"><run charPrIDRef="0"><secPr><pagePr width="40000" height="50000"><margin left="4000" right="4000" top="4000" bottom="4000"/></pagePr></secPr><t/></run><linesegarray><lineseg textpos="0" vertpos="0" vertsize="1000" textheight="1000" baseline="850" spacing="600" horzpos="0" horzsize="32000"/></linesegarray></p></sec>"#).unwrap()];
+    for reflow in [false, true] {
+        let mut e = Engine::new(
+            &d,
+            Path::new(if cfg!(windows) {
+                "C:/Windows/Fonts"
+            } else {
+                "/mnt/c/Windows/Fonts"
+            }),
+        );
+        if reflow {
+            e.render_reflow().unwrap();
+        } else {
+            e.render().unwrap();
+        }
+        assert_eq!(e.pages.len(), 1);
+        assert_eq!((e.pages[0].width, e.pages[0].height), (400., 500.));
+        assert!(
+            !e.pages[0]
+                .ops
+                .iter()
+                .any(|op| matches!(op, Op::Text { .. } | Op::Shaped { .. }))
+        );
+    }
+}
+
+#[test]
 fn empty_paragraph_advance_uses_its_declared_character_size() {
     let mut d = Document::open(
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("samples/reflow/contour-single.hwpx"),

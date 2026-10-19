@@ -478,7 +478,7 @@ impl<'a> Engine<'a> {
             }
         }
         self.render_endnotes(note_start, None)?;
-        if !self.current.ops.is_empty() || (reflow_used && self.pages.is_empty()) {
+        if !self.current.ops.is_empty() || self.pages.is_empty() {
             self.finish()?;
         }
         self.drain_note_tail()?;
