@@ -170,7 +170,13 @@ impl<'a> Engine<'a> {
         }
         let mut deferred_notes = Vec::new();
         n.all("footNote", &mut deferred_notes);
-        if !deferred_notes.is_empty() && header_rows > 1 {
+        if !deferred_notes.is_empty()
+            && header_rows > 1
+            && cells.iter().any(|c| {
+                c.child("cellAddr").unwrap().u("rowAddr") >= header_rows
+                    && c.child("cellSpan").unwrap().u("rowSpan") > 1
+            })
+        {
             return Ok(false);
         }
         let final_reserve = self.footnote_reservation(&deferred_notes, x);
@@ -384,7 +390,11 @@ impl<'a> Engine<'a> {
                     cell.at += take;
                 }
             }
-            rows[row].minimum = (rows[row].minimum - height).max(0.);
+            rows[row].minimum = if step.trim_empty_tail {
+                0.
+            } else {
+                (rows[row].minimum - height).max(0.)
+            };
             top += height;
             if rows[row].done() {
                 row += 1;
@@ -501,6 +511,33 @@ impl<'a> Engine<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn only_a_small_empty_minimum_tail_can_be_trimmed_at_a_page_edge() {
+        let p =
+            crate::model::xml(br#"<p><linesegarray><lineseg vertsize="1000"/></linesegarray></p>"#)
+                .unwrap();
+        let cell = Cell {
+            node: &p,
+            flow: vec![(&p, 0, 0., 10.)],
+            at: 0,
+            x: 0.,
+            width: 100.,
+            margin: [0., 0., 1., 1.],
+        };
+        let mut row = Row {
+            cells: vec![cell],
+            minimum: 100.,
+            band: None,
+        };
+        let step = plan::fit(&row, 96.).unwrap();
+        assert!(step.trim_empty_tail);
+        assert_eq!(step.takes, vec![1]);
+        assert_eq!(step.height, 96.);
+        row.minimum = 105.;
+        assert!(plan::fit(&row, 96.).is_none());
+        row.minimum = 10.;
+        assert!(plan::fit(&row, 8.).is_none());
+    }
     #[test]
     fn internal_paragraph_cut_reserves_half_leading_but_paragraph_end_does_not() {
         let p = crate::model::xml(br#"<p><linesegarray><lineseg vertsize="1000" spacing="600"/><lineseg vertsize="1000" spacing="600"/></linesegarray></p>"#).unwrap();

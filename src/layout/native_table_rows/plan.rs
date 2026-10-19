@@ -4,6 +4,7 @@ pub(super) struct Fit {
     pub takes: Vec<usize>,
     pub band: Option<merged::Fragment>,
     pub height: f64,
+    pub trim_empty_tail: bool,
 }
 pub(super) fn fit(row: &Row<'_>, room: f64) -> Option<Fit> {
     if let Some(band) = &row.band {
@@ -12,6 +13,7 @@ pub(super) fn fit(row: &Row<'_>, room: f64) -> Option<Fit> {
             takes: Vec::new(),
             height: part.height,
             band: Some(part),
+            trim_empty_tail: false,
         });
     }
     let full = row.remaining() <= room + 0.01;
@@ -26,7 +28,29 @@ pub(super) fn fit(row: &Row<'_>, room: f64) -> Option<Fit> {
             }
         })
         .collect();
+    let all_content_fits = takes
+        .iter()
+        .zip(&row.cells)
+        .all(|(take, c)| *take == c.flow.len() - c.at);
+    let half_line = row
+        .cells
+        .iter()
+        .filter_map(|c| {
+            c.flow
+                .last()
+                .map(|(p, i, _, _)| lines(p)[*i].n("vertsize") / 200.)
+        })
+        .filter(|h| *h > 0.)
+        .fold(f64::INFINITY, f64::min);
+    // A tiny empty minimum-height tail is not a reason to carry a line or an
+    // empty row onto the next page. Preserve larger authored row extents.
+    let trim_empty_tail = !full
+        && all_content_fits
+        && row.minimum > room
+        && half_line.is_finite()
+        && row.minimum - room <= half_line + 0.01;
     if !full
+        && !trim_empty_tail
         && row.minimum > room + 0.01
         && takes
             .iter()
@@ -55,6 +79,7 @@ pub(super) fn fit(row: &Row<'_>, room: f64) -> Option<Fit> {
         takes,
         height,
         band: None,
+        trim_empty_tail,
     })
 }
 pub(super) struct Budget {
@@ -110,7 +135,11 @@ pub(super) fn merged_bands_fit(source: &[Row<'_>], b: Budget) -> bool {
         for (cell, take) in rows[index].cells.iter_mut().zip(step.takes) {
             cell.at += take;
         }
-        rows[index].minimum = (rows[index].minimum - step.height).max(0.);
+        rows[index].minimum = if step.trim_empty_tail {
+            0.
+        } else {
+            (rows[index].minimum - step.height).max(0.)
+        };
         top += step.height;
         if rows[index].done() {
             index += 1;
