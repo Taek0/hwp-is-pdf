@@ -7,7 +7,8 @@ distribution documents. Password-encrypted documents, HWP 2.x/3.x and editing ar
 excluded by user decision. **Full format compatibility and pixel identity with
 Hancom are not achieved.**
 
-Latest work: [Hancom print calibration](reference/OFFICIAL_PROBE_CALIBRATION.md).
+Latest work: [Typography, math and vector brushes](reference/TYPOGRAPHY_MATH_FIDELITY.md).
+Earlier calibration: [Hancom print probes](reference/OFFICIAL_PROBE_CALIBRATION.md).
 Final current-corpus evidence is maintained in
 [CURRENT_CORPUS_VALIDATION.md](reference/CURRENT_CORPUS_VALIDATION.md).
 The older stage-59 numbers below are historical evidence.
@@ -16,12 +17,12 @@ The older stage-59 numbers below are historical evidence.
 
 | Area | Implemented | Remaining limits |
 |---|---|---|
-| Text | Installed families/TTC faces, native/synthetic styles, scripts/offsets, language slots, kerning, half-em Latin tracking, positioned generated labels, Hancom/legacy symbol glyphs, vector emphasis, borders, calibrated outlines/shadows/relief and uniform plain-text vertical flow | Missing original faces, exact THICK/vertical-origin metrics, mixed orientations and vertical inline objects |
+| Text | Installed families/TTC faces, native/synthetic styles, scripts/offsets, language slots, kerning, half-em Latin tracking, positioned generated labels, Hancom/legacy symbol glyphs, vector emphasis, borders, calibrated outlines/shadows/relief and uniform plain-text vertical flow | Missing original faces, exact THICK and unmeasured font metrics, mixed orientations and vertical inline objects |
 | Body layout | Saved-cache recovery, supported mixed reflow, floats/contours, native column bands/nested columns, Korean word/character semantics, punctuation and shared-note flows | All writer variants, ambiguous stale caches and unmeasured Hancom line/page cases |
 | Tables | Merged/nested cells, structural splitting, repeated headers/captions, mixed pictures/rotations/notes, stale text recovery and single automatic-row height allocation, supported HWPX CELL continuation and static checkboxes | Ambiguous multiple auto rows and exact row/paragraph composition |
 | Notes | Footnotes/endnotes, long-note continuation, source-driven placement and numbering | Some precise page distribution differs |
 | Graphics | Curves, rotation/crop/group transforms, static OLE images, bounded WMF raster/vector/text playback, native dual-axis column/line charts, border patterns, image/hatch/gradient brushes, OOXML XY/3D bars and alpha-safe effects | Full metafile/chart families, exact 3D/brush metrics, nonuniform gradient stops and compound brush modes |
-| Equations | Supported HWP grammar, fractions, scripts, roots, matrices/column arrays, REL/BUILDREL/SCALE, stretched searchable delimiters and cacheless measurement | Complete grammar, nested style scopes and exact Hancom math font/spacing metrics |
+| Equations | Supported HWP grammar, fractions, scripts, roots, matrices/column arrays, REL/BUILDREL/SCALE, stretched searchable delimiters and cacheless measurement | Complete grammar, full command coverage and unavailable original math faces |
 | Fields/PDF semantics | Cached fields, supported TOC/field evaluation, links/bookmarks, native escaped URL commands, extended lists, named page-number styles and side characters | Arbitrary field recalculation, source-authored bad targets and unsupported variants |
 | PDF fonts | Stable-ID TrueType subsetting, recursive composites, metrics/hinting/checksums, Unicode mappings | Variable/color/non-glyf/no-subsetting faces retain full embedding; no universal color-font support claimed |
 

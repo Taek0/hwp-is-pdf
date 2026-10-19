@@ -1,0 +1,15 @@
+{
+  "documents": 73,
+  "pages": 308,
+  "errors": [],
+  "qa_findings": [],
+  "source_hash_mismatches": [],
+  "rust_hash_mismatches": [],
+  "references": 40,
+  "reference_pages": 199,
+  "page_mismatches": [],
+  "tests_passed": 271,
+  "final_targeted_reference_tests_passed": 2,
+  "final_change_scope": "Nominal vertical spaces retain horizontal width ratio; reconverted both affected inputs.",
+  "clippy_passed": true
+}
