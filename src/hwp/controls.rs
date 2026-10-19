@@ -341,6 +341,20 @@ pub(super) fn control(r: &Record) -> Result<Node> {
                         ((u32(cd, 36)? >> 1) & 1) ^ u32::from(name == "line" && i32(cd, 32)? < 0),
                     ),
             );
+            if name == "line"
+                && let Some(line) = comp.first(78)
+            {
+                out.children.push(
+                    n("startPt")
+                        .at("x", i32(&line.data, 0)?)
+                        .at("y", i32(&line.data, 4)?),
+                );
+                out.children.push(
+                    n("endPt")
+                        .at("x", i32(&line.data, 8)?)
+                        .at("y", i32(&line.data, 12)?),
+                );
+            }
             if matches!(name, "polygon" | "curve") {
                 let shape = comp
                     .first(if name == "polygon" { 82 } else { 83 })

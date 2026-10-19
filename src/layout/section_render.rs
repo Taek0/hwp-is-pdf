@@ -2,6 +2,9 @@
 use super::*;
 impl<'a> Engine<'a> {
     pub(super) fn render_mode(&mut self, force_reflow: bool) -> Result<()> {
+        if self.doc.header.a("repairedUnusedFat") == "1" {
+            self.report.warnings.insert("Recovered unreachable zero-filled CFB FAT entries; active stream chains and directory structure validated, source bytes unchanged".into());
+        }
         if self.render_vertical(force_reflow)? {
             return Ok(());
         }

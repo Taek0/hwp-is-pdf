@@ -250,3 +250,33 @@ fn limit_reference_preserves_arrow_and_has_no_script_fraction_collision() {
         q.text_overlaps.is_empty() && q.border_crossings.is_empty() && q.outside_page.is_empty()
     );
 }
+
+#[test]
+fn sparse_native_drawing_recovers_without_modifying_source_and_keeps_line_direction() {
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("output/four-priority-sources/mix-shape-01.hwp");
+    if !path.exists() || !fonts().exists() {
+        return;
+    }
+    let source = std::fs::read(&path).unwrap();
+    let d = Document::open(&path).unwrap();
+    assert_eq!(d.header.a("repairedUnusedFat"), "1");
+    let line = d.sections.iter().find_map(|s| s.find("line")).unwrap();
+    assert!(line.child("startPt").unwrap().signed("y") > line.child("endPt").unwrap().signed("y"));
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    assert_eq!(e.pages.len(), 1);
+    assert!(
+        e.report
+            .warnings
+            .iter()
+            .any(|w| w.starts_with("Recovered unreachable"))
+    );
+    assert!(
+        e.pages[0]
+            .ops
+            .iter()
+            .any(|op| matches!(op,Op::Line{x,y,x2,y2,..} if x2>x && y2<y))
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), source);
+}

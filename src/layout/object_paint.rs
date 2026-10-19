@@ -475,18 +475,17 @@ impl<'a> Engine<'a> {
             "line" => {
                 let s = n.child("lineShape");
                 let start = self.current.ops.len();
+                let (a, b) = line_geometry::endpoints(n, x, y, w, h);
                 self.current.ops.push(Op::Line {
-                    x,
-                    y,
-                    x2: x + w,
-                    y2: y + h,
+                    x: a.0,
+                    y: a.1,
+                    x2: b.0,
+                    y2: b.1,
                     width: val(s, "width").max(0.1),
                     color: color(s.map(|n| n.a("color")).unwrap_or("#000000")),
                 });
                 drawing_strokes::apply(&mut self.current.ops, start, s);
-                self.current
-                    .ops
-                    .extend(arrowheads::paint(n, (x, y), (x + w, y + h)));
+                self.current.ops.extend(arrowheads::paint(n, a, b));
             }
             "ellipse" => self.paint_ellipse(n, x, y, w, h),
             "rect" => {

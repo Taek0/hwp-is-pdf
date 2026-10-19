@@ -6,8 +6,19 @@ pub fn open(path: &Path) -> Result<Document> {
         std::fs::metadata(path)?.len() <= LIMIT as u64,
         "Input exceeds 64 MiB"
     );
-    let mut cfb = cfb::open(path)?;
-    fn read(cfb: &mut cfb::CompoundFile<std::fs::File>, path: &str) -> Result<Vec<u8>> {
+    let mut container_bytes = Vec::new();
+    std::fs::File::open(path)?
+        .take(LIMIT as u64 + 1)
+        .read_to_end(&mut container_bytes)?;
+    ensure!(container_bytes.len() <= LIMIT, "Input exceeds 64 MiB");
+    let compatible = super::compound_compat::repair(&container_bytes);
+    let mut cfb = cfb::CompoundFile::open(Cursor::new(
+        compatible.as_deref().unwrap_or(&container_bytes),
+    ))?;
+    fn read<R: Read + std::io::Seek>(
+        cfb: &mut cfb::CompoundFile<R>,
+        path: &str,
+    ) -> Result<Vec<u8>> {
         let mut b = Vec::new();
         cfb.open_stream(path)?
             .take(LIMIT as u64 + 1)
@@ -52,6 +63,9 @@ pub fn open(path: &Path) -> Result<Document> {
     let mut paras = BTreeMap::new();
     let mut borders = BTreeMap::new();
     let mut header = n("head").at("binaryHwp", 1);
+    if compatible.is_some() {
+        header.attrs.insert("repairedUnusedFat".into(), "1".into());
+    }
     for r in &all {
         let d = &r.data;
         match r.tag {

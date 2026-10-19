@@ -393,6 +393,7 @@ mod field_values;
 mod font_selection;
 mod form_controls;
 mod generated_text;
+mod line_geometry;
 mod list_labels;
 mod local_flow;
 mod native_cell_cache;

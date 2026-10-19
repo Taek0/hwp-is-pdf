@@ -296,5 +296,6 @@ mod tests {
     }
 }
 
+mod compound_compat;
 mod fill_records;
 mod ole_objects;
