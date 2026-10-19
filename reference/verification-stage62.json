@@ -1,0 +1,21 @@
+{
+  "documents": 73,
+  "pages": 308,
+  "errors": [],
+  "qa_findings": [],
+  "source_hash_mismatches": [],
+  "rust_hash_mismatches": [],
+  "reference_page_mismatches": [],
+  "tests_passed": 274,
+  "clippy_passed": true,
+  "previous_stage_byte_identical_pdfs": 71,
+  "changed_pdfs": [
+    "official-probes/07_form_controls.pdf",
+    "originals/21_언어_기출_편집가능본.pdf"
+  ],
+  "changed_existing_law_pages": [
+    1
+  ],
+  "form_per_page_hangul_matches": 10,
+  "law_text_changes": 0
+}
