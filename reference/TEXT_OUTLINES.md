@@ -31,6 +31,13 @@ text-outlines.pdf,text-outlines.png,regression,prior-probes}.
 Generator: examples/outline_fixture.rs.
 User-print copies: D:/ChatGPT/hwp/Hancom-Format-Probes-20261019/01_print.
 
+Correction: the original minimal fixtures were rejected by Hancom as damaged.
+They are engine-only tests, not viewer-compatible documents. The replacement
+generator `examples/hancom_format_probes.rs` retains the complete previously
+printed math package, clones full source styles/drawing elements, uses numeric
+IDs and updates character counts. ZIP integrity, XML, manifest targets and style
+references are checked separately. Hancom opening still requires confirmation.
+
 Remaining priority work is still substantial: arrows/compound drawing rules,
 advanced fills, shadows/emboss/deboss, vertical writing, pgct/compatibility,
 and broader chart/metafile/equation support. The two probes cover this increment,

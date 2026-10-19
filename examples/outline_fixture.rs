@@ -1,6 +1,9 @@
-//! Outline types and a following ordinary run to detect leaked PDF paint state.
+//! Engine-only outline fixture; use hancom_format_probes for Hancom printing.
 use std::io::{Read, Write};
 fn main() -> anyhow::Result<()> {
+    eprintln!(
+        "Engine-only fixture; not a complete Hancom document. Use hancom_format_probes for printing."
+    );
     std::fs::create_dir_all("output/format-probes")?;
     let mut input =
         zip::ZipArchive::new(std::fs::File::open("samples/reflow/contour-single.hwpx")?)?;

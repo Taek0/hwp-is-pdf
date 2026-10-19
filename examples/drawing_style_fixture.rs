@@ -1,6 +1,9 @@
-//! Compact source fixture for independent Hancom printing and engine regression.
+//! Minimal engine-only fixture. For Hancom printing use hancom_format_probes.
 use std::io::{Read, Write};
 fn main() -> anyhow::Result<()> {
+    eprintln!(
+        "Engine-only fixture; not a complete Hancom document. Use hancom_format_probes for printing."
+    );
     let destination = std::env::args()
         .nth(1)
         .unwrap_or("output/format-probes/drawing-styles.hwpx".into());
