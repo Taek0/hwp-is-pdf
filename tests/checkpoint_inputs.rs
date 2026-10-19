@@ -401,3 +401,46 @@ fn nested_native_group_title_uses_root_frame_once_and_resolved_textbox_height() 
     let q = hwp_engine::qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
     assert!(q.text_overlaps.is_empty() && q.outside_page.is_empty());
 }
+
+#[test]
+fn square_floating_table_keeps_anchor_and_condenses_its_single_line_header() {
+    let path = input("07_table__text_anchor_wrap.hwp");
+    if !path.exists() || !fonts().exists() {
+        return;
+    }
+    let d = Document::open(&path).unwrap();
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    assert_eq!(e.pages.len(), 3);
+    let page_text = |page: usize| {
+        e.pages[page]
+            .ops
+            .iter()
+            .filter_map(|o| match o {
+                Op::Text { text, .. } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect::<String>()
+    };
+    assert!(page_text(0).contains("약사법 시행령"));
+    assert!(!page_text(2).contains("약사법 시행령"));
+    let mut paragraphs = Vec::new();
+    d.sections[0].all("p", &mut paragraphs);
+    let header = paragraphs
+        .into_iter()
+        .find(|p| hwp_engine::model::text(p) == "해당 품목의 전년도 총생산금액 또는 총수입금액")
+        .unwrap();
+    assert_eq!(d.paras[header.a("paraPrIDRef")].n("condense"), 25.);
+    let lines: Vec<_> = e
+        .report
+        .bounds
+        .iter()
+        .filter(|b| b.kind == "line" && b.id == header.a("id"))
+        .collect();
+    assert_eq!(lines.len(), 1);
+    assert_eq!(lines[0].page, 1);
+    let q = hwp_engine::qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
+    assert!(
+        q.text_overlaps.is_empty() && q.outside_page.is_empty() && q.border_crossings.is_empty()
+    );
+}

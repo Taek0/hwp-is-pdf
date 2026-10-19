@@ -22,7 +22,12 @@ fn materially_overflows(
             part.pop();
         }
         let measured = part.iter().map(|u| u.width).sum::<f64>()
-            - part.last().map(|u| u.trailing).unwrap_or(0.);
+            - part.last().map(|u| u.trailing).unwrap_or(0.)
+            - part
+                .iter()
+                .filter(|u| u.ch == Some(' '))
+                .map(|u| u.width.max(0.) * s.condense)
+                .sum::<f64>();
         let available = width - s.left - s.right - if i == 0 { s.indent } else { 0. };
         measured > available + 0.1
     })
@@ -103,9 +108,12 @@ impl<'a> Engine<'a> {
                         if width > settings.left + settings.right + settings.indent.max(0.) + 0.01 {
                             let units = self.paragraph_units(p)?;
                             let wrapped = crate::reflow::wrap(&units, width, &settings)?;
+                            let saved_fits_space_budget = settings.condense > 0.
+                                && !materially_overflows(&units, &saved, width, &settings);
                             let grow =
                                 can_grow && materially_overflows(&units, &saved, width, &settings);
-                            if (wrapped.len() <= saved.len() || grow)
+                            if !saved_fits_space_budget
+                                && (wrapped.len() <= saved.len() || grow)
                                 && (wrapped.len() != saved.len()
                                     || wrapped
                                         .iter()

@@ -236,6 +236,7 @@ pub fn open(path: &Path) -> Result<Document> {
                         .at("id", id)
                         .at("binaryHwp", 1)
                         .at("tabPrIDRef", u16(d, 28)?)
+                        .at("condense", (u32(d, 0)? >> 9) & 127)
                         .with(vec![
                             n("align").at("horizontal", align),
                             n("margin").with(

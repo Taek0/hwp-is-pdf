@@ -27,7 +27,7 @@ pub(super) fn trailing_table(p: &Node, items: &[Item]) -> Option<(usize, Node)> 
     let first_end = ls.get(1).map(|l| l.u("textpos")).unwrap_or(usize::MAX);
     if n.name != "tbl"
         || n.a("binaryHwp") != "1"
-        || n.a("textWrap") != "TOP_AND_BOTTOM"
+        || !matches!(n.a("textWrap"), "TOP_AND_BOTTOM" | "SQUARE")
         || pos.a("treatAsChar") == "1"
         || pos.a("vertRelTo") != "PARA"
         || !matches!(pos.a("vertAlign"), "" | "TOP")

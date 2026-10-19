@@ -248,6 +248,30 @@ impl<'a> Engine<'a> {
             }
         }
         let mut total: f64 = widths.iter().sum();
+        let condense = self
+            .doc
+            .paras
+            .get(p.a("paraPrIDRef"))
+            .map(|s| s.n("condense").clamp(0., 75.) / 100.)
+            .unwrap_or(0.);
+        if total > avail && condense > 0. && !its.iter().any(|i| matches!(i.kind, ItemKind::Tab(_)))
+        {
+            let spaces = its
+                .iter()
+                .zip(&widths)
+                .filter(|(i, _)| matches!(i.kind, ItemKind::Char(' ')))
+                .map(|(_, w)| w.max(0.))
+                .sum::<f64>();
+            if spaces > 0. {
+                let reduction = ((total - avail) / spaces).min(condense);
+                for (item, width) in its.iter().zip(&mut widths) {
+                    if matches!(item.kind, ItemKind::Char(' ')) {
+                        *width -= width.max(0.) * reduction;
+                    }
+                }
+                total = widths.iter().sum();
+            }
+        }
         let half_height_cell_cache = self.depth > 0
             && seg.n("textheight") > 0.
             && seg.n("baseline") <= seg.n("textheight") * 0.5 + 0.01

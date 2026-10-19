@@ -6,20 +6,41 @@ pub(super) fn reconcile(n: &Node, prior: &[f64]) -> Option<Vec<f64>> {
         return None;
     }
     let mut edges = Vec::new();
-    for cell in n.children_named("tr").flat_map(|r| r.children_named("tc")) {
-        let start = cell.child("cellAddr")?.u("colAddr");
-        let span = cell.child("cellSpan")?.u("colSpan");
-        let end = start.checked_add(span)?;
-        let width = val(cell.child("cellSz"), "width");
-        if span == 0 || end > cols || !width.is_finite() || width <= 0. {
-            return None;
+    let mut inconsistent_prior = false;
+    for row in n.children_named("tr") {
+        let start_index = edges.len();
+        for cell in row.children_named("tc") {
+            let start = cell.child("cellAddr")?.u("colAddr");
+            let span = cell.child("cellSpan")?.u("colSpan");
+            let end = start.checked_add(span)?;
+            let width = val(cell.child("cellSz"), "width");
+            if span == 0 || end > cols || !width.is_finite() || width <= 0. {
+                return None;
+            }
+            inconsistent_prior |= (prior[start..end].iter().sum::<f64>() - width).abs() > 0.1;
+            edges.push((start, end, width));
         }
-        edges.push((start, end, width));
+        // Older native rows can retain a slightly different total width after a
+        // table resize. Reconcile complete rows to the declared extent before
+        // solving crossing merges; incomplete rowspan rows are not rescaled.
+        let declared = val(n.child("sz"), "width");
+        let row_edges = &mut edges[start_index..];
+        row_edges.sort_by_key(|e| e.0);
+        let complete = row_edges.first().is_some_and(|e| e.0 == 0)
+            && row_edges.last().is_some_and(|e| e.1 == cols)
+            && row_edges.windows(2).all(|w| w[0].1 == w[1].0);
+        let total = row_edges.iter().map(|e| e.2).sum::<f64>();
+        if n.a("binaryHwp") == "1"
+            && complete
+            && declared > 0.
+            && (total - declared).abs() / declared <= 0.01
+        {
+            for edge in row_edges {
+                edge.2 *= declared / total;
+            }
+        }
     }
-    if !edges
-        .iter()
-        .any(|&(a, b, w)| (prior[a..b].iter().sum::<f64>() - w).abs() > 0.1)
-    {
+    if !inconsistent_prior {
         return None;
     }
     let mut adjacent = vec![Vec::new(); cols + 1];
@@ -116,5 +137,11 @@ mod tests {
     fn conflicting_widths_and_already_valid_grids_keep_the_existing_path() {
         assert!(reconcile(&fixture(true), &[40., 40., 70., 70., 80.]).is_none());
         assert!(reconcile(&fixture(false), &[40., 40., 60., 80., 80.]).is_none());
+    }
+    #[test]
+    fn small_complete_native_row_resize_is_normalized_before_crossing_merges() {
+        let n=crate::model::xml(br#"<tbl binaryHwp="1" colCnt="3"><sz width="10000"/><tr><tc><cellAddr colAddr="0"/><cellSpan colSpan="1"/><cellSz width="1980"/></tc><tc><cellAddr colAddr="1"/><cellSpan colSpan="2"/><cellSz width="7920"/></tc></tr><tr><tc><cellAddr colAddr="0"/><cellSpan colSpan="2"/><cellSz width="6000"/></tc><tc><cellAddr colAddr="2"/><cellSpan colSpan="1"/><cellSz width="4000"/></tc></tr></tbl>"#).unwrap();
+        let widths=reconcile(&n, &[19.8, 40.2, 40.]).unwrap();
+        assert!(widths.iter().zip([20.,40.,40.]).all(|(a,b)|(a-b).abs()<1e-9));
     }
 }

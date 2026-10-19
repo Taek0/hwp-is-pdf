@@ -33,6 +33,7 @@ fn inline_width(units: &[Unit]) -> f64 {
 }
 #[derive(Default)]
 pub(crate) struct Settings {
+    pub condense: f64,
     pub left: f64,
     pub right: f64,
     pub indent: f64,
@@ -64,6 +65,9 @@ pub(crate) fn settings(n: Option<&Node>) -> Settings {
     };
     let spacing = n.and_then(|n| n.find("lineSpacing"));
     Settings {
+        condense: n
+            .map(|p| p.n("condense").clamp(0., 75.) / 100.)
+            .unwrap_or(0.),
         discard_boundary_space: n.is_some_and(|p| p.a("binaryHwp") == "1"),
         tabs: Vec::new(),
         tab_step: 40.,
@@ -262,6 +266,8 @@ fn wrap_exclusion(
         );
         let mut end = begin;
         let mut used = 0.;
+        let mut space_budget = 0.;
+        let mut has_tab = false;
         let mut last_trailing = 0.;
         let mut last_break: Option<usize> = None;
         let mut last_space: Option<usize> = None;
@@ -303,7 +309,18 @@ fn wrap_exclusion(
             } else {
                 last_trailing
             };
-            if end > begin && used + advance - trailing > available + 0.001 {
+            has_tab |= units[end].ch == Some('\t');
+            let next_budget = if has_tab {
+                0.
+            } else {
+                space_budget
+                    + if units[end].ch == Some(' ') {
+                        advance.max(0.) * s.condense
+                    } else {
+                        0.
+                    }
+            };
+            if end > begin && used + advance - trailing - next_budget > available + 0.001 {
                 // A break space does not make an otherwise fitting final word
                 // overflow. Consume it here instead of backing up into that word.
                 if s.discard_boundary_space
@@ -346,6 +363,7 @@ fn wrap_exclusion(
                 break;
             }
             used += advance;
+            space_budget = next_budget;
             last_trailing = trailing;
             end += 1;
             if units[end - 1].ch == Some(' ') {
@@ -471,6 +489,16 @@ mod tests {
         s.discard_boundary_space = true;
         let rows = wrap(&units("ab cd ef"), 50., &s).unwrap();
         assert_eq!(rows.iter().map(|l| l.pos).collect::<Vec<_>>(), vec![0, 6]);
+    }
+    #[test]
+    fn declared_condensation_can_fit_a_line_without_shrinking_letters() {
+        let u = units("AB CD");
+        let mut s = config();
+        assert_eq!(wrap(&u, 48., &s).unwrap().len(), 2);
+        s.condense = 0.25;
+        assert_eq!(wrap(&u, 48., &s).unwrap().len(), 1);
+        assert_eq!(wrap(&u, 46., &s).unwrap().len(), 2);
+        assert!(u.iter().all(|u| u.width == 10.));
     }
     #[test]
     fn latin_word_uses_a_wider_later_interval_without_splitting() {
