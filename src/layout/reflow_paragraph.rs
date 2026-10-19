@@ -357,7 +357,7 @@ impl<'a> Engine<'a> {
             crate::reflow::wrap(&grouped, width, &settings)?
         };
         if nesting == 0
-            && self.doc.header.a("binaryHwp") != "1"
+            && (self.vertical_mode > 0 || self.doc.header.a("binaryHwp") != "1")
             && settings.spacing == "PERCENT"
             && general.is_empty()
             && exclusions.is_empty()

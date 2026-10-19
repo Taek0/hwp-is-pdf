@@ -14,24 +14,30 @@ pub(super) fn begin(ops: &mut Vec<Op>, g: &Glyph, x: f64, y: f64, line_top: f64,
     });
 }
 impl<'a> Engine<'a> {
-    pub(super) fn render_vertical(&mut self) -> Result<bool> {
+    pub(super) fn render_vertical(&mut self, force_reflow: bool) -> Result<bool> {
         let modes: Vec<_> = self
             .doc
             .sections
             .iter()
-            .map(|s| s.find("secPr").map(|p| p.a("textDirection")).unwrap_or(""))
+            .map(
+                |s| match s.find("secPr").map(|p| p.a("textDirection")).unwrap_or("") {
+                    "VERTICAL" => 1,
+                    "VERTICALALL" => 2,
+                    _ => 0,
+                },
+            )
             .collect();
-        if !modes
-            .iter()
-            .any(|m| matches!(*m, "VERTICAL" | "VERTICALALL"))
-        {
+        if modes.iter().all(|m| *m == 0) {
             return Ok(false);
         }
-        anyhow::ensure!(
-            modes.iter().all(|m| *m == modes[0]),
-            "Mixed horizontal/vertical sections require separate flow contexts"
-        );
-        for s in &self.doc.sections {
+        for (s, mode) in self
+            .doc
+            .sections
+            .iter()
+            .zip(&modes)
+            .filter(|(_, mode)| **mode != 0)
+        {
+            let _ = mode;
             anyhow::ensure!(
                 !s.children_named("p")
                     .flat_map(Self::items)
@@ -40,10 +46,15 @@ impl<'a> Engine<'a> {
             );
         }
         let mut document = self.doc.clone();
-        for section in &mut document.sections {
-            fn prepare(n: &mut Node) {
+        for (section, mode) in document.sections.iter_mut().zip(&modes) {
+            if *mode == 0 {
+                continue;
+            }
+            fn prepare(n: &mut Node, mode: u8) {
                 if n.name == "secPr" {
                     n.attrs.insert("textDirection".into(), "HORIZONTAL".into());
+                    n.attrs
+                        .insert("engineVerticalMode".into(), mode.to_string());
                     if let Some(page) = n.children.iter_mut().find(|c| c.name == "pagePr") {
                         let width = page.a("width").to_string();
                         let height = page.a("height").to_string();
@@ -68,16 +79,28 @@ impl<'a> Engine<'a> {
                 }
                 n.children.retain(|c| c.name != "linesegarray");
                 for c in &mut n.children {
-                    prepare(c);
+                    prepare(c, mode);
                 }
             }
-            prepare(section);
+            prepare(section, *mode);
         }
         let mut child = Engine::new(&document, &self.fonts.root);
-        child.vertical_mode = if modes[0] == "VERTICALALL" { 2 } else { 1 };
         child.hancom_hide_pcx = self.hancom_hide_pcx;
-        child.render_mode(true)?;
+        child.general_wrap = self.general_wrap;
+        child.contour_wrap = self.contour_wrap;
+        child
+            .report
+            .warnings
+            .extend(self.report.warnings.iter().cloned());
+        child.render_mode(force_reflow)?;
+        anyhow::ensure!(
+            child.page_sections.len() == child.pages.len(),
+            "Missing page section ownership"
+        );
         for (i, page) in child.pages.iter_mut().enumerate() {
+            if modes[child.page_sections[i]] == 0 {
+                continue;
+            }
             let original_width = page.height;
             let matrix = [0., 1., -1., 0., original_width, 0.];
             page.ops.insert(0, Op::TransformBegin { matrix });
@@ -91,8 +114,9 @@ impl<'a> Engine<'a> {
                 b.h = r[3] - r[1];
             }
         }
-        child.report.warnings.insert("Vertical plain-text flow: upright CJK or all glyphs; mixed-direction sections and inline objects remain unsupported".into());
+        child.report.warnings.insert("Section-specific vertical text flow; inline vertical objects require separate orientation layout".into());
         self.pages = child.pages;
+        self.page_sections = child.page_sections;
         self.fonts = child.fonts;
         self.report = child.report;
         Ok(true)

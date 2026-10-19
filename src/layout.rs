@@ -326,6 +326,7 @@ pub struct Engine<'a> {
     pub doc: &'a Document,
     pub fonts: Fonts,
     pub pages: Vec<Page>,
+    page_sections: Vec<usize>,
     pub report: Report,
     /// Opt-in reproduction of Hancom's restricted PCX visibility, not a security sandbox.
     pub hancom_hide_pcx: bool,
@@ -442,6 +443,7 @@ impl<'a> Engine<'a> {
             doc,
             fonts: Fonts::new(fonts),
             pages: Vec::new(),
+            page_sections: Vec::new(),
             report: Report::default(),
             hancom_hide_pcx: false,
             pw: 0.,

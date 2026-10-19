@@ -369,6 +369,7 @@ impl<'a> Engine<'a> {
 
         self.current.width = self.pw;
         self.current.height = self.ph;
+        self.page_sections.push(self.active_section);
         self.pages.push(std::mem::take(&mut self.current));
         Ok(())
     }
@@ -460,6 +461,7 @@ impl<'a> Engine<'a> {
             self.note_rendering = false;
             self.current.width = self.pw;
             self.current.height = self.ph;
+            self.page_sections.push(self.active_section);
             self.pages.push(std::mem::take(&mut self.current));
             groups.retain(|_, (_, _, rows)| !rows.is_empty());
             if !self.draining_notes {

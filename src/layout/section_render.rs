@@ -2,7 +2,7 @@
 use super::*;
 impl<'a> Engine<'a> {
     pub(super) fn render_mode(&mut self, force_reflow: bool) -> Result<()> {
-        if self.render_vertical()? {
+        if self.render_vertical(force_reflow)? {
             return Ok(());
         }
         let mut reflow_used = false;
@@ -24,6 +24,11 @@ impl<'a> Engine<'a> {
             let sec = section
                 .find("secPr")
                 .context("Missing section properties")?;
+            let mode = sec.u("engineVerticalMode") as u8;
+            if self.vertical_mode != mode {
+                self.glyph_cache.clear();
+                self.vertical_mode = mode;
+            }
             if let Some(start) = sec.child("startNum").filter(|n| n.u("page") > 0) {
                 self.page_base = start.u("page") as i64 - self.pages.len() as i64;
             }
@@ -80,7 +85,8 @@ impl<'a> Engine<'a> {
             self.shared_note_reserve = 0.;
             self.column_band_top = self.top;
             self.reflow_column = 0;
-            let rebuild = force_reflow || Self::section_needs_reflow(section);
+            let rebuild =
+                force_reflow || self.vertical_mode > 0 || Self::section_needs_reflow(section);
             if !force_reflow && rebuild && section.children_named("p").all(|p| !lines(p).is_empty())
             {
                 self.report.warnings.insert(

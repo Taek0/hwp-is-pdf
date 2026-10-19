@@ -2,6 +2,12 @@
 use super::*;
 
 pub(super) fn section_properties(r: &Record) -> Result<Node> {
+    let direction = (u32(&r.data, 4)? >> 16) & 7;
+    let text_direction = match direction {
+        0 => "HORIZONTAL",
+        1 => "VERTICAL",
+        _ => bail!("Unsupported HWP section text direction {direction}"),
+    };
     let page = r.first(73).context("Missing HWP page definition")?;
     let d = &page.data;
     let mut margin = n("margin");
@@ -26,6 +32,7 @@ pub(super) fn section_properties(r: &Record) -> Result<Node> {
         .at("height", if landscape { width } else { height })
         .with(vec![margin]);
     let mut sec = n("secPr")
+        .at("textDirection", text_direction)
         .at("binaryHwp", 1)
         .at("spaceColumns", u16(&r.data, 8)?)
         .at(
@@ -165,5 +172,36 @@ mod tests {
         assert_eq!(n.a("borderFillIDRef"), "7");
         assert_eq!(n.child("offset").unwrap().a("bottom"), "400");
         assert!(page_border(&d[..12], "BOTH").is_err());
+    }
+}
+
+#[cfg(test)]
+mod direction_tests {
+    use super::*;
+    #[test]
+    fn native_section_direction_bits_are_decoded_without_changing_paper_size() {
+        for (direction, name) in [(0u32, "HORIZONTAL"), (1, "VERTICAL")] {
+            let mut data = vec![0; 30];
+            data[4..8].copy_from_slice(&(direction << 16).to_le_bytes());
+            let mut paper = vec![0; 40];
+            paper[0..4].copy_from_slice(&40000u32.to_le_bytes());
+            paper[4..8].copy_from_slice(&30000u32.to_le_bytes());
+            let r = Record {
+                tag: 71,
+                level: 0,
+                offset: 0,
+                data,
+                children: vec![Record {
+                    tag: 73,
+                    level: 1,
+                    offset: 0,
+                    data: paper,
+                    children: vec![],
+                }],
+            };
+            let sec = section_properties(&r).unwrap();
+            assert_eq!(sec.a("textDirection"), name);
+            assert_eq!(sec.child("pagePr").unwrap().u("width"), 40000);
+        }
     }
 }
