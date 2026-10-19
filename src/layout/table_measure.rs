@@ -36,6 +36,9 @@ pub(super) fn native_width(n: &Node) -> Option<f64> {
             }
         }
     }
+    if let Some(solved) = table_columns::reconcile(n, &widths) {
+        widths = solved;
+    }
     widths
         .iter()
         .all(|w| *w > 0. && w.is_finite())
@@ -106,6 +109,9 @@ impl<'a> Engine<'a> {
                     }
                 }
             }
+        }
+        if let Some(solved) = table_columns::reconcile(n, &cw) {
+            cw = solved;
         }
         let automatic: Vec<_> = rh
             .iter()

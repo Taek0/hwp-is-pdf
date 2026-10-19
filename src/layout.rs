@@ -419,6 +419,7 @@ mod section_render;
 mod shape_paths;
 mod tab_layout;
 mod table_cell_split;
+mod table_columns;
 mod table_headers;
 mod table_layout;
 mod table_measure;
