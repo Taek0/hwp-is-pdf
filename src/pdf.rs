@@ -169,30 +169,35 @@ pub fn save(
                         colors.len() >= 2 && colors.len() <= 256,
                         "Gradient requires 2..256 colors"
                     );
-                    let aspect = h / iw.max(0.01);
-                    let normalized_padding = padding / iw.max(0.01);
-                    let key = format!(
-                        "gradient:{kind}:{angle}:{center:?}:{aspect}:{normalized_padding}:{steps}:{step_center}:{colors:?}"
-                    );
-                    if !image_ids.contains_key(&key) {
-                        let pixels = gradients::raster(
-                            kind,
+                    anyhow::ensure!(
+                        [
+                            *x,
+                            *y,
+                            *iw,
+                            *h,
                             *angle,
-                            *center,
-                            aspect,
-                            normalized_padding,
-                            (*steps).clamp(2, 256),
-                            *step_center,
-                            colors,
-                        );
-                        let obj=w.stream("/Type /XObject /Subtype /Image /Width 256 /Height 256 /ColorSpace /DeviceRGB /BitsPerComponent 8",&pixels)?;
-                        image_ids.insert(key.clone(), (obj, image_ids.len()));
-                    }
-                    let (_, index) = image_ids[&key];
-                    content.push_str(&format!(
-                        "q {iw} 0 0 {h} {x} {} cm /I{index} Do Q\n",
-                        page.height - y - h
+                            center[0],
+                            center[1],
+                            *padding,
+                            *step_center
+                        ]
+                        .into_iter()
+                        .all(f64::is_finite),
+                        "Non-finite gradient geometry"
+                    );
+                    content.push_str(&format!("q 1 0 0 1 {x} {} cm\n", page.height - y - h));
+                    content.push_str(&gradients::vector(
+                        kind,
+                        *angle,
+                        *center,
+                        *iw,
+                        *h,
+                        *padding,
+                        *steps,
+                        *step_center,
+                        colors,
                     ));
+                    content.push_str("Q\n");
                 }
                 Op::TextOutline { width, dash } => outline = Some((*width, dash.clone())),
                 Op::Link { .. } | Op::Destination { .. } => {}

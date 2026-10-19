@@ -63,7 +63,19 @@ pub(crate) fn draw(
         y + h - size * 3.4,
     );
     ensure!(right > left && bottom > top, "Bar plot too small");
-    let (dx, dy) = (size * 1.5, -size);
+    let view = root.find("view3D");
+    let setting = |key: &str, default: f64| {
+        view.and_then(|v| v.child(key))
+            .map(|v| v.n("val"))
+            .unwrap_or(default)
+    };
+    let depth_scale = (setting("depthPercent", 100.) / 100.).clamp(0.01, 20.);
+    let rot_x = setting("rotX", 15.).clamp(-90., 90.).to_radians();
+    let rot_y = setting("rotY", 20.).rem_euclid(360.).to_radians();
+    let (dx, dy) = (
+        size * 1.5 * depth_scale * rot_y.sin() / 20f64.to_radians().sin(),
+        -size * depth_scale * rot_x.sin() / 15f64.to_radians().sin(),
+    );
     let mut out = Vec::new();
     let line = |x, y, x2, y2| Op::Line {
         x,
@@ -71,7 +83,7 @@ pub(crate) fn draw(
         x2,
         y2,
         width: 0.5,
-        color: [0.6; 3],
+        color: [134. / 255.; 3],
     };
     let text = |x, y, t: String| Op::Text {
         x,
@@ -104,18 +116,30 @@ pub(crate) fn draw(
     out.push(line(left, bottom, right, bottom));
     out.push(line(right, bottom, right + dx, bottom + dy));
     let palette = [
-        [97. / 255., 129. / 255., 213. / 255.],
-        [254. / 255., 131. / 255., 58. / 255.],
-        [0.65; 3],
+        [97. / 255., 130. / 255., 214. / 255.],
+        [1., 132. / 255., 58. / 255.],
+        [178. / 255.; 3],
     ];
     let group = (right - left) / count as f64;
-    let bw = group * 0.72 / series.len() as f64;
+    let gap = chart
+        .child("gapWidth")
+        .map(|n| n.n("val") / 100.)
+        .unwrap_or(1.5)
+        .clamp(0., 5.);
+    let depth_gap = chart
+        .child("gapDepth")
+        .map(|n| n.n("val") / 100.)
+        .unwrap_or(1.5)
+        .clamp(0., 5.);
+    let bw = group / (series.len() as f64 + gap);
+    let z = depth_gap / (2. * (1. + depth_gap));
+    let (bar_dx, bar_dy) = (dx / (1. + depth_gap), dy / (1. + depth_gap));
     for (i, values) in values.iter().enumerate() {
         let c = palette[i % palette.len()];
         for (j, v) in values.iter().enumerate() {
-            let xx = left + group * j as f64 + group * 0.2 + bw * i as f64;
-            let yy = bottom - v / ymax * (bottom - top);
-            let depth = bw * 0.42;
+            let xx = left + group * j as f64 + gap * bw / 2. + bw * i as f64 + dx * z;
+            let bar_bottom = bottom + dy * z;
+            let yy = bar_bottom - v / ymax * (bottom - top);
             let path = |points, fill| Op::Path {
                 points,
                 closed: true,
@@ -127,26 +151,26 @@ pub(crate) fn draw(
                 x: xx,
                 y: yy,
                 w: bw,
-                h: bottom - yy,
+                h: bar_bottom - yy,
                 fill: c,
             });
             out.push(path(
                 vec![
                     (xx, yy),
-                    (xx + depth, yy - depth * 0.6),
-                    (xx + bw + depth, yy - depth * 0.6),
+                    (xx + bar_dx, yy + bar_dy),
+                    (xx + bw + bar_dx, yy + bar_dy),
                     (xx + bw, yy),
                 ],
-                c.map(|v| v + (1. - v) * 0.3),
+                c.map(|v| v * 0.72),
             ));
             out.push(path(
                 vec![
                     (xx + bw, yy),
-                    (xx + bw + depth, yy - depth * 0.6),
-                    (xx + bw + depth, bottom - depth * 0.6),
-                    (xx + bw, bottom),
+                    (xx + bw + bar_dx, yy + bar_dy),
+                    (xx + bw + bar_dx, bar_bottom + bar_dy),
+                    (xx + bw, bar_bottom),
                 ],
-                c.map(|v| v * 0.5),
+                c.map(|v| v * 0.486),
             ));
         }
         let label = series[i]
