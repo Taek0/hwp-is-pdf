@@ -1,4 +1,28 @@
 //! Shared vertical reference semantics for saved and rebuilt object anchors.
+pub(super) fn empty_picture_anchor_gap(
+    node: &crate::model::Node,
+    paragraph: &crate::model::Node,
+    segments: &[&crate::model::Node],
+    has_text: bool,
+) -> Option<f64> {
+    if node.name != "pic"
+        || node.a("binaryHwp") != "1"
+        || node.child("caption").is_some()
+        || segments.len() != 1
+        || has_text
+        || !(paragraph.a("columnStart") == "1" || paragraph.a("pageBreak") == "1")
+        || !node.child("pos").is_some_and(|p| {
+            p.a("vertRelTo") == "PARA"
+                && matches!(p.a("vertAlign"), "" | "TOP")
+                && p.signed("vertOffset") == 0.
+        })
+    {
+        return None;
+    }
+    let margins = super::margin(node, "outMargin");
+    let gap = super::effective_height(node) + margins[3];
+    (margins[2] == 0. && (segments[0].n("vertpos") / 100. - gap).abs() < 0.02).then_some(gap)
+}
 pub(super) fn hwpx_table_baseline_fraction(
     node: &crate::model::Node,
     line: &crate::model::Node,

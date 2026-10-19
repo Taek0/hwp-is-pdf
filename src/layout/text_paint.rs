@@ -528,6 +528,19 @@ impl<'a> Engine<'a> {
                     {
                         // Block pictures precede their paragraph's first text line in the cache.
                         object_y -= effective_height(n) + margin(n, "outMargin")[3];
+                    } else if block
+                        && let Some(gap) = object_position::empty_picture_anchor_gap(
+                            n,
+                            p,
+                            &segs,
+                            its.iter()
+                                .any(|i| matches!(i.kind,ItemKind::Char(c) if !c.is_whitespace())),
+                        )
+                    {
+                        // At a fresh page/column an object-only anchor can be
+                        // the blank line after a block picture. The complete
+                        // reserved gap proves its preceding placement.
+                        object_y -= gap;
                     }
                     let centered_native = n.a("binaryHwp") == "1"
                         && p.a("reflowed") != "1"

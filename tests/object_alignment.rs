@@ -23,6 +23,29 @@ fn document(body: String) -> Document {
 }
 const PAGE: &str = r#"<secPr><pagePr width="40000" height="40000"><margin left="5000" right="5000" top="5000" bottom="5000"/></pagePr></secPr>"#;
 #[test]
+fn fresh_empty_block_picture_anchor_requires_the_complete_reserved_gap() {
+    for (cache_y, expected_y) in [(10000, 50.), (15000, 200.)] {
+        let mut d = document(format!(
+            r#"<sec><p columnStart="1" paraPrIDRef="0"><run charPrIDRef="0">{PAGE}<pic id="probe" binaryHwp="1" textWrap="TOP_AND_BOTTOM"><sz width="10000" height="10000"/><pos treatAsChar="0" vertRelTo="PARA" vertAlign="TOP" horzRelTo="PARA"/><img binaryItemIDRef="probe"/></pic></run><linesegarray><lineseg textpos="0" vertpos="{cache_y}" vertsize="1000" textheight="1000" baseline="850" horzsize="30000"/></linesegarray></p></sec>"#
+        ));
+        d.header.attrs.insert("binaryHwp".into(), "1".into());
+        let mut bytes = std::io::Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgb8(image::RgbImage::from_pixel(2, 2, image::Rgb([0, 0, 255])))
+            .write_to(&mut bytes, image::ImageFormat::Png)
+            .unwrap();
+        d.binaries.insert("probe".into(), bytes.into_inner());
+        let mut e = Engine::new(&d, fonts());
+        e.render().unwrap();
+        let image = e
+            .report
+            .bounds
+            .iter()
+            .find(|b| b.kind == "pic" && b.id == "probe")
+            .unwrap();
+        assert!((image.y - expected_y).abs() < 0.01, "{}", image.y);
+    }
+}
+#[test]
 fn hwpx_inline_table_cache_reserves_its_complete_outside_box() {
     let d = document(format!(
         r#"<sec><p paraPrIDRef="0"><run charPrIDRef="0">{PAGE}<tbl id="probe" rowCnt="1" colCnt="1"><sz width="10000" height="4000"/><pos treatAsChar="1"/><outMargin top="200" bottom="600"/><tr><tc borderFillIDRef="1"><cellAddr rowAddr="0" colAddr="0"/><cellSpan rowSpan="1" colSpan="1"/><cellSz width="10000" height="4000"/><subList><p paraPrIDRef="0"><run charPrIDRef="0"><t>X</t></run><linesegarray><lineseg textpos="0" vertpos="0" vertsize="1200" baseline="1000" horzsize="10000"/></linesegarray></p></subList></tc></tr></tbl></run><linesegarray><lineseg textpos="0" vertpos="0" vertsize="4800" textheight="4800" baseline="4080" horzsize="30000"/></linesegarray></p></sec>"#
