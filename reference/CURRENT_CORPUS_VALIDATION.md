@@ -1,22 +1,26 @@
-# Current-corpus validation — 2026-10-19, stage 82
+# Current-corpus validation — 2026-10-20, stage 88
 
-Engine snapshot: `aeb5c584aac3323e783defa0f49c4e09f68ad4fb`.
+Engine snapshot: `0b16b80925e38a61eb7175d810511104409a53a7`.
+Engine changes: [REFLOW_LINE_EXTENTS.md](REFLOW_LINE_EXTENTS.md).
 This audit distinguishes exercising a file from proving exact Hancom fidelity.
 It does not certify a universal 95% format-completion figure.
 
 | Check | Result |
 |---|---|
 | Workspace inventory | 454 physical HWP/HWPX files, 202 distinct SHA-256 inputs, including sibling editor exports |
-| Conversion | 202/202, 594 pages, no failures or zero-page outputs |
+| Conversion | 202/202, 592 pages, no failures or zero-page outputs |
 | Source preservation | All 454 source-copy hashes unchanged |
-| Raster validation | All 594 pages rendered; page inventories and changed-page comparisons retained |
+| Raster validation | All 592 pages rendered; page inventories and changed-page comparisons retained |
 | Drawable inventory | All 202 inputs scanned, no unknown positioned/group-child drawable kinds |
 | Independent references | 63 PDFs / 247 pages; all page counts agree; one reference is incomplete |
 | Text glyph warnings | Zero missing-glyph warnings |
-| Rust checks | Full 326-test suite and all-target Clippy pass |
-| Latest change | Only the scaled-picture sample changes from stage 80; other 201 PDFs byte-identical |
+| Rust checks | 331-test suite passes; final note-only change also passes targeted integration tests and all-target Clippy |
+| Latest change | 47 PDFs change from stage 82 with identical character multisets; other 155 PDFs byte-identical |
 
 ## Corrections verified in this increment
+
+- [HWPX property alternates](HWPX_PROPERTY_ALTERNATES.md): header tab branches resolve once.
+- [Reflow line extents](REFLOW_LINE_EXTENTS.md): blank-column boundaries, table height/margins, spanning headings, hanging indents and endnote spacing.
 
 - [Source charts and OLE](SOURCE_CHARTS_AND_OLE.md): supported 2D source-backed
   charts, OLE formula/static EMF recovery, HWPX containers and declared font substitution.
@@ -59,8 +63,9 @@ geometry classifications, not a declaration that every glyph/pixel is identical.
   engine preserves them; a complete print is still needed for exact comparison.
 - Four deliberately stale generator caches use explicit `--reflow` in the ledger.
   The numbering-edited counterfactual math probe was also tested separately with
-  full reflow: 10 pages versus Hancom's 9. Its primary saved-layout result is 9 pages.
-  This remains a known full-reflow fidelity limit, not an untested file.
+  full reflow: now 9 pages, matching the primary saved-layout result and Hancom.
+  All 26 answers use 10pt leading on page 9. Body origins and some font/rule
+  appearances still differ; page-count equality does not certify exact fidelity.
 - Four blank-column probes were printed on different paper from their declared
   400×300pt source. Bottom-origin PDF coordinates are not directly comparable.
 - Extractable text differences from shadows, outlines, raster chart labels and
@@ -69,8 +74,9 @@ geometry classifications, not a declaration that every glyph/pixel is identical.
   50 without full prints were additionally inspected. Copied template thumbnails
   were not used to overwrite the actual source content.
 
-Portable summary: [verification-stage82.json](verification-stage82.json).
-Local complete ledger, CSV, PDF links and 594 page images:
-`output/roadmap/81-final-held-audit/index.html`.
+Portable summary: [verification-stage88.json](verification-stage88.json).
+Local current PDF index and reference checks:
+`output/roadmap/88-endnote-leading/index.html`.
+Earlier detailed ledger and unchanged raster evidence remain in stage 81.
 The ledger records every input, mode, source hash, output hash and limitation.
 Earlier stage numbers are historical in [CORPUS_VALIDATION_HISTORY.md](CORPUS_VALIDATION_HISTORY.md).

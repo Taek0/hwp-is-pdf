@@ -1,0 +1,4094 @@
+{
+  "summary": {
+    "engine_commit": "0b16b80925e38a61eb7175d810511104409a53a7",
+    "physical_files": 454,
+    "distinct_inputs": 202,
+    "conversion_failures": 0,
+    "output_pages": 592,
+    "raster_pages": 592,
+    "source_hashes_unchanged": true,
+    "tests_passed": 331,
+    "all_target_clippy": "passed",
+    "independent_references": 63,
+    "reference_pages": 247,
+    "reference_page_count_mismatches": 0,
+    "raw_geometry_counts": {
+      "text_overlaps": 74,
+      "foreground_image_overlaps": 9,
+      "border_crossings": 8
+    },
+    "unclassified_geometry_findings": 0,
+    "missing_glyph_warnings": 0,
+    "viewer_rejected_archival_inputs": 7,
+    "scope_note": "All held files were exercised in the recorded primary mode; this is not a universal format-compatibility percentage or a claim of pixel identity.",
+    "inputs_without_paired_pdf": 139,
+    "inputs_with_incomplete_paired_pdf": 1,
+    "changed_inputs_since_stage82": 47,
+    "byte_identical_inputs_since_stage82": 155,
+    "validation_note": "Full stage-87 suite; final endnote-only change rerun for all affected primary inputs and relevant integration tests."
+  },
+  "inputs": [
+    {
+      "name": "001_captions-table-side",
+      "input": "hwp-engine\\samples\\reflow\\captions-table-side.hwpx",
+      "sha256": "01f548c930be6383fb4a2a825f93c7be0795d30a2bbd6e54fcc63688f736bf54",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "5077c464b50181c5b121b108e0e179f2b5122e9328ecb08cbf3161767a79a5cc",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\001_captions-table-side.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "002_03_math_black_markers_superscript",
+      "input": "Hancom-Note-Wrap-20261016\\01_print\\03_math_black_markers_superscript.hwpx",
+      "sha256": "036794d7500cf97fd20ecbaac4c29655ba28215762ce781c19e9abe1d78aa2ac",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 9,
+      "conversion": "passed",
+      "raster_pages": 9,
+      "pdf_sha256": "2dc89c317f852600fb130750b76695f46ec640e4025be380de76212ebd34148a",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\002_03_math_black_markers_superscript.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "03_math_black_markers_superscript"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "003_01_extended__linespacing",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\01_extended__linespacing.hwp",
+      "sha256": "0377946dd62dedfdbc5709c8b333c362d2d1dce44db6e7772371d76a7a12780f",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "5f6cee6175c26ef9b3f8a39e1548b0e2a237cf531763148194659f2e3d208fa1",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\003_01_extended__linespacing.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {
+        "text_overlaps": 8
+      },
+      "geometry_classification": "한컴에도 보이는 고정 줄간격 0pt 겹침",
+      "independent_reference_names": [
+        "01_extended__linespacing"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "004_nested-repeat-caption",
+      "input": "hwp-engine\\samples\\overflow\\nested-repeat-caption.hwpx",
+      "sha256": "0656a2c55a2d978b0a17d8b9017ecb3bf9d039d9c1bc5fa1753c3c8cb0c0d3c5",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "5de3496476beb29a1c7c5ab7c1802321f71a5e093f870b672b8a40887cad02c4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\004_nested-repeat-caption.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "005_endnote-01",
+      "input": "hwp-engine\\samples\\tables-notes\\endnote-01.hwp",
+      "sha256": "07ae69995ef24da322ae85f99c9f5dbee9a919bea15077863ebced38e13e1541",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 5,
+      "conversion": "passed",
+      "raster_pages": 5,
+      "pdf_sha256": "6f57524fcb6c7cf2ed070a64782768a826efcec10474c5e418dfec994961905a",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\005_endnote-01.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "05_endnote_native"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "006_graphics-background-arcs",
+      "input": "hwp-engine\\samples\\reflow\\graphics-background-arcs.hwpx",
+      "sha256": "084f0f6695d24771b0bf1eb5de5f082c122375c33a0ba7e8c10535762725167e",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "5cb7ad23fdfc002f1bf69878815edfff18a7414e0700c8d66bab2295539b7d20",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\006_graphics-background-arcs.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "007_captions-picture-left",
+      "input": "hwp-engine\\samples\\reflow\\captions-picture-left.hwpx",
+      "sha256": "0b49203131161f2ae366002648f41fe19b595710b2969690368b669435c2104a",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "d5f1f59fce40cb1349100ac410f5db67eae5fb5194a5b348761fb295195d7b99",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\007_captions-picture-left.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "008_contour-columns",
+      "input": "hwp-engine\\samples\\reflow\\contour-columns.hwpx",
+      "sha256": "0dbca8546affb6f91522da04d7a587b66ad67dabc2f92aa5f178137f883fd1f0",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "e8eaeddbe29988481a68e116d166afd3548f0f54b997f104f5bec77533b4001b",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\008_contour-columns.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "009_contour-single",
+      "input": "hwp-engine\\samples\\reflow\\contour-single.hwpx",
+      "sha256": "0ddf8fc73e354b4e71db32cb14261819051c8a3d7cdb957c41bcabc8d87a1ce8",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "4c7288469cacaf18bd866f628e676a6c21bed94d6155bc22b0205790b2f674de",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\009_contour-single.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "010_표식만있는분산형",
+      "input": "hwp-engine\\output\\four-priority-sources\\표식만있는분산형.hwp",
+      "sha256": "0e0b4aa7ec05d74120e034b52cf7ac92718be0fdf0af258873e4069089a4c6cc",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "657fd4c61f4dd0642ab8b9d5ab7c93f9d3b8d6df4719796c7d900b4316607522",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\010_표식만있는분산형.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "09_chart_scatter.hwp"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "011_hwpers_test4_complex_table",
+      "input": "hwp-engine\\samples\\tables-notes\\hwpers_test4_complex_table.hwp",
+      "sha256": "0f09725e42a361c5695b85a4d5bcb7325b9ae709a13ef6a4e9c7b312883f6e27",
+      "physical_copies": 4,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "f5e3f6dcb9564d1d7923be69e8f9570fe49de7c6a9d62ac54f8e573fe53fb44e",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\011_hwpers_test4_complex_table.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "viewer_rejected_archival_probe",
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "012_05_mixed_charts",
+      "input": "Hancom-Essential-7\\05_mixed_charts.hwp",
+      "sha256": "109bbe0a2ef5c1d056817e3c596c5579af08503e7b2556dd5b79f91689407d92",
+      "physical_copies": 4,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "a44471539a3c08c07ab52f369fe639126aaf265fc54726c29d15fca4a9442d70",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\012_05_mixed_charts.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "05_mixed_charts"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "013_captions-table-note",
+      "input": "hwp-engine\\samples\\reflow\\captions-table-note.hwpx",
+      "sha256": "11b4d87c971f05cff876d7c9970b9029d98e0120b9a52e38fdee5de41431745a",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "7b7cfd967e104aaf6fc2585ed18cfe1333597549ca8544cd4bafc212f022b122",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\013_captions-table-note.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "014_chart__bar_vertical_hwp5",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\chart__bar_vertical_hwp5.hwp",
+      "sha256": "12e8b4034cb236cc2fc20b777f90628825111e2ee8d8ec81e97f3fa60987d644",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "cfc9844ac307854d151472f1cb4fc96b750a5fd1c82acb209c0c21020c8d9414",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\014_chart__bar_vertical_hwp5.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "015_language-kerning",
+      "input": "hwp-engine\\samples\\reflow\\language-kerning.hwpx",
+      "sha256": "139eacc27e4c698880788f87b6518a4341f578e6cc68fcb4bbce61933187ddc5",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "ec6ba1b7d2ad7c8842bf85003f5ae592ae479eb6c5e620d2c5a942c53b9e2380",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\015_language-kerning.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "016_18_chart__pie_of_pie",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\18_chart__pie_of_pie.hwpx",
+      "sha256": "157cd5abf270194ecc36da948a2b983df0ea5c44b342135a71e2d6e0558d36b9",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "417ba9d5474cd48bef2dc62c8f3c9e21cffd34204a4f828f6138b6d430867e1d",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\016_18_chart__pie_of_pie.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "18_chart__pie_of_pie"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "017_inner-table-01",
+      "input": "hwp-engine\\samples\\tables-notes\\inner-table-01.hwp",
+      "sha256": "15c24b0dabec0353da4e8445155f16a46eac6d370d5d65c81e8aa1cf47759bc1",
+      "physical_copies": 4,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "abedd6ae5690cde6adcdc8c16d356c0f809d0aed1d56ab83e910c80d199ae447",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\017_inner-table-01.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "08_tables-notes__inner-table-01"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "018_notes",
+      "input": "hwp-engine\\samples\\features\\notes.hwp",
+      "sha256": "165e38d72326a997f0d01bd5d88c858c71c743d4f541211533acd76bc2135706",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "d1312a99549fe0ec56d586b17cdb2bfccc28d237750c7f8c85840046ad8a9b87",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\018_notes.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "019_font__re-font-gulimche-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-gulimche-hancom.hwp",
+      "sha256": "1770b10ffc57342d60d15fb6262bd20891bb722bc83f82d11e360d56ca132954",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\019_font__re-font-gulimche-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "020_float-columns",
+      "input": "hwp-engine\\samples\\reflow\\float-columns.hwpx",
+      "sha256": "17ceb406fe3344a5feaa7f9f3302119cebd49484dee79da1277b9c9fe64b6e80",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "6f7a2aee04bf516e24985d439d7e4ecd07bcf53b927dde48e16e6b653a46e1ca",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\020_float-columns.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "021_mix-shape-01",
+      "input": "hwp-engine\\output\\four-priority-sources\\mix-shape-01.hwp",
+      "sha256": "17f05ca365f007cb6e1be0f28c788e1b37fb6f77cc71c13347ec245df80d489f",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "c50adc20d870dd2a95800b1c18149d155ade7cdbd74c2dd9349a05d4baa09801",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\021_mix-shape-01.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "022_plain-no-cache",
+      "input": "hwp-engine\\samples\\reflow\\plain-no-cache.hwpx",
+      "sha256": "18b6f6e0b613ce7f5ad4d919adf64ee8c4d03faf6a426bdaf83ed2218038243f",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 7,
+      "conversion": "passed",
+      "raster_pages": 7,
+      "pdf_sha256": "b14ddc5feb539789e69edc914dde6769a193752f75594e5798407ad4b2611fac",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\022_plain-no-cache.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "023_10_equation__atop",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\10_equation__atop.hwp",
+      "sha256": "1ca6c0b543453401b96da9ff48e751b1bd2f9d4775915451ca2f053e7be186b7",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "e47267d8f5873ae30e5f53f602bb74838b44d655d36b6c5870396d927b30014b",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\023_10_equation__atop.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "10_equation__atop"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "024_font__re-font-batangche-empty-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-batangche-empty-hancom.hwp",
+      "sha256": "1d68b45573c5c7a8527d6081ea06af71e751f2c384253334dfcac9ec034b8778",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\024_font__re-font-batangche-empty-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "025_parashape",
+      "input": "hwp-engine\\samples\\additional\\parashape.hwp",
+      "sha256": "1df75e74dff1b93f42ce88cfa0e362ae489756274eca0a2abcb2b34ddd7c9548",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "4f150b5670bf9f93b62cdaefe012b7980eb0209a3b1134cb807ad0cdca252f5b",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\025_parashape.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "026_03a_vertical",
+      "input": "Hancom-Four-Priorities-20261019\\03_04_replacement_print\\03a_vertical.hwpx",
+      "sha256": "1e8654d6eaf52937898b8d20477932ba846f9a5efc02499d26650ab2a7b1277c",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "dfe802f4af29be038a1f3dbd53ff93a9be298d18fd4baa89d2574ff5c3071adf",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\026_03a_vertical.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "03a_vertical.hwpx"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "027_font__re-font-dotum-empty-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-dotum-empty-hancom.hwp",
+      "sha256": "1ee8871f37bec2e97d0928709dc411c0eacad656f35aa3d92c5cf89f61c5761b",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\027_font__re-font-dotum-empty-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "028_font__re-font-dotumche-empty-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-dotumche-empty-hancom.hwp",
+      "sha256": "1f306dcae4f02f3ad9c2c90b622e2dc5ebc8188d5a550e24a418332eac9107d4",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\028_font__re-font-dotumche-empty-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "029_typography-tabs",
+      "input": "hwp-engine\\samples\\reflow\\typography-tabs.hwpx",
+      "sha256": "1f6811977feba677f17c745ae5b85362035b4e2f5dcbbdfcfd5f8bade407b658",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "c5a731a8902b7879dce2be511a859701dcab2e78d4cf83e941dd61fc293e0488",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\029_typography-tabs.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "030_font__re-font-batang-empty-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-batang-empty-hancom.hwp",
+      "sha256": "219a805d63cfa2419ca3216d685b1c2d55a009a3d8ef016e25a5b9e009d87085",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\030_font__re-font-batang-empty-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "031_ruby",
+      "input": "hwp-engine\\samples\\features\\ruby.hwp",
+      "sha256": "233fe4c2df785ee57a461d8d2ef6d184f3bb15e2873da2fa5f41dfba7eef361a",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "1957394e85360bdf1e31fd46edcdd7f427315f2551d2abcd0dbc9feeb003e76f",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\031_ruby.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "032_15_chart__bar_percent",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\15_chart__bar_percent.hwpx",
+      "sha256": "238ec858447de9f777ec81372eddfdd224aea8807031a89909dbd6bf8a1501ca",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "0e3dfbf3fca23498f88620ec40f64d709702ac98f895f795cc2326d5eea658f0",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\032_15_chart__bar_percent.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "15_chart__bar_percent"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "033_03_vertical_writing",
+      "input": "Hancom-Four-Priorities-20261019\\rejected_multisection_v1\\03_vertical_writing.hwpx",
+      "sha256": "2399214c2ffaa1db77471bf700cceea30476da0b34de353fe9daf5777e4fa5cd",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "64a4065218c98f733e67aea137e70b73e0ba04be24ab803324ea13d0c10cb4d5",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\033_03_vertical_writing.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "viewer_rejected_archival_probe",
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "034_graphics-accents",
+      "input": "hwp-engine\\samples\\reflow\\graphics-accents.hwpx",
+      "sha256": "23afc98ae6d1c57af232c972905feeebf634343600cab3cc9535f4dd94508f9b",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "276086209f0f50d889324528cf038ea1ce7d5350b35d3e4c51390524a27e06cb",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\034_graphics-accents.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "035_float-flow-single",
+      "input": "hwp-engine\\samples\\reflow\\float-flow-single.hwpx",
+      "sha256": "281ab2d5c269101f83f18593f51e4e8b93d1b0756ad26c132290f396d85e1d6c",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "5aeaec6a070bbe9914d34a76c383a56fa42df9920b50050c71a7a9d29e0fc528",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\035_float-flow-single.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "036_04_even",
+      "input": "Hancom-Four-Priorities-20261019\\04_single_section_fallback\\04_even.hwpx",
+      "sha256": "2a61de6f020e3b936087748beba7b9cc8f9075c9230b3e40370e1614356a5a84",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "b13ce500a42970da66e522917e4bc4d27851ec661a96bbcc21a120ccb72c06ca",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\036_04_even.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "037_float-single",
+      "input": "hwp-engine\\samples\\reflow\\float-single.hwpx",
+      "sha256": "2b8db803452ddfea03e32ccc9a72b03a54a7101ec6d7c92bb5fc1e5fbe15932e",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "a8acaeb8254f491e1ee580aa6f16a8917acb0b28e21bb449667a6ad2a48a5f93",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\037_float-single.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "038_19_chart__stock_ohlc",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\19_chart__stock_ohlc.hwpx",
+      "sha256": "2d4eb6c11e6f32787c10515ad3e91b09ea3f4f5cda01ef2c9473bf8e9e1bac6e",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "9a462092808f81ce96bf7d6630d0dd6f00b4c3eb38762f6d93b52df5313393bf",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\038_19_chart__stock_ohlc.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "19_chart__stock_ohlc"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "039_list-extended-formats",
+      "input": "hwp-engine\\samples\\reflow\\list-extended-formats.hwpx",
+      "sha256": "2e5405329d26a3b1f17993a2abfcda8a870f4c8a8dc888336a4b15f90a030b5b",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "a9ef18de3d7dcbc92a2a5fd6eac822a4c3940db932fb31f8c185852754cbbbf7",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\039_list-extended-formats.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "040_shapes",
+      "input": "hwp-engine\\samples\\graphics\\shapes.hwpx",
+      "sha256": "2f20c8eb5cd89d47765a49f2fcf83d65719c7c9147124c14b391da809e91ab6e",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "f43d1683a2e5b27477326d0e70d56be94987bfcb25741e2153f42736296be8b0",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\040_shapes.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "041_government-notice",
+      "input": "hwp-engine\\samples\\web\\government-notice.hwp",
+      "sha256": "2ff261f0015f4ddf4267e71fa720c424ef7ab4744584c0c5ce9693d9f2637245",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 30,
+      "conversion": "passed",
+      "raster_pages": 30,
+      "pdf_sha256": "68df82a751346ec232a4c2d1cf218b263a46012ee6c6299c454a08cbdf9b79b5",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\041_government-notice.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "042_precision-columns",
+      "input": "hwp-engine\\samples\\reflow\\precision-columns.hwpx",
+      "sha256": "334d4a0a0cd800f417dfd29402b00accaa320494125ed986236f7231776801a2",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "b9c4a70bb635ed6e1a2f5cdab003c04a9adca03f1b494070022da716150450f7",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\042_precision-columns.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "043_03_horizontal",
+      "input": "Hancom-Four-Priorities-20261019\\04_single_section_fallback\\03_horizontal.hwpx",
+      "sha256": "35ea236c044443cdd844e0d32e1d4a1d35984aaccab3c38870f361ea5fd7ca5c",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "0837cb97bcf599d0107cb6b3ce47075ac339ada8fb18083c2865c515c188cc83",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\043_03_horizontal.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "044_17_chart__pie_3d",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\17_chart__pie_3d.hwpx",
+      "sha256": "36040ed272f5bcfe04288643b67f63b759f028e0217d079cb85a644feb0c0938",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "f9c400e322d1089cae3425de54d9e84433e69c64b21b784279707922a9a46fcb",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\044_17_chart__pie_3d.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "17_chart__pie_3d"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "045_20_vector__wmf_fill_shapes",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\20_vector__wmf_fill_shapes.hwpx",
+      "sha256": "3834193d41c41a0bc71c68cae51194e3fc40b913b2de9461253653d42afb7648",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 15,
+      "conversion": "passed",
+      "raster_pages": 15,
+      "pdf_sha256": "48d16216a584d2b60b441a1b5cccc9454864882a27f7c33d575806e7461755df",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\045_20_vector__wmf_fill_shapes.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {
+        "foreground_image_overlaps": 7
+      },
+      "geometry_classification": "한컴과 같은 회색 배경 그림 위 흰 글자",
+      "independent_reference_names": [
+        "20_vector__wmf_fill_shapes"
+      ],
+      "limitations": [
+        "source_bitmap_pixels_truncated"
+      ]
+    },
+    {
+      "name": "046_shapes",
+      "input": "hwp-engine\\samples\\features\\shapes.hwp",
+      "sha256": "38bf09dce22afa803cb2dabf7306bc1971e6b3222bc08674b48cfbc56f19079a",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "4295f0b5c066b53a9f75ee12cfbec9d580dcc0ba5288a8ff331435e1711071be",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\046_shapes.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "047_brightness-70_contrast-0",
+      "input": "hwp-engine\\output\\hancom-effects-probes\\brightness-70_contrast-0.hwp",
+      "sha256": "390e6d9b0c389e82ed2805c5fad43a92e21472c0a9b7cc84e8dd776189c44d01",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "8946cd2492c4a77ff8dc77e4a5fe792a856243067230c1ed90514910ed897d67",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\047_brightness-70_contrast-0.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "brightness-70_contrast-0"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "048_pic-crop-01",
+      "input": "hwp-engine\\samples\\graphics\\pic-crop-01.hwp",
+      "sha256": "3b5afbe4cdb18faa49452a9cbed770d5caa27aed2f83b708e9ab8516c65ebf4c",
+      "physical_copies": 4,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "90561a93262050f36a7dc55e205d8e75a7f9f691a788d3b2a8423a8e288d4dc8",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\048_pic-crop-01.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "pic-crop-01"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "049_page-coordinates",
+      "input": "hwp-engine\\samples\\reflow\\page-coordinates.hwpx",
+      "sha256": "3c735ad001f4f5921a532ea20d8a8f5e907aef54b4e68a7f012654d074bc5019",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "2543515ebd0e17ab5c3ad9d329bed222095a6e1d6b561fe1cd21c9886cacbcd6",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\049_page-coordinates.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "050_brightness-0_contrast--50",
+      "input": "hwp-engine\\output\\hancom-effects-probes\\brightness-0_contrast--50.hwp",
+      "sha256": "3ced5cfde63a50b43d717f68c3ffcf061d3af55772e312d726d5d13d24ec6e3d",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "795f59df61084bda6a207879fd422fc71e5741a9c3f586c9eef2fa036ad1cb95",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\050_brightness-0_contrast--50.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "brightness-0_contrast--50"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "051_font__re-font-gulimche-empty-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-gulimche-empty-hancom.hwp",
+      "sha256": "3f55d2be5805b4a8b1f064b75a180aace1abe608fbf301a02c049405bd36af3a",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\051_font__re-font-gulimche-empty-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "052_01_math_black_markers",
+      "input": "Hancom-Note-Wrap-20261016\\01_print\\01_math_black_markers.hwpx",
+      "sha256": "3fb0dced272e20e0dfac65fe7e7b56bc3b9a6b9abd5c5580b6638eb14b197e8e",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 9,
+      "conversion": "passed",
+      "raster_pages": 9,
+      "pdf_sha256": "2dc89c317f852600fb130750b76695f46ec640e4025be380de76212ebd34148a",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\052_01_math_black_markers.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "01_math_black_markers"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "053_fields",
+      "input": "hwp-engine\\samples\\features\\fields.hwp",
+      "sha256": "414c362824203fa0531f8449f6ee2fcca32c6fdf246f0a60b999273c5ffdc440",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "f7af767a54b5033bcaa756c077b92868e7c6caba4864f674921635238792ec6b",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\053_fields.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "054_mixed-no-cache",
+      "input": "hwp-engine\\samples\\reflow\\mixed-no-cache.hwpx",
+      "sha256": "419a845a26a6875e34ebf53db7dad00d9c71ec76ea2524d55abd42d24bb85f31",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 4,
+      "conversion": "passed",
+      "raster_pages": 4,
+      "pdf_sha256": "34f26074940924d18491488ca8944346fa5d45aa01feb650675b67a051365604",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\054_mixed-no-cache.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "055_04_math_black_markers_no_list_numbers",
+      "input": "Hancom-Note-Wrap-20261016\\01_print\\04_math_black_markers_no_list_numbers.hwpx",
+      "sha256": "420b3bba793907a01ef0d14d59275793aa347c7e21a78945c5d21f5ea15ac84f",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 9,
+      "conversion": "passed",
+      "raster_pages": 9,
+      "pdf_sha256": "e4ccc1d2aba16bd68d9f9a148845e43867a92adbd5061e683f7e70083b8c399e",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\055_04_math_black_markers_no_list_numbers.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "04_math_black_markers_no_list_numbers"
+      ],
+      "limitations": [
+        "secondary_full_reflow_body_origins_and_font_rule_appearances_differ"
+      ]
+    },
+    {
+      "name": "056_paragraphs",
+      "input": "hwp-engine\\samples\\web\\paragraphs.hwp",
+      "sha256": "42ebd913a044ef1dcb207990727b04c51e261e37bc045583e6035e120f39db01",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "efbaaa2d17ad854587ddf7bbdadde5a55495dd8bb281ae10cd56c47fc697a914",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\056_paragraphs.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "057_curves",
+      "input": "hwp-engine\\samples\\features\\curves.hwp",
+      "sha256": "4440e988f9e8822081ce270797bb40ed36ddb71719a9b9e531d499b73924e466",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "596c2c982602a7cf35fdf6c3420db657e51f97f1006f99a48d26f35e8997ed0b",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\057_curves.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "058_03_vertical_writing",
+      "input": "Hancom-Four-Priorities-20261019\\rejected_multisection_v2\\03_vertical_writing.hwpx",
+      "sha256": "44bb946283a5ef724fd93d9d613b89e2c8a0105f6b6a93e4ff91fe42f76f209e",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "64a4065218c98f733e67aea137e70b73e0ba04be24ab803324ea13d0c10cb4d5",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\058_03_vertical_writing.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "viewer_rejected_archival_probe",
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "059_lists-no-cache",
+      "input": "hwp-engine\\samples\\reflow\\lists-no-cache.hwpx",
+      "sha256": "4614506e615455e78de42f405b06350c010624cd3bf7e24ddd6e90ac093b75b3",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 5,
+      "conversion": "passed",
+      "raster_pages": 5,
+      "pdf_sha256": "8c7d6448fffd218bf91ea901e99106859c190eac2a3658adde637a857b6b3e1d",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\059_lists-no-cache.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "060_government-faq",
+      "input": "hwp-engine\\samples\\web\\government-faq.hwp",
+      "sha256": "46b94c21f68d24dd4ea755dcc11fb185d09a704ae8d8238e104d75831f006b59",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 13,
+      "conversion": "passed",
+      "raster_pages": 13,
+      "pdf_sha256": "c5e138dc03bc14d8e1ffd46a7ed9542173e253b6513301b39289de23f50ff813",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\060_government-faq.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "061_22_extended__borderfill",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\22_extended__borderfill.hwp",
+      "sha256": "49dee926351d25dcfa3ec448c8955426623bbc68d4a2ee7f1575691e8fd352a6",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "1f73d29be85bcdd87080dd098a27e2692a7590b1f57890c403f99a374c188fa4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\061_22_extended__borderfill.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "22_extended__borderfill"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "062_group",
+      "input": "hwp-engine\\samples\\features\\group.hwp",
+      "sha256": "4a956097aaec93268eccb71058e067df58ca0eddaa020acb847337b551cc4477",
+      "physical_copies": 4,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "98cd0ffc675a1c04d5732598da87d9ae2620f01a9350c0d1219073cedf5f3904",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\062_group.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "group"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "063_mixed-three-column",
+      "input": "hwp-engine\\samples\\reflow\\mixed-three-column.hwpx",
+      "sha256": "4bfe492e47b4bec8f555738a92e270afd1f6e7b7125222e643730fd356027a09",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "57b735349add4b2340d2f41ab5b5936e56436bfdf315ceaf09008e2f16f34081",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\063_mixed-three-column.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "064_equation-notes-unequal",
+      "input": "hwp-engine\\samples\\reflow\\equation-notes-unequal.hwpx",
+      "sha256": "4e5f06a2d85b0ce0a4030bb60931f8358c1796d5d0929e9fda560bf3d780f4ed",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 5,
+      "conversion": "passed",
+      "raster_pages": 5,
+      "pdf_sha256": "e71f15122424ff0bfa53800091db471c7134550a35879c76a7ea8158ab1fe35d",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\064_equation-notes-unequal.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "065_03_column_layout",
+      "input": "Hancom-Essential-7\\03_column_layout.hwp",
+      "sha256": "5312888f70a52168803e0dbdb9d6d3cdf54ae3b4ec7ae79f25a35f9c1cde67ff",
+      "physical_copies": 5,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 4,
+      "conversion": "passed",
+      "raster_pages": 4,
+      "pdf_sha256": "b342db92e780b6a53e56abbda3cea77d87a8ac0838eb6d86b1033ebb5b48ccc7",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\065_03_column_layout.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "03_column_layout"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "066_merged-header",
+      "input": "hwp-engine\\samples\\tables-notes\\merged-header.hwpx",
+      "sha256": "5425620bfcabf423d95b2987040f51ee99894b1c299cc50392b9a46f414fe8a8",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 5,
+      "conversion": "passed",
+      "raster_pages": 5,
+      "pdf_sha256": "9b5c256966e8cd50290364f40000e33121a0708957858bfd4a8a3a03567ba70e",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\066_merged-header.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "067_stalled-cache",
+      "input": "hwp-engine\\output\\hancom-blank-column-probes\\stalled-cache.hwpx",
+      "sha256": "548cd4a23f4590fb166df4dbda3a2ab0c1bc82d4398d99d34a6185bcaf55e720",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "2f0f8909dc17f18a322f3e07a1deffae98ef817eb16bf776765d4259d3141911",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\067_stalled-cache.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "stalled-cache"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "068_columns-unequal",
+      "input": "hwp-engine\\samples\\reflow\\columns-unequal.hwpx",
+      "sha256": "585623499cb584448d8cc365ae48f16ef7dcc99c5d29e40432d225dc8fcaad9e",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "4596f6578956436b974079a2822050ffa80858fd52e665f7073bb08c607bc58d",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\068_columns-unequal.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "069_02_math_black_markers_14pt",
+      "input": "Hancom-Note-Wrap-20261016\\01_print\\02_math_black_markers_14pt.hwpx",
+      "sha256": "58b4478a0fef70e414a59694df66b1e4b7303d6fe467f3090c5989709d89275b",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 9,
+      "conversion": "passed",
+      "raster_pages": 9,
+      "pdf_sha256": "cabff2bc2b81cb49a920705773262b073710f0dd832a414aabc56448bed0b8ee",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\069_02_math_black_markers_14pt.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "02_math_black_markers_14pt"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "070_04_page_parity_sections",
+      "input": "Hancom-Four-Priorities-20261019\\rejected_multisection_v2\\04_page_parity_sections.hwpx",
+      "sha256": "58e0e017d37951199a97488e6643a1f40faf76e6bbbf0f5b48a2ae8a7d64ea34",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 6,
+      "conversion": "passed",
+      "raster_pages": 6,
+      "pdf_sha256": "70addb8f0d1dd403640918b9b84e6502cddf3c525024afe8f167c4e81b6729ea",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\070_04_page_parity_sections.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "viewer_rejected_archival_probe",
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "071_form-002",
+      "input": "hwp-engine\\output\\four-priority-sources\\form-002.hwpx",
+      "sha256": "5ab8f7c368e02538f75f1cd2bd82bbd8de2f925a54ba7b38ec9395b2cdb804d4",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 10,
+      "conversion": "passed",
+      "raster_pages": 10,
+      "pdf_sha256": "48d7b8bbb48521b244eea7723e13b1b645da39540d96e0688d2074e9edeccd80",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\071_form-002.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "07_form_controls.hwpx"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "072_anchors-large",
+      "input": "hwp-engine\\samples\\reflow\\anchors-large.hwpx",
+      "sha256": "5b9dee7b1be9c5f2164fd40cf7d78874e093d74c827bf438ae14edff2310db47",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "d1eb5769eadc44645b2b867649a3fa8562db13110af36adb475e1ac8ba71cbda",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\072_anchors-large.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "073_footnote-01",
+      "input": "hwp-engine\\samples\\tables-notes\\footnote-01.hwp",
+      "sha256": "5bbc8a8fd23415aad59dd91d1eb261050946d9c64635933fcd49609ec2cc94e5",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 6,
+      "conversion": "passed",
+      "raster_pages": 6,
+      "pdf_sha256": "9f1cb60a0813992435795caf5ded43c6826de35c6a35840846710068ec1450bf",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\073_footnote-01.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "06_footnote_native"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "074_captions-textbox-right",
+      "input": "hwp-engine\\samples\\reflow\\captions-textbox-right.hwpx",
+      "sha256": "5bf7a4e7723a055e003c51bc26316188e5870c6c4cdddf365aa8c1560ea371d1",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "c81dc5ac4a83e75ad2a30a63efcef59a89d5e3aa981c13fc5f530d34c57a9a27",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\074_captions-textbox-right.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "075_04_both",
+      "input": "Hancom-Four-Priorities-20261019\\04_single_section_fallback\\04_both.hwpx",
+      "sha256": "5ca775b3d214317de4002246dc26385d612da19dffa147d4afad6f5fb1c6d5fd",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "457bfab03c8478f2e5290c0890116597ce542310579928cbd5195ad291523216",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\075_04_both.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "076_16_chart__line_markers",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\16_chart__line_markers.hwpx",
+      "sha256": "5dd9374ca338953fd73f89de1cfc3e4e2864be2419e12beddfc232727df68662",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "9fa22832be32b13ec4979fba984ddd7cb98e89153666a268d8daf9c9a32328ba",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\076_16_chart__line_markers.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "16_chart__line_markers"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "077_chart__scatter_curves",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\chart__scatter_curves.hwpx",
+      "sha256": "5f0480a9c73c17a791cb8b4dd1c8bbf4f39266eb7d7ecfc8bd955fc681c1f7a6",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "d71dd2da6029009f96567d5ab36fe281c498424dffae62d3d3c62f1600626646",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\077_chart__scatter_curves.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "078_table-caption",
+      "input": "hwp-engine\\samples\\additional\\table-caption.hwp",
+      "sha256": "60c7e35ef7f65dc9cdc2f905e7da6cbb9a9facb94de62d500f39907ea3494ac7",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "04c1a1ebe67b2ad18a998b4715bd43c669961ab62395fd85a663de4c07332bc8",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\078_table-caption.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "079_04_extended__multicolumns-widths",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\04_extended__multicolumns-widths.hwp",
+      "sha256": "615ca8eec20e779ddcd2bef4b883ff310d9fba0a6e3b0e22d638ba5288d32e6e",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "f28da8d1ab90b2dfbf813eee498a95f964345b76b848ad9caaacb5176f90fbf5",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\079_04_extended__multicolumns-widths.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "04_extended__multicolumns-widths"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "080_rotated-picture",
+      "input": "hwp-engine\\samples\\graphics\\rotated-picture.hwp",
+      "sha256": "6398447d985de6c498c0f8ec2d9805571822af269b24629d13536b90bba1c538",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "02f3c47bed52968c3e6dac68ca899b8ae851711f6d1b277fb87a5edf41ed8e96",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\080_rotated-picture.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "081_anchors-chain",
+      "input": "hwp-engine\\samples\\reflow\\anchors-chain.hwpx",
+      "sha256": "63da9ee6553ff0e71c5f9167cf4d5c5fb0aee86f65e491e61305ff331db1e106",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "52c114fd03695d4951c91eb2074da308781299f8bb41c1ec8f5e0138d52962e8",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\081_anchors-chain.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "082_13_chart__bar_horizontal",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\13_chart__bar_horizontal.hwpx",
+      "sha256": "65d3dd40d116d0c4c95c4d842fc56a640ac83325e6b0c6b329a6d70eda309302",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "580c2c03bae7d59517193f915a97d2f71f2d93fc2a935baac4780b34195cbdb2",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\082_13_chart__bar_horizontal.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "13_chart__bar_horizontal"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "083_overlay",
+      "input": "hwp-engine\\samples\\features\\overlay.hwp",
+      "sha256": "66340d983d6e7e62122a8fd49a0eb5849705a32104395c6a7157eb11e5f17f48",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "59cfa1436ba9b1c50519a32992209438777c51b8c57ae84b42c9a7b82314da0c",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\083_overlay.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "084_font__re-font-gulim-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-gulim-hancom.hwp",
+      "sha256": "68348dcc4780b3a2a0daa6d7f3690a53302697d779e056adaac2a3bf83070e20",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\084_font__re-font-gulim-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "085_anchors-large-group",
+      "input": "hwp-engine\\samples\\reflow\\anchors-large-group.hwpx",
+      "sha256": "6966d820181e7c35a88be338bb4a0e54da5b9a7038ad7d3f46219ac118c12407",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "6ccc68091a772aab93b77f20e92f0874bb04a990a576acf995a34e042e53069a",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\085_anchors-large-group.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "086_07_emf_ole",
+      "input": "Hancom-Essential-7\\07_emf_ole.hwpx",
+      "sha256": "69aac61561217b32aa74131e1d292e451eafcdd39df30c19c9ada19d1dd9f581",
+      "physical_copies": 5,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "2de6b0553a6ddfc838ec4877f502acea07f9b5c349b7f544d64739b6c8ed4fa7",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\086_07_emf_ole.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "07_emf_ole"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "087_03_vertical",
+      "input": "Hancom-Four-Priorities-20261019\\04_single_section_fallback\\03_vertical.hwpx",
+      "sha256": "69bb144ced386f92a24a61cfaa2bb65be1c541b3bd7a94b9e0e69adf000cf83a",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "0af0909877367580687fc3891950f00bb4213fb2e9c405c5b34409474521d706",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\087_03_vertical.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "088_anchors-absolute-columns",
+      "input": "hwp-engine\\samples\\reflow\\anchors-absolute-columns.hwpx",
+      "sha256": "6a4d731ac0c21eb94b89e17a85f3e76f2046ba637608613ba60f1c6b9bd1b06d",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "8a615dde1849de58086f2a3404452c1380bda2476cc0e17b0d56052f982a97c9",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\088_anchors-absolute-columns.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "089_chart",
+      "input": "hwp-engine\\samples\\features\\chart.hwp",
+      "sha256": "6f3692569f65a654a0f29cb7fd2c6a7b0f6b1867aa0f18dfcf16e295ffa0f821",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "e213c62d5baceda8acaf2ca665d3665a17c6f0bc3c4d7e748df5c1c23787732f",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\089_chart.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "090_columns-right",
+      "input": "hwp-engine\\samples\\reflow\\columns-right.hwpx",
+      "sha256": "73d23167c3f29e31d714c309febd6c9fea9783f710a3979ba0e21cb4d368d350",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "a6f75c6da15a3b1f8e494c57b56b674168e03916d43142ffebf863f0ab368411",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\090_columns-right.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "091_emphasis-marks",
+      "input": "hwp-engine\\samples\\text-style\\emphasis-marks.hwp",
+      "sha256": "745b33058ec62435c1665d78133dc4ba8d3e22040656f47ea44e09928e1cb0e5",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "0eb42e3387d3c74a5a6f05ba207375f78c5311337309b375778d8097f1336d64",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\091_emphasis-marks.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "092_05_equation_grammar",
+      "input": "Hancom-Four-Priorities-20261019\\01_print\\05_equation_grammar.hwpx",
+      "sha256": "7517b781742dc1ea60a67650a0bc2c6a8e077349d893a43927cbe80a2ca716c4",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "6d96547d929d2a811dc5fd1c9f62fcd19c505c0368256b8c2fb796d57548f369",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\092_05_equation_grammar.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "05_equation_grammar.hwpx"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "093_distribution",
+      "input": "hwp-engine\\samples\\features\\distribution.hwp",
+      "sha256": "76377f4c2a10981f382a4ba65ea3b2c9b771a28c6cc55c110ca8ead14f7cb01a",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "e4d9295d0ac3e6e66dc87520eceedfec251848f5ce654c07a52ec34fae5909bb",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\093_distribution.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "094_empty-paragraphs",
+      "input": "hwp-engine\\samples\\text-style\\empty-paragraphs.hwpx",
+      "sha256": "772cf3c739ad55570c15cc8dd9e38bf0728722cdb50f071cfc1bf5b4f45acbba",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "f83a2ab6a7c2c07de7fd2756b525c6653a3e40005ea19b5569ad86e5fd7b858f",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\094_empty-paragraphs.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "095_top-margin-20",
+      "input": "hwp-engine\\output\\hancom-blank-column-probes\\top-margin-20.hwpx",
+      "sha256": "7aa33eff83cb43b9bb5c2acd836ee78a49ad039555f3e72474b7dbf7cceab385",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "98c4f250b9e6a12fbb94d20a35338c0940174e650dd29dc43d5160f7e9759b58",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\095_top-margin-20.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "top-margin-20"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "096_ole",
+      "input": "hwp-engine\\samples\\features\\ole.hwp",
+      "sha256": "7d1d13854d1d6472c8cc1cb744329114f6b9dff267678541be5789ccfc97b3de",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "5782bd9281a0eed532376f71b8da12c89d4a9547ca7de373c491db3afcb9358d",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\096_ole.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "097_scripts-offsets",
+      "input": "hwp-engine\\samples\\text-style\\scripts-offsets.hwpx",
+      "sha256": "7dd92c9d96119055212d001f00f4362ce24396ab9c88b022a18e29509d381984",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "61a98f187bfc5ac073c5e2b727b9087cb8c9c8b2854819c42ed00bb0b0a9725e",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\097_scripts-offsets.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "098_brightness-0_contrast-0",
+      "input": "hwp-engine\\output\\hancom-effects-probes\\brightness-0_contrast-0.hwp",
+      "sha256": "7dfe9dd349748517175d8d4d5a3ecdcc32a96f172090dc35dded234d717a107d",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "f1292c26618dabf1128e704705b285ee9f2d88752f1e0b6e38d5793b6763b4f1",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\098_brightness-0_contrast-0.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "brightness-0_contrast-0"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "099_extended__charstyle",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\extended__charstyle.hwp",
+      "sha256": "7e519978e920e9b5ebb8532a92a19713c1e5a25da5482bddd6ca5e5a6b93cdd3",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "8b2d4fcb141a4692000286b9347050fad87a02cb2595935df77f85ad6a50b831",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\099_extended__charstyle.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "100_furniture-partial-nested",
+      "input": "hwp-engine\\samples\\reflow\\furniture-partial-nested.hwpx",
+      "sha256": "8056db453d836d2b8874d4cae8e4e8eec61e2da79b37e3b77dc433909b7b56ec",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "1e1ff1c48be079318d5beedb43e79fb8d81d3973a2cfb8195f9733bad84d884d",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\100_furniture-partial-nested.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "101_lists-bullet",
+      "input": "hwp-engine\\samples\\typography\\lists-bullet.hwp",
+      "sha256": "83e86b26dc3a153eed41613ee3701ca12735491b904f79b82edc27d5a2d98cce",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "295044346467dca4eb6a1a111a7ac7776bfb466f80da295202ea170234a1d474",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\101_lists-bullet.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "102_03_verticalall",
+      "input": "Hancom-Four-Priorities-20261019\\04_single_section_fallback\\03_verticalall.hwpx",
+      "sha256": "8493bdcf33300b4741c6f9c028de4874920e06594fe7d26a531acdba2deb6141",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "1ca803a648694f0d0c6556c4fa774fc8d638552214e9b3ac85834ba5e6d25a27",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\102_03_verticalall.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "103_14_chart__bar_stacked",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\14_chart__bar_stacked.hwpx",
+      "sha256": "854653694de15c5c3a553918d511a7725872f3f2d1e7e0f1053e9e9060249343",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "83e1e7b12359e6794d798febf5b86f67c093085bfe63c81e3a59ca240c7bacc5",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\103_14_chart__bar_stacked.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "14_chart__bar_stacked"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "104_long-footnote",
+      "input": "hwp-engine\\samples\\overflow\\long-footnote.hwpx",
+      "sha256": "87ddbb7b9d8a5ff508b252cdba1282901f3807a2032e4c48ab93dcf9b1946949",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "3ef45f434ef52d2bedb608a347f946ca3db8612eb589c44ab93b72a7fd8bba32",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\104_long-footnote.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "105_04b_page_odd",
+      "input": "Hancom-Four-Priorities-20261019\\03_04_replacement_print\\04b_page_odd.hwpx",
+      "sha256": "88fe59be890a83315f5bfaa78df4ca2385650d3615f2c7a67f268174de7068d2",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "0e3309dcabf0bd1b2bae5e196546d43cf3cd1ed1a5f95787217400ab4606dd02",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\105_04b_page_odd.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "04b_page_odd.hwpx"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "106_issue5595_rotated_picture_topbottom",
+      "input": "hwp-engine\\samples\\graphics\\issue5595_rotated_picture_topbottom.hwpx",
+      "sha256": "891298cf968d714cc0f5b0169644e16ac10b6718ccaaa527c06aa6194dac8047",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "2d70c852e3315df7663df9eb19c85ac53a4b3fa5f351c595266f2e85d7be4f70",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\106_issue5595_rotated_picture_topbottom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "107_sample-5017-pics",
+      "input": "hwp-engine\\samples\\additional\\sample-5017-pics.hwp",
+      "sha256": "898dd6b821caaca62a6a449e8c90ecad0c20d669603e968558636296bbaf82a2",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 11,
+      "conversion": "passed",
+      "raster_pages": 11,
+      "pdf_sha256": "9488de39a5f101f0aef89a53b01e95ca0799e7c4bcf55b533fbef6caa9020e59",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\107_sample-5017-pics.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "108_normal-cache",
+      "input": "hwp-engine\\output\\hancom-blank-column-probes\\normal-cache.hwpx",
+      "sha256": "8a296ab7f3b142a7a81f94366a06e26d926a31b18336b9f6ca3a3bf8bb2544b6",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "2f0f8909dc17f18a322f3e07a1deffae98ef817eb16bf776765d4259d3141911",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\108_normal-cache.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "normal-cache"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "109_drawing-styles",
+      "input": "Hancom-Format-Probes-20261019\\01_print\\drawing-styles.hwpx",
+      "sha256": "8a52747b81eb10e5d17343e5f693ac2d0df2291abf5952b19c3ea70a5ae93fd8",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "reflow",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "95dc9971bc215eba05e3884df1fe2230ef3eab22b765f27172c4dc17a6d70f15",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\109_drawing-styles.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "drawing-styles.hwpx"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "110_02_character_styles",
+      "input": "Hancom-Essential-7\\02_character_styles.hwp",
+      "sha256": "8eb333ab110db6f91d7e426d507d41ca09cacd4d40d945188b5ec40663d7576b",
+      "physical_copies": 5,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "7f555262873af95da1a7f0e3bde0f5764fef208c8f126090329a7be21dfdfae6",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\110_02_character_styles.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "02_character_styles"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "111_fields-cached",
+      "input": "hwp-engine\\samples\\reflow\\fields-cached.hwpx",
+      "sha256": "8f7abb270a70c9d7ddd6644116e379b5f8227d664d14d81405f82e921861fe19",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "a5e12fc0b73a703433dadba1b78e79d1a8fe197a596d3bf81c18df0c88640877",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\111_fields-cached.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "112_21_언어_기출_편집가능본",
+      "input": "21_언어_기출_편집가능본.hwp",
+      "sha256": "905454045ca2e236839a7cab59750678116d08af3db31dbf846819af355b8d15",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 15,
+      "conversion": "passed",
+      "raster_pages": 15,
+      "pdf_sha256": "88bf3186907659ec037d76957935e75d441f9d3ddb35468206b05fbdf3ee761d",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\112_21_언어_기출_편집가능본.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "law"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "113_paired-float-single",
+      "input": "hwp-engine\\samples\\reflow\\paired-float-single.hwpx",
+      "sha256": "9094e0f68703610121c40cca3c1aa6c445b2c054002faffe5fe183692f724fe1",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "5a95fb33ad1d866beb3cc8541f63b6f227c9b46e64efb8d6fae1ad736863285b",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\113_paired-float-single.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "114_font__re-font-dotumche-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-dotumche-hancom.hwp",
+      "sha256": "9176b23dd0d6aa5d616201379d9fceb23eb885980c7e61b71aa29e103be16e78",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\114_font__re-font-dotumche-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "115_04_page_parity_sections",
+      "input": "Hancom-Four-Priorities-20261019\\rejected_multisection_v1\\04_page_parity_sections.hwpx",
+      "sha256": "951dc0b5e295258b75200e5348aae6518efefe98449c4ad85330a8991b082cba",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 6,
+      "conversion": "passed",
+      "raster_pages": 6,
+      "pdf_sha256": "70addb8f0d1dd403640918b9b84e6502cddf3c525024afe8f167c4e81b6729ea",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\115_04_page_parity_sections.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "viewer_rejected_archival_probe",
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "116_textbox",
+      "input": "hwp-engine\\samples\\web\\textbox.hwp",
+      "sha256": "98a68a31d747db2aa238e0d5ce13c04e610c812c5d83b7cac88890de6f85283c",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "b47a7c6d61cda9f680947aa605a5bb80573d8f62f8ff143eab35737d78c6fc6b",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\116_textbox.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "117_font__re-font-batang-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-batang-hancom.hwp",
+      "sha256": "99ec0cd2f55ba45493b97c550333db6d0275831ae6150a041bdbe5e2bd174049",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\117_font__re-font-batang-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "118_furniture-parity",
+      "input": "hwp-engine\\samples\\reflow\\furniture-parity.hwpx",
+      "sha256": "99fc45e9d3e7055182d317826ff4d08ccf33b6c830e8d268b2ec4dffd8831af9",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 4,
+      "conversion": "passed",
+      "raster_pages": 4,
+      "pdf_sha256": "c6d6b8a6027e846d0ba8137a4cd4698c754614a57ceed791c76383826c39d8aa",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\118_furniture-parity.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "119_04_complex_tables",
+      "input": "Hancom-Essential-7\\04_complex_tables.hwp",
+      "sha256": "9b5334f0fc164a3168e41042ef5f535ab7180e563b8fdfb59b0c157c895bbc22",
+      "physical_copies": 6,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 4,
+      "conversion": "passed",
+      "raster_pages": 4,
+      "pdf_sha256": "acd420fe3bc2d7647cc7f1286758fd5f72baeae0adec26e399ccae171b62adae",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\119_04_complex_tables.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "04_complex_tables"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "120_font__re-font-malgun-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-malgun-hancom.hwp",
+      "sha256": "9bc06c9aa65fc640bbf55d004a9c18a7bfaff7b7fe8101a541bad54e41703f4b",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\120_font__re-font-malgun-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "121_pagedefs",
+      "input": "hwp-engine\\samples\\additional\\pagedefs.hwp",
+      "sha256": "9c4428dcc55b1d1872c2ae7e494f8bc8a080673a9c0a2965eb2f090a1635a81b",
+      "physical_copies": 4,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "231375f875b231f1e16ad56db04a22145b42d9e1aafafedb2cb1ad6363731004",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\121_pagedefs.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "pagedefs"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "122_05_extended__tabdef",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\05_extended__tabdef.hwp",
+      "sha256": "9c590dbad3e90bc8c4b972a6c4c1f70e31755abd125f88a9fa22e0a5d37fac44",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "97b03a6bb110d48966b5326a849533b9b1d72b625d8d621a7989342dd8381e17",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\122_05_extended__tabdef.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "05_extended__tabdef"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "123_2단_수학시험지_변환검증_7826",
+      "input": "2단_수학시험지_변환검증_7826.hwpx",
+      "sha256": "a04002efb53ddb23e95b6f45b75deccfc8d810d32033f3d107241d17919366b8",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 9,
+      "conversion": "passed",
+      "raster_pages": 9,
+      "pdf_sha256": "3f94df04d744b7af402466b4f8e9ca1801dc23727545ff4fb2495224b15c8941",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\123_2단_수학시험지_변환검증_7826.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "math"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "124_07_table__text_anchor_wrap",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\07_table__text_anchor_wrap.hwp",
+      "sha256": "a1a9559302da2fd3dd6130cea189cedaec9f442cf0ffe9314bdc48231d751798",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "72315bfeabc26413482c8cff9fe3a698db64238b45b690c2cdc0ae400e063745",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\124_07_table__text_anchor_wrap.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "07_table__text_anchor_wrap"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "125_report_original",
+      "input": "Hancom-Note-Wrap-20261016\\02_existing_reference\\report_original.hwp",
+      "sha256": "a3a075594994e4741a7fbe973bc230d95ae75fdee6578ac6017cec0d52844990",
+      "physical_copies": 4,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 50,
+      "conversion": "passed",
+      "raster_pages": 50,
+      "pdf_sha256": "910eaef30c0b6a4de63f5b486ce0d08b6cdeebba232232fa33a7fe5d9833cb4f",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\125_report_original.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "report"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "126_font__re-font-gulim-empty-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-gulim-empty-hancom.hwp",
+      "sha256": "a405de5542c91e51358e4542a4a1b7cc92c9ac67673ab6565b1a563cd8494c90",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\126_font__re-font-gulim-empty-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "127_06_wmf_document",
+      "input": "Hancom-Essential-7\\06_wmf_document.hwp",
+      "sha256": "a6611ff44bbf3eee9bb2e6ffce5d6b636328a381e41c7c71bd03afef6423e6c0",
+      "physical_copies": 5,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 11,
+      "conversion": "passed",
+      "raster_pages": 11,
+      "pdf_sha256": "a1c54f3906329c72b6aeb24fa84f32b0cd9607d294778f348d43d41100162708",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\127_06_wmf_document.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "06_wmf_document"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "128_columns-merged",
+      "input": "hwp-engine\\samples\\reflow\\columns-merged.hwpx",
+      "sha256": "a9825e4898a61fe9680c11a33977a3ef3932e2dee29ba429930a24af1477d166",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "6afdf88dec3bbedd6751f7696e5c93d0916a94fd5ba9adc264e0163d2cf9af4c",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\128_columns-merged.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "129_plain-cached",
+      "input": "hwp-engine\\samples\\reflow\\plain-cached.hwpx",
+      "sha256": "ab71a61b21253ef2182a7331e3c20495429b5e3d93f49e21f77b3a91018bf0dc",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "reflow",
+      "pages": 7,
+      "conversion": "passed",
+      "raster_pages": 7,
+      "pdf_sha256": "b14ddc5feb539789e69edc914dde6769a193752f75594e5798407ad4b2611fac",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\129_plain-cached.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "130_header-footer",
+      "input": "hwp-engine\\samples\\features\\header-footer.hwp",
+      "sha256": "ac3a6139ff2e01295544b4483ac5b64a60f8fcd317a50bea5948e73e3e69070b",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "67706cbc3333c249652a33880c72e2cc07d08b1a9fba00318c2675f815de1f98",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\130_header-footer.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "131_3차원묶은세로막대형",
+      "input": "hwp-engine\\output\\four-priority-sources\\3차원묶은세로막대형.hwp",
+      "sha256": "af933cbe7a3c4d8f2985052d1a1706eae4b14fd3bb56dda3c3cdfc24eabc9c91",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "7e797087608ba402b9a1cd215a7b9b26584d61f94913154e39bcb959f7f95db8",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\131_3차원묶은세로막대형.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "08_chart_3d.hwp"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "132_font__re-font-dotum-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-dotum-hancom.hwp",
+      "sha256": "afb55dc54dc3e5e2bb62c90775e48e4957d1a4483bdcb83ef78b80dd7049bc7f",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\132_font__re-font-dotum-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "133_04_odd",
+      "input": "Hancom-Four-Priorities-20261019\\04_single_section_fallback\\04_odd.hwpx",
+      "sha256": "afe54496367f43b403ac0dc2439e8ea8dc6ffebd9cdf014f5652ea518d3f4d02",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "982c6df5c787ef553aaeaac042c58576e476b2221e3674b4995d937241405b8f",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\133_04_odd.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "134_fields-toc",
+      "input": "hwp-engine\\samples\\reflow\\fields-toc.hwpx",
+      "sha256": "affa74de9ff970f5158fda0787a18580d301e52c96c40c7d613fb8d0aa062ea0",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "d7110a61b9823e3d305d7440b0921f09cd3b360e99d306f064510bf184aa5747",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\134_fields-toc.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "135_equation-notes-columns",
+      "input": "hwp-engine\\samples\\reflow\\equation-notes-columns.hwpx",
+      "sha256": "b0c539eda1407caaa5f7ebf62f2fae2c47d39edb736dabb6d07c1d51e0785a09",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 4,
+      "conversion": "passed",
+      "raster_pages": 4,
+      "pdf_sha256": "bab502e5fefa6507b14e8dbea9c080996e73b7ae6553b107f92e6dd4e861f159",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\135_equation-notes-columns.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "136_aligns",
+      "input": "hwp-engine\\samples\\additional\\aligns.hwp",
+      "sha256": "b101b4faff3c65f88ac9f8f583219cf5825d0747be85dbe45174dcd84207a3d1",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 16,
+      "conversion": "passed",
+      "raster_pages": 16,
+      "pdf_sha256": "d1eaed31b625600eb4b65e134b4f7868d514d763357e136617bc7154854a81a8",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\136_aligns.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "137_mixed-cached",
+      "input": "hwp-engine\\samples\\reflow\\mixed-cached.hwpx",
+      "sha256": "b1c1aab9e898c851cbe5a74bb0dbec41253091c0d68d1017c2b989e70a7f42ec",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "reflow",
+      "pages": 4,
+      "conversion": "passed",
+      "raster_pages": 4,
+      "pdf_sha256": "34f26074940924d18491488ca8944346fa5d45aa01feb650675b67a051365604",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\137_mixed-cached.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "138_columns-transition",
+      "input": "hwp-engine\\samples\\reflow\\columns-transition.hwpx",
+      "sha256": "b309e65794774546f693716ede316ba7084e55889f093a51d3379fcb1447bffc",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "d28e130b713fa0160b31bfe35899cd160e9e55b99b1b453ad48e833a6f1ec620",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\138_columns-transition.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "139_list-extended-image",
+      "input": "hwp-engine\\samples\\reflow\\list-extended-image.hwpx",
+      "sha256": "b35a81e8654155e12b37db0831bea03e1c8dd0790f01de9e89813ee069868679",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "4b4aca128773bcdd541c579cffb87c5c7980dc37493dfc30018b5189382621f1",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\139_list-extended-image.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "140_matrix",
+      "input": "hwp-engine\\samples\\additional\\matrix.hwp",
+      "sha256": "b3dc449fe5b3bdb5567f999c66b0609481016b2eeae2f4caa7d4f60e7a6515a9",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "0d4707526f232f828ba5bd45b90f4697df4e07a80c305aa71e5306042de0e701",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\140_matrix.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "141_06_extended__table-position",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\06_extended__table-position.hwp",
+      "sha256": "b443c3cb5c641e31474f3de40e6e4d56e5f9ca7d1bed2dc5be9ee551029e3587",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 4,
+      "conversion": "passed",
+      "raster_pages": 4,
+      "pdf_sha256": "d00c6b1e24bc4cbc78194fd4da8a968e4fffe1317c4bc01b27b54dd5c8e792eb",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\141_06_extended__table-position.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "06_extended__table-position"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "142_12_equation__ole",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\12_equation__ole.hwpx",
+      "sha256": "b45cadcc8dbb7070de51bb819fa9d00867e41958cebf9b34eb43d1a8d8f75038",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "3690b7a382ae6f974469e3bc4fb976a63e9ad250a3ae258ac4beadfa3086abe5",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\142_12_equation__ole.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "12_equation__ole"
+      ],
+      "limitations": [
+        "incomplete_viewer_reference"
+      ]
+    },
+    {
+      "name": "143_columns-balanced",
+      "input": "hwp-engine\\samples\\reflow\\columns-balanced.hwpx",
+      "sha256": "b4d0e132eeec41c940ccabdbe2989ff6ab62f0f436d38ab88875067d8f1c2b42",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "e75fcecedf57720afaa142961fdd58e21a308a0397bb7ed6100aeca21caf8d6f",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\143_columns-balanced.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "144_equation",
+      "input": "hwp-engine\\samples\\features\\equation.hwp",
+      "sha256": "b58d59eeb903e2553a7d67049dbca3f639aedf7d8276875663775b0ac4404082",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "137c4c18e388737e43be268de1dc42eb7209cb84ac42e1cd0b0b0bd2c8551c25",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\144_equation.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "145_multicolumns",
+      "input": "hwp-engine\\samples\\additional\\multicolumns.hwp",
+      "sha256": "b6798c22e2fab6467360b6a020050eba5db9b90daca7fc6520a158055ec949fa",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "1c1c1404b6f6c78bd7db3d1d8232f82b809c41ca48f06af580365db1244180ee",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\145_multicolumns.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "146_11_equation__limits",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\11_equation__limits.hwp",
+      "sha256": "ba168d388df614e7b9390c4685d368cf3019595c5fecbce0e681dc8fb9bea36d",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "b5f388c587cdd2c81e9fdc77d7ecbba8dcf5cf39f4ef715bffe643de098adbd5",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\146_11_equation__limits.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "11_equation__limits"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "147_text-outlines",
+      "input": "Hancom-Format-Probes-20261019\\01_print\\text-outlines.hwpx",
+      "sha256": "ba75062bef86d5e816ad8df01c954e829a3e91b9a06e6eb27aa575e3dbf2d7f2",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "reflow",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "1b1ce7a775ea75d0b89c202ffd34eb578bd2ff560766d7e85d4d6997dd672f4b",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\147_text-outlines.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "text-outlines.hwpx"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "148_02_character_effects",
+      "input": "Hancom-Four-Priorities-20261019\\01_print\\02_character_effects.hwpx",
+      "sha256": "bb067e45e192c82068a1c869fb855fb6a332a22f7136c277c2a57f801026cda9",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "0e3309dcabf0bd1b2bae5e196546d43cf3cd1ed1a5f95787217400ab4606dd02",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\148_02_character_effects.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "02_character_effects.hwpx"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "149_furniture-hidden-first",
+      "input": "hwp-engine\\samples\\reflow\\furniture-hidden-first.hwpx",
+      "sha256": "be35749e2cc9f6ac35f7e27253fa1fceba303f1b4efe710a82c8aab9e2017b52",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 4,
+      "conversion": "passed",
+      "raster_pages": 4,
+      "pdf_sha256": "6e91991586faf073836358dc617f0254beb9da2f529e8c30d3f24e00608cd2fe",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\149_furniture-hidden-first.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "150_drawing-styles",
+      "input": "hwp-engine\\output\\format-probes\\drawing-styles.hwpx",
+      "sha256": "bef4bfb743267b46caa896fb6cfc8f0f7b2d207281ed23825c46ec66a4de3cd9",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "831509d601389f6a5a90b4e78c28f24befba3faad73ec5b55b1189e1bcdd12b6",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\150_drawing-styles.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "viewer_rejected_archival_probe",
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "151_nested-merged-rows",
+      "input": "hwp-engine\\samples\\overflow\\nested-merged-rows.hwpx",
+      "sha256": "c741fe1ecd175635f040ffe3ad0a8f89cae91ad65aef43917dae3bdc7af1f139",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "711a2782c6e073e1229274858596d0f5a7076fe24c10ba715e2a08c730bf240c",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\151_nested-merged-rows.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "152_underline-styles",
+      "input": "hwp-engine\\samples\\additional\\underline-styles.hwp",
+      "sha256": "ca5b1f8e3faf8f9e595bea07094874a9fa4cae91593a20c27211b5af7f1fa0b0",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "e09674a0457f1e1c69a22e3316ae98cbe5a01bb84490a01e72a2fe1aad899ac0",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\152_underline-styles.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "153_typography-rtl",
+      "input": "hwp-engine\\samples\\reflow\\typography-rtl.hwpx",
+      "sha256": "cde4e25df0b6414fe4d5e3f361dfa4647d4377c4d8da5299f95c9eec872015db",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "7c3cb462ac2b9ff61fff1e18fe1bcd247e1c305d3e0e6d8958d7e2080001e1f2",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\153_typography-rtl.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "154_chart__pie_2d",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\chart__pie_2d.hwpx",
+      "sha256": "ce4304b8aa4fba79d493647d6fb1204b527bc2aac50c55a94bea9ec67f8994a8",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "e27f652a21dea4677d02cb256f4452ba2f5d7b6f6e28b67f5823f0a7390cfa0b",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\154_chart__pie_2d.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "155_04a_page_even",
+      "input": "Hancom-Four-Priorities-20261019\\03_04_replacement_print\\04a_page_even.hwpx",
+      "sha256": "d1b11906b216b4621d28293720191d4e35f4a674f64eee97ba6aecf34473ae5f",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "0e3309dcabf0bd1b2bae5e196546d43cf3cd1ed1a5f95787217400ab4606dd02",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\155_04a_page_even.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "04a_page_even.hwpx"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "156_02_extended__paragraph-split-page",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\02_extended__paragraph-split-page.hwp",
+      "sha256": "d27fc44a27af756211d04f4e7d7f6a549adf9095a7708252b4e90f3eb5a3ef8d",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "f9d1d1a08e99edc780c04b0a5d06acf5276ad89834d7914ff21143483627a0c1",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\156_02_extended__paragraph-split-page.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "02_extended__paragraph-split-page"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "157_paired-float-columns",
+      "input": "hwp-engine\\samples\\reflow\\paired-float-columns.hwpx",
+      "sha256": "d2c22a5107b047fa42e2ac72c00104f3778517125aaf573419dbbaff8af4fdea",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "6110d8129d6e1772fcfd1af667749ff0caa3e80f0df13cbf1f073d807997bc69",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\157_paired-float-columns.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "158_oversized-object",
+      "input": "hwp-engine\\samples\\overflow\\oversized-object.hwpx",
+      "sha256": "d64a4319acadb8e2c8a2778dbcb4a30dcf3f9c17ad3ff71eda8bd73e9d62f75a",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "0f0061e5b5620e487a9961a84af65efc3cfc0e342810ded8e91d6300ec179eb1",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\158_oversized-object.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "159_precision-single",
+      "input": "hwp-engine\\samples\\reflow\\precision-single.hwpx",
+      "sha256": "d66c71c3e3639a55afda51c14f8ff5db4d0601125ec916f277964d42cae33596",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "f7cf0f50c0b8b5b49eaa4a56e4ee1b40e74e2cf45842b42f55141c049a24cf83",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\159_precision-single.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "160_03_extended__multicolumns-in-common-controls",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\03_extended__multicolumns-in-common-controls.hwp",
+      "sha256": "d8629e70108ce31ba8c5808403832272da1767d978197e366c7d3e5b768e0e94",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "901e2e17b9b23eb0f104ad6d4a875409037c78d891cd8b4ff721ad3bf9328d7d",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\160_03_extended__multicolumns-in-common-controls.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "03_extended__multicolumns-in-common-controls"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "161_equation-notes-single",
+      "input": "hwp-engine\\samples\\reflow\\equation-notes-single.hwpx",
+      "sha256": "d8f11f0cf244680d66248c3828e6502a04f1181c93a25bfcec53926554c5b30d",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 5,
+      "conversion": "passed",
+      "raster_pages": 5,
+      "pdf_sha256": "76c07cc5a1a87fecf90843f02a0da1e154c9002eb93b7fd754c6dd3ea7a5d832",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\161_equation-notes-single.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "162_03b_vertical_all",
+      "input": "Hancom-Four-Priorities-20261019\\03_04_replacement_print\\03b_vertical_all.hwpx",
+      "sha256": "d9259e8859e709b254483ac927a76f758db019187e75af8a65fb7cc4a7fbe4a3",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "2dbe9bc6b8cdaa1ad9ea6827f9854abf97639cbce4150482ebe22e1e7b63a835",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\162_03b_vertical_all.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "03b_vertical_all.hwpx"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "163_field-01-memo",
+      "input": "hwp-engine\\output\\four-priority-sources\\field-01-memo.hwp",
+      "sha256": "d991aad9b45812f06b11688078b0c2e4c8327c31d9bfec111061a185537cd542",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "5c63b85a161d0e907e2623168be17e9ec1cd10d58e52c2513bdd80ab003caa5a",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\163_field-01-memo.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "06_fields_memo.hwp"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "164_nested-mixed",
+      "input": "hwp-engine\\samples\\overflow\\nested-mixed.hwpx",
+      "sha256": "d9e7548cfd1a8488ca4ce9218e7d894fde849dd4b2c0ca29f7dc1b51adb976c6",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "da5a392e910882b41db8800c47f471669b12ec47e3dd5c5617ccca5ee77d5fa3",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\164_nested-mixed.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "165_font__re-font-malgun-empty-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-malgun-empty-hancom.hwp",
+      "sha256": "da24c72b69557e45ef4fbc1c617e1287fc8b0da655116c4cab8db492848e4ce4",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\165_font__re-font-malgun-empty-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "166_복학원서",
+      "input": "복학원서.hwp",
+      "sha256": "da81b4010331bcac290f900c7cf224c97ee8355399614725ce46c197ff1a22a4",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "bef13ba79b400b7d7a01801abe4a4e22948094d93f23006d1fe8d8032f14e7be",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\166_복학원서.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "form"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "167_chart__bar_3d",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\chart__bar_3d.hwpx",
+      "sha256": "da853932f2828edca0166758a6cf4f3cb475bf4b770392a238a8ff94cfb34576",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "7e797087608ba402b9a1cd215a7b9b26584d61f94913154e39bcb959f7f95db8",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\167_chart__bar_3d.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "168_extended__shapepict-scaled",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\extended__shapepict-scaled.hwp",
+      "sha256": "daf292ab2d91fad74091fb6a6b1cc2c2a1c203c5f7736aac075598b75bbfd4a3",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "d26af41eca9e1d1eec780aa56da880e61c488e7957939105f7b1e2b0efb441af",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\168_extended__shapepict-scaled.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "169_facename2",
+      "input": "hwp-engine\\samples\\typography\\facename2.hwp",
+      "sha256": "db2b26451a936bff133ab57f59fe6a01e4bf62190b431e61ab0dcdd12d7e7165",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "72db01c6daf06dad742aa0d6cea5c109be982c130ee61c1ace01cfc0a35fd4ca",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\169_facename2.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "170_23_extended__shapecomponent-rect-fill",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\23_extended__shapecomponent-rect-fill.hwp",
+      "sha256": "db2be35b854a4ce9d1e53e874aad5b4e0892e1e88745353eda9801b5229003d9",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "5f75c2a1d283bd16796619d5cf411390daf77d5dbff64dda6585a4a96c823f75",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\170_23_extended__shapecomponent-rect-fill.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "23_extended__shapecomponent-rect-fill"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "171_text-outlines",
+      "input": "hwp-engine\\output\\format-probes\\text-outlines.hwpx",
+      "sha256": "db81e17954f5aa0077c2e07a1a8d204cff1c433f0b25c3dbd3028aa777cb6d67",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "efec9835f69a480111bb894aee93b7374b359b6dbc28b6a2287cbbaeaf8c6df8",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\171_text-outlines.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "viewer_rejected_archival_probe",
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "172_float-flow-columns",
+      "input": "hwp-engine\\samples\\reflow\\float-flow-columns.hwpx",
+      "sha256": "dbe43101a44471dcc183a8f506814aed9a39f04bacbd518d6e27041a7dab5d3e",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "cc69c1d216c0bd8282f9d7ab3479d884d3a69a53c71f284590fed506bbbd3f44",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\172_float-flow-columns.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "173_anchors-negative",
+      "input": "hwp-engine\\samples\\reflow\\anchors-negative.hwpx",
+      "sha256": "de31770a69054cec628958a407f5a809babf1e9ec7bd87b44fd8344e9ab67cab",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "0e2e5f130ab4b971542672215b862734418d46fa94da1e9597cb248077ff0d2c",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\173_anchors-negative.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "174_polygon",
+      "input": "hwp-engine\\samples\\features\\polygon.hwp",
+      "sha256": "e199a457954b2c472c11c6c74a254b96a72f1c2ae7bee57564ead6e83accdb57",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "ae2fb86eec59e3b9a607a9ec058065eea4b49f9cec131b008228049254f1c70a",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\174_polygon.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "175_emphasis-marks",
+      "input": "hwp-engine\\samples\\text-style\\emphasis-marks.hwpx",
+      "sha256": "e1f113cd771e6790e38e9b68cc9658e4f235b672dc779ce9e0ca79c50c76aca2",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "d5026a1045c0b1b7e0f9f4f9925b8a4f567e75683ae45018337130c0c280655f",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\175_emphasis-marks.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "176_merged-cells",
+      "input": "hwp-engine\\samples\\web\\merged-cells.hwp",
+      "sha256": "e1f32a60c05bb79fd6c669832c94e594b6432c29442cd8ec417d327e76f7c43c",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "7f75c8a17bef6bc382f069a99f269762b82cb3bfa27ab4980af5b130f0e7114e",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\176_merged-cells.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "177_oversized-nested-table",
+      "input": "hwp-engine\\samples\\overflow\\oversized-nested-table.hwpx",
+      "sha256": "e32c6ae5487c2c32decd411b003f547878ba0aa854c5ed79374e49bdc3ca2b88",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "684c1dba0cbc4c3d2b8c1c5a569192a71da685eb63960ff6644d65e674478753",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\177_oversized-nested-table.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "178_border-effects",
+      "input": "hwp-engine\\samples\\reflow\\border-effects.hwpx",
+      "sha256": "e64f7f851fd7a30c14402410c1e274694f667b47e3fae5848e98193718f87453",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "19abeeca84cf9cf1465ee8135de437f92a1afa6a07be7582e40152e82cc75d6f",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\178_border-effects.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "179_24_extended__shapecontainer-2",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\24_extended__shapecontainer-2.hwp",
+      "sha256": "e7673768a6951a72d1799d33cd9cdb35e25b63a6d98f1e27a26e8b9e630e0931",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "51fd464792f709ea616029a1d4443ffa486690954ad947e954e3d16efda6d909",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\179_24_extended__shapecontainer-2.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {
+        "foreground_image_overlaps": 2
+      },
+      "geometry_classification": "한컴과 같은 그룹 배경 위 제목",
+      "independent_reference_names": [
+        "24_extended__shapecontainer-2"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "180_decorations",
+      "input": "hwp-engine\\samples\\text-style\\decorations.hwpx",
+      "sha256": "e8a97ed7ccfa014c0cd588efd5e3580843ea96291fbc99572d72c80906284de4",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "3314830595b0e3fef81f49768cffca0fa7e9c6fd8e1d011135ef0ff5bf5d1b2f",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\180_decorations.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "181_chart__bar_vertical",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\chart__bar_vertical.hwpx",
+      "sha256": "e8ffa2ef81e630b5ac7e0a230c101924b96bd4d61be958cf608161bfe9a7365a",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "cfc9844ac307854d151472f1cb4fc96b750a5fd1c82acb209c0c21020c8d9414",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\181_chart__bar_vertical.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "182_font__re-font-batangche-hancom",
+      "input": "hwp-engine\\output\\roadmap-reference-downloads\\font__re-font-batangche-hancom.hwp",
+      "sha256": "ea0824090bf24269f15729743f171307ec2ebe33fdadd6c0a1bdc4e4d827b71f",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "18ddb1a6df85ba4166b32fe681cf7f4e314025e9bb1f886a82c7595992a276f4",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\182_font__re-font-batangche-hancom.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "183_numbering",
+      "input": "hwp-engine\\samples\\features\\numbering.hwp",
+      "sha256": "ea34672897a576d974d801dde526178674ba11eab0cde3116ba99560aeb479d1",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "f483a7cb9a35e8b13c39cf77bc8841c893aa86de2052025bd39203dc4e565c11",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\183_numbering.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "184_21_vector__wmf_ole",
+      "input": "Hancom-95-Checkpoint-20261019\\01_print\\21_vector__wmf_ole.hwp",
+      "sha256": "eac07217187521898f597392b0d3fb8d24947f9070336f6df1e3e0aa08e3505e",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 4,
+      "conversion": "passed",
+      "raster_pages": 4,
+      "pdf_sha256": "0994d0b39cdb6e720e8770a27cbb6826d884a6fbc9fd09776c0acfcd73c0f47c",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\184_21_vector__wmf_ole.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {
+        "border_crossings": 8,
+        "text_overlaps": 66
+      },
+      "geometry_classification": "한컴에도 존재하는 WMF 중복 글자 66개와 밑줄 접촉",
+      "independent_reference_names": [
+        "21_vector__wmf_ole"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "185_table",
+      "input": "hwp-engine\\samples\\web\\table.hwp",
+      "sha256": "ed97e2136e53cbb09ab6362d5631f6f1e4f752a5e53f09e85e4bc9c19f9e6d35",
+      "physical_copies": 3,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "3963a3ee396d9ced9a1f89f1019aaf56ea9bdd58fd0f77aabcae91739ee5d14f",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\185_table.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "186_typography-rtl-table",
+      "input": "hwp-engine\\samples\\reflow\\typography-rtl-table.hwpx",
+      "sha256": "eec34088b719b4e786c9c81cd510fad3555824e53b9fa3143274903dbbb5f4e5",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "88be3de07a939ff5d029e9009355f70ba089940a3e68d39f3c51be29d8c6c708",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\186_typography-rtl-table.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "187_list-extended-hierarchy",
+      "input": "hwp-engine\\samples\\reflow\\list-extended-hierarchy.hwpx",
+      "sha256": "efe558ed2512b4d3be16ad49ceea6ea012460e94e2650cdf2516f9d19da9c7e2",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "72668f251f660fbc919b9f543afe93b11aaee6c6323c0d0352cb48eb18a12ea9",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\187_list-extended-hierarchy.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "188_bottom-margin-80",
+      "input": "hwp-engine\\output\\hancom-blank-column-probes\\bottom-margin-80.hwpx",
+      "sha256": "f0bd29d7a2f5106b4eaf41ba6ebb5ea7db149472417ec4735a40d3ab6feb3022",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "8e61ae78a705ca7b7f26ae98b94ed417839f7d3188da9745051359e2e64f6245",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\188_bottom-margin-80.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "bottom-margin-80"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "189_01_shapes_fills_arrows",
+      "input": "Hancom-Four-Priorities-20261019\\01_print\\01_shapes_fills_arrows.hwpx",
+      "sha256": "f4734abb271274f38adbbc71bffa863ee5b08eda03d42e98d5acb0b49635fa87",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 5,
+      "conversion": "passed",
+      "raster_pages": 5,
+      "pdf_sha256": "b25d5b24b5aced07102ede7b3ea829a96a3e533dc4ed0c73432e12d9765e1b6b",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\189_01_shapes_fills_arrows.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "01_shapes_fills_arrows.hwpx"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "190_captions-table-nested",
+      "input": "hwp-engine\\samples\\reflow\\captions-table-nested.hwpx",
+      "sha256": "f87ba680fd9904dfef720ba5450bfe32ae69480f3fefcd71228044d0c5cec964",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 3,
+      "conversion": "passed",
+      "raster_pages": 3,
+      "pdf_sha256": "1e1ff1c48be079318d5beedb43e79fb8d81d3973a2cfb8195f9733bad84d884d",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\190_captions-table-nested.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "191_two-column-no-cache",
+      "input": "hwp-engine\\samples\\reflow\\two-column-no-cache.hwpx",
+      "sha256": "fa039d068441ee3f7c44b267884f8f4699bf19543a71105a79d485e690d1b0af",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 5,
+      "conversion": "passed",
+      "raster_pages": 5,
+      "pdf_sha256": "3d18f95f35c44ec6d4c34deff87ca35e75b03dcc998ebc4e8c612d4538df87ca",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\191_two-column-no-cache.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "192_anchors-absolute",
+      "input": "hwp-engine\\samples\\reflow\\anchors-absolute.hwpx",
+      "sha256": "fbb8a53d061a6e28d9152e095dc6fe02c085b7b7ecf912ad167f2da5a2574ca6",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "c5df5639e7435f18a819afcb03a845f7e9f803692ea6d690862be25c101dfaec",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\192_anchors-absolute.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "193_mixed-two-column",
+      "input": "hwp-engine\\samples\\reflow\\mixed-two-column.hwpx",
+      "sha256": "fe351766abdb50ab86c7238e9c2c1170720a78e930b7f8e91a96c31869f0d7ba",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "fe94844466e9f1450d602e6168ce13408f159d0f8d46cbd2193f0f15f5a564d9",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\193_mixed-two-column.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "194_01_comprehensive",
+      "input": "Hancom-Essential-7\\01_comprehensive.hwp",
+      "sha256": "ff3faae938610fcfbedc21c27c507ca0cc038b44872b65d10fcad0b55af67ba2",
+      "physical_copies": 4,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "c93c4cdfea563bd221e346d31ad7d79430613f8ddcee0b5dd5d24f924300688e",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\all-held\\194_01_comprehensive.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [
+        "01_comprehensive"
+      ],
+      "limitations": []
+    },
+    {
+      "name": "195_native-ui-saved",
+      "input": "hwp-editor\\output\\native-ui-saved.hwpx",
+      "sha256": "1885b4fa1de268f0b90353e1c767f1d7f318ce46b7adc39ce7a78c8871727a64",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "c8e3445ae0a1dc1ea61a4614aefada5ea27294ad53ab0aca6f311b87c793e703",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\workspace-extra\\195_native-ui-saved.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "196_worker-session",
+      "input": "hwp-editor\\native\\tests\\fixtures\\worker-session.hwpx",
+      "sha256": "20b484f1c3ed51f9fe8e27b235a93c517293fab88c89ba546a530fb4b16ccff0",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "f411be4ec9a219adedc3e82c1ded0378527477d1d88e3547f13e5b4678523394",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\workspace-extra\\196_worker-session.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "197_law-probe",
+      "input": "hwp-editor\\.tools\\law-probe.hwpx",
+      "sha256": "694bc7e5d62e613306da91dad6e38a44afc007435e8f103c19f4da79a5e3f3d9",
+      "physical_copies": 2,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 16,
+      "conversion": "passed",
+      "raster_pages": 16,
+      "pdf_sha256": "2138762b957d9594ae680273a3be3dc42138f7bc412e73cf4bd318c49346fa10",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\workspace-extra\\197_law-probe.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "198_ui-structure-source",
+      "input": "hwp-editor\\output\\ui-structure-source.hwpx",
+      "sha256": "9a580f8bfca440f7ef6606885dfe1a8fef3fc8f4af90577d8135e306c3b85a68",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "35501726415b25fd4fbf79d7180b566e7f7ed58a923f10abf7df88a4db019e88",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\workspace-extra\\198_ui-structure-source.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "199_native-current-export-v2",
+      "input": "hwp-editor\\output\\native-current-export-v2.hwpx",
+      "sha256": "a0b75793389aa1833ef3aa9bb7ecb4d732d3d49c93747201338c5454a3973a72",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "c8e3445ae0a1dc1ea61a4614aefada5ea27294ad53ab0aca6f311b87c793e703",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\workspace-extra\\199_native-current-export-v2.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "200_paragraph-fixture",
+      "input": "hwp-editor\\output\\paragraph-fixture.hwpx",
+      "sha256": "e3e27892569d5a51bef1d39da6b6a2b1b43d2ab89412fac4d1fd332ba8e1f4f2",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 1,
+      "conversion": "passed",
+      "raster_pages": 1,
+      "pdf_sha256": "df9b5f2bab24a0028c845fa1afa2023a6c3b6bf600051f52ac7afd2b59ec6cf9",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\workspace-extra\\200_paragraph-fixture.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "201_native-current-export",
+      "input": "hwp-editor\\output\\native-current-export.hwpx",
+      "sha256": "f19c53759bd9a8f56f2b832af3d2b821da609144d5c155f830dd5007928b0dec",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "c8e3445ae0a1dc1ea61a4614aefada5ea27294ad53ab0aca6f311b87c793e703",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\workspace-extra\\201_native-current-export.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    },
+    {
+      "name": "202_복학원서.hwp",
+      "input": "hwp-editor\\.tools\\test-temp\\hwp-editor-native-test-1656\\복학원서.hwp.hwpx",
+      "sha256": "f8adb473ede5e265cf713c5598044274759205bbdfeaa2b2115131ba2e2a3dc7",
+      "physical_copies": 1,
+      "all_source_hashes_unchanged": true,
+      "mode": "saved_or_cache_recovery",
+      "pages": 2,
+      "conversion": "passed",
+      "raster_pages": 2,
+      "pdf_sha256": "0f5f42df2c7992ca98d3ec3eff6dc2417b102d3eb5365e4b8b087339097e921b",
+      "pdf": "output\\roadmap\\88-endnote-leading\\all-held\\workspace-extra\\202_복학원서.pdf",
+      "drawable_scan": "no_unknown_positioned_kinds",
+      "raw_geometry": {},
+      "geometry_classification": "clean",
+      "independent_reference_names": [],
+      "limitations": [
+        "no_paired_pdf"
+      ]
+    }
+  ]
+}

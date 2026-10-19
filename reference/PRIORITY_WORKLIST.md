@@ -1,8 +1,8 @@
-# Priority status — 2026-10-19
+# Priority status — 2026-10-20
 
 The newly printed format probes exposed additional differences. The latest
 implementation and remaining visible limits are documented in
-[CURRENT_CORPUS_VALIDATION.md](CURRENT_CORPUS_VALIDATION.md) and the stage 65–82
+[CURRENT_CORPUS_VALIDATION.md](CURRENT_CORPUS_VALIDATION.md) and the stage 65–88
 reports linked there. Page/content/geometry
 checks and visual fidelity are separate results; a passing corpus does not prove
 universal compatibility. Retain tests, images, commits and pushes for each stage.
@@ -26,6 +26,8 @@ Do not replace format rules with filename-specific coordinates or page condition
 The held-file audit now covers every one of 202 distinct inputs (454 copies),
 including the sibling editor's old exports. Paired independent PDFs are
 still unavailable for 139 inputs, and the OLE equation viewer reference is incomplete.
-The separately exercised numbering-edited math probe produces 10 pages under full
-`--reflow` versus 9 in Hancom; primary saved-layout conversion remains 9. These
-limits are explicitly recorded rather than converted into a universal 95% score.
+The separately exercised numbering-edited math probe now produces 9 pages under
+full `--reflow`, with all 26 answers advancing by 10pt on page 9. Primary saved
+layout also remains 9. Body paragraph origins and some font/rule appearances
+still differ; see [REFLOW_LINE_EXTENTS.md](REFLOW_LINE_EXTENTS.md). These limits
+are explicitly recorded rather than converted into a universal 95% score.
