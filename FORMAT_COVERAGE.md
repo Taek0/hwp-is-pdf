@@ -7,10 +7,12 @@ distribution documents. Password-encrypted documents, HWP 2.x/3.x and editing ar
 excluded by user decision. **Full format compatibility and pixel identity with
 Hancom are not achieved.**
 
-Latest work: [Mixed section directions](reference/MIXED_SECTION_DIRECTIONS.md),
-[native inline baselines](reference/NATIVE_INLINE_CENTERING.md),
-[merged columns and form captions](reference/TABLE_COLUMN_CONSTRAINTS.md), and
-[typography/math/vector brushes](reference/TYPOGRAPHY_MATH_FIDELITY.md).
+Latest work: [source charts and OLE](reference/SOURCE_CHARTS_AND_OLE.md),
+[group frames](reference/NATIVE_GROUP_FRAMES.md),
+[table grids and space budgets](reference/TABLE_SPACE_CONDENSATION.md),
+[endnote origins](reference/NATIVE_ENDNOTE_ORIGIN.md),
+[note-bearing rows](reference/NOTE_TABLE_ROW_TAILS.md), and
+[empty picture anchors](reference/EMPTY_PICTURE_ANCHORS.md).
 Earlier calibration: [Hancom print probes](reference/OFFICIAL_PROBE_CALIBRATION.md).
 Final current-corpus evidence is maintained in
 [CURRENT_CORPUS_VALIDATION.md](reference/CURRENT_CORPUS_VALIDATION.md).
@@ -28,6 +30,15 @@ The older stage-59 numbers below are historical evidence.
 | Equations | Supported HWP grammar, fractions, scripts, roots, matrices/column arrays, REL/BUILDREL/SCALE, stretched searchable delimiters and cacheless measurement | Full command coverage and unavailable original math faces |
 | Fields/PDF semantics | Cached fields, supported TOC/field evaluation, links/bookmarks, native escaped URL commands, extended lists, named page-number styles and side characters | Arbitrary field recalculation, source-authored bad targets and unsupported variants |
 | PDF fonts | Stable-ID TrueType subsetting, recursive composites, metrics/hinting/checksums, Unicode mappings | Variable/color/non-glyf/no-subsetting faces retain full embedding; no universal color-font support claimed |
+
+The raster decoder currently accepts PNG/JPEG/BMP, with the separate native PCX
+path. GIF/TIFF/WebP are not enabled as general document-image decoders; decoding
+saved GIF thumbnails during the audit does not expand the engine's support.
+The new HwpEq5x path covers the observed version-5 envelope and bounded prefix
+fraction/root/operator commands. Native cumulative positive axis-aligned group
+geometry and HWPX child affine matrices are distinct paths; arbitrary native
+affine combinations remain bounded. Broader chart styles can retain cached
+appearances rather than claiming complete editable chart reconstruction.
 
 ## Previous validation (stage 59)
 

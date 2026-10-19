@@ -1,4 +1,4 @@
-# Held-file audit — stage 76 (in progress)
+# Held-file audit — stage 76 historical snapshot
 
 The earlier engine-input inventory excluded sibling editor outputs. A fresh
 no-ignore scan includes them: 454 physical HWP/HWPX files, 202 distinct SHA-256
@@ -39,3 +39,8 @@ Outstanding audit items are recorded rather than suppressed: the editor's old
 last page has an approximately 10pt origin difference; input 12's viewer print is
 incomplete and cannot validate the recovered OLE formula's exact appearance.
 No 95% universal compatibility claim is made by this inventory.
+
+Subsequent stages fixed all 1302 export border crossings, the native endnote origin
+and separator length, the note-bearing report row bands and the scaled-picture
+empty anchor. See [CURRENT_CORPUS_VALIDATION.md](CURRENT_CORPUS_VALIDATION.md) for
+the final 202-input / 594-page result and explicit validation limitations.
