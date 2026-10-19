@@ -9,6 +9,7 @@ impl<'a> Engine<'a> {
         nesting: usize,
     ) -> Result<f64> {
         let mut y = 0.;
+        let mut trailing_leading = 0.;
         for child in &mut list.children {
             if child.name != "p" {
                 continue;
@@ -20,9 +21,13 @@ impl<'a> Engine<'a> {
                     .insert("vertpos".into(), (seg.n("vertpos") + y * 100.).to_string());
             }
             y += ls.iter().map(|l| l.height).sum::<f64>() + s.after;
+            trailing_leading = ls
+                .last()
+                .map(|l| (l.height - l.extent).max(0.))
+                .unwrap_or(0.);
             *child = p;
         }
-        Ok(y)
+        Ok(y - trailing_leading)
     }
     pub(super) fn reflow_paragraph(
         &mut self,
@@ -356,8 +361,7 @@ impl<'a> Engine<'a> {
         } else {
             crate::reflow::wrap(&grouped, width, &settings)?
         };
-        if nesting == 0
-            && (self.vertical_mode > 0 || self.doc.header.a("binaryHwp") != "1")
+        if (self.vertical_mode > 0 || self.doc.header.a("binaryHwp") != "1")
             && settings.spacing == "PERCENT"
             && general.is_empty()
             && exclusions.is_empty()
@@ -391,6 +395,7 @@ impl<'a> Engine<'a> {
                     wrapped[i].baseline = ascent
                         .max(em * 0.85)
                         .min((wrapped[i].height - descent).max(ascent));
+                    wrapped[i].extent = (wrapped[i].baseline + descent).max(em);
                 }
             }
         }
@@ -411,7 +416,7 @@ impl<'a> Engine<'a> {
             for (key, value) in [
                 ("textpos", l.pos.to_string()),
                 ("vertpos", (yy * 100.).to_string()),
-                ("vertsize", (l.height * 100.).to_string()),
+                ("vertsize", (l.extent * 100.).to_string()),
                 (
                     "textheight",
                     (if self.vertical_mode > 0 {
@@ -426,12 +431,12 @@ impl<'a> Engine<'a> {
                             .fold(0., f64::max)
                             .max(1.)
                     } else {
-                        l.height
+                        l.extent
                     } * 100.)
                         .to_string(),
                 ),
                 ("baseline", (l.baseline * 100.).to_string()),
-                ("spacing", "0".into()),
+                ("spacing", ((l.height - l.extent) * 100.).to_string()),
                 ("horzpos", (l.left * 100.).to_string()),
                 ("horzsize", (l.width * 100.).to_string()),
                 ("hardBreak", usize::from(l.hard).to_string()),

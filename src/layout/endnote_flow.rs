@@ -19,6 +19,7 @@ impl<'a> Engine<'a> {
         self.note_rendering = true;
         for note in notes {
             if let Some(list) = note.child("subList") {
+                let mut trailing_leading = 0.;
                 for original in list.children_named("p") {
                     let mut source = original.clone();
                     let mut start = 0;
@@ -40,7 +41,7 @@ impl<'a> Engine<'a> {
                             } else {
                                 0.
                             };
-                            if y + overhead + row.height
+                            if y + overhead + row.extent
                                 > self.ph - self.bottom - self.footnote_reservation(&[], x) + 0.001
                             {
                                 anyhow::ensure!(
@@ -63,9 +64,10 @@ impl<'a> Engine<'a> {
                                 x,
                                 y,
                                 w: width,
-                                h: row.height,
+                                h: row.extent,
                             });
                             y += row.height;
+                            trailing_leading = (row.height - row.extent).max(0.);
                         }
                         if let Some(pos) = next {
                             if self.column_widths.is_empty() {
@@ -83,7 +85,9 @@ impl<'a> Engine<'a> {
                         }
                     }
                 }
-                y += between;
+                // Inter-note spacing replaces the final line's interline gap;
+                // it does not add that gap a second time for every short note.
+                y += between - trailing_leading;
             }
         }
         self.note_rendering = false;

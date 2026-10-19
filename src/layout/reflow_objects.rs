@@ -10,6 +10,7 @@ impl<'a> Engine<'a> {
     ) -> Result<()> {
         anyhow::ensure!(nesting < 64, "Excessive nested reflow");
         let missing_cache = lines(p).is_empty();
+        let section_start = nesting == 1 && p.find("secPr").is_some();
         for run in p.children.iter_mut().filter(|r| r.name == "run") {
             for n in &mut run.children {
                 match n.name.as_str() {
@@ -22,6 +23,32 @@ impl<'a> Engine<'a> {
                     "tbl" | "pic" | "rect" | "ellipse" | "polygon" | "curve" | "group" | "line"
                     | "arc" | "chart" | "checkBtn" => {
                         let behind = Self::nonflow_object(n);
+                        // A section-leading table can span newspaper columns.
+                        // Its absolute width is not a request to squeeze its
+                        // cells into the first column's text width.
+                        let span = section_start
+                            && self.active_columns > 1
+                            && n.name == "tbl"
+                            && n.a("textWrap") == "TOP_AND_BOTTOM"
+                            && val(n.child("sz"), "width") > width + 0.01
+                            && val(n.child("sz"), "width")
+                                <= self.pw - self.left - self.right + 0.01
+                            && n.find("footNote").is_none()
+                            && n.child("pos").is_some_and(|p| {
+                                p.a("treatAsChar") != "1"
+                                    && matches!(p.a("horzRelTo"), "COLUMN" | "PAGE")
+                                    && p.a("vertRelTo") == "PARA"
+                                    && p.a("horzAlign") == "LEFT"
+                                    && p.a("vertAlign") == "TOP"
+                                    && p.signed("horzOffset") == 0.
+                                    && p.signed("vertOffset") == 0.
+                            });
+                        let width = if span {
+                            n.attrs.insert("reflowColumnSpan".into(), "1".into());
+                            val(n.child("sz"), "width")
+                        } else {
+                            width
+                        };
                         anyhow::ensure!(
                             !behind || (n.name != "tbl" && n.child("caption").is_none()),
                             "Background tables/captions require separate placement"

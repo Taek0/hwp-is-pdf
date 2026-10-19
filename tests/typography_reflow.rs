@@ -13,15 +13,29 @@ fn fonts() -> &'static std::path::Path {
 }
 #[test]
 fn shaped_text_preserves_logical_content_and_table_pagination() {
-    for name in ["rtl", "rtl-table"] {
-        let d = Document::open(
+    for (name, short_page) in [("rtl", false), ("rtl-table", false), ("rtl-table", true)] {
+        let mut d = Document::open(
             &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join(format!("samples/reflow/typography-{name}.hwpx")),
         )
         .unwrap();
+        if short_page {
+            // Thirty 22pt rows now fit in the original two columns after
+            // removing artificial cell-leading inflation. Retain a separate
+            // genuinely overflowing sheet to exercise page continuation.
+            fn shorten(n: &mut hwp_engine::model::Node) {
+                if n.name == "pagePr" {
+                    n.attrs.insert("height".into(), "35000".into());
+                }
+                for child in &mut n.children {
+                    shorten(child);
+                }
+            }
+            shorten(&mut d.sections[0]);
+        }
         let mut e = Engine::new(&d, fonts());
         e.render_reflow().unwrap();
-        if name == "rtl-table" {
+        if short_page {
             assert!(e.pages.len() > 1);
         }
         let all = e

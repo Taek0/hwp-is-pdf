@@ -16,6 +16,8 @@ pub(crate) struct Unit {
 pub(crate) struct Line {
     pub pos: usize,
     pub height: f64,
+    /// Visible line box; trailing interline space may cross a column boundary.
+    pub extent: f64,
     pub baseline: f64,
     pub left: f64,
     pub width: f64,
@@ -71,12 +73,7 @@ pub(crate) fn settings(n: Option<&Node>) -> Settings {
         discard_boundary_space: n.is_some_and(|p| p.a("binaryHwp") == "1"),
         tabs: Vec::new(),
         tab_step: 40.,
-        left: if n.is_some_and(|p| p.a("binaryHwp") == "1") {
-            value("left") + (-value("intent")).max(0.)
-        } else {
-            // HWPX may already include the hanging inset in its left margin.
-            value("left").max(-value("intent"))
-        },
+        left: value("left") + (-value("intent")).max(0.),
         right: value("right"),
         indent: value("intent"),
         before: value("prev").max(0.),
@@ -405,6 +402,7 @@ fn wrap_exclusion(
                 .map(|u| u.pos)
                 .unwrap_or_else(|| units.last().map(|u| u.pos + 1).unwrap_or(0)),
             height: advance,
+            extent: row_height,
             baseline: row_baseline,
             left,
             width: available,
@@ -422,6 +420,7 @@ fn wrap_exclusion(
                 out.push(Line {
                     pos: units.last().unwrap().pos + 1,
                     height,
+                    extent: height,
                     baseline: em * 0.8 + (height - ink) / 2.,
                     left: s.left,
                     width: width - s.left - s.right,
@@ -562,6 +561,15 @@ mod tests {
             spacing: "PERCENT".into(),
             value: 160.,
             ..Default::default()
+        }
+    }
+    #[test]
+    fn hanging_indent_keeps_the_first_line_at_the_declared_left_margin() {
+        for binary in ["0", "1"] {
+            let p = crate::model::xml(format!(r#"<paraPr binaryHwp="{binary}"><margin><left value="1600"/><intent value="-1500"/></margin></paraPr>"#).as_bytes()).unwrap();
+            let s = settings(Some(&p));
+            assert_eq!(s.left + s.indent, 16.);
+            assert_eq!(s.left, 31.);
         }
     }
     #[test]

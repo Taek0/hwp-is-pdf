@@ -256,6 +256,10 @@ impl<'a> Engine<'a> {
         let mut col = 0;
         let mut y = self.top;
         let body = self.ph - self.top - self.bottom;
+        let mut blank_flow = self
+            .recover_blank_columns(section, cols)
+            .then(super::saved_blank_flow::BlankColumnFlow::new);
+        let mut blank_column = (self.pages.len(), col);
         self.flow_floor = None;
         for (pi, (p, ls, s)) in plans.iter().enumerate() {
             let items = Self::items(p);
@@ -269,6 +273,10 @@ impl<'a> Engine<'a> {
                 col = 0;
                 y = self.top;
                 self.decorations(section, false, cols, gap)?;
+                if let Some(flow) = &mut blank_flow {
+                    flow.break_column(false);
+                    blank_column = (self.pages.len(), col);
+                }
             }
             if p.n("pageFloatFloor") > 0. {
                 self.page_float_floor = self.page_float_floor.max(p.n("pageFloatFloor"));
@@ -358,6 +366,19 @@ impl<'a> Engine<'a> {
             y += s.before;
             let mut at = 0;
             while at < ls.len() {
+                if let Some(flow) = &mut blank_flow {
+                    if blank_column != (self.pages.len(), col) {
+                        flow.break_column(true);
+                        blank_column = (self.pages.len(), col);
+                    }
+                    let empty = ls.len() == 1
+                        && items
+                            .iter()
+                            .all(|i| matches!(&i.kind, ItemKind::Char(c) if c.is_whitespace()));
+                    if flow.hide(empty) {
+                        break;
+                    }
+                }
                 if ls[at].block {
                     let end = ls.get(at + 1).map(|l| l.pos).unwrap_or(usize::MAX);
                     let object = items
@@ -384,10 +405,15 @@ impl<'a> Engine<'a> {
                     }
                     let ox = self.left + col as f64 * (width + gap);
                     let cap = caption_extent(object);
+                    let outside = if object.name == "tbl" && object.a("binaryHwp") != "1" {
+                        margin(object, "outMargin")
+                    } else {
+                        [0.; 4]
+                    };
                     let old_page = self.pages.len();
                     let start_y = y;
                     let bounds_start = self.report.bounds.len();
-                    if cols > 1 && object.name == "tbl" {
+                    if cols > 1 && object.name == "tbl" && object.a("reflowColumnSpan") != "1" {
                         let placement = self
                             .note_spec(false)
                             .and_then(|s| s.child("placement"))
@@ -399,16 +425,27 @@ impl<'a> Engine<'a> {
                         );
                         self.reflow_table_column = Some(col);
                     }
-                    let rendered = self.object(object, ox, y + cap[2], y + cap[2], ox, width);
+                    let rendered = self.object(
+                        object,
+                        ox + outside[0],
+                        y + cap[2] + outside[2],
+                        y + cap[2] + outside[2],
+                        ox + outside[0],
+                        width,
+                    );
                     let final_column = self.reflow_table_column.take();
                     rendered?;
                     if object.name == "tbl" {
                         y = self.last_table_end
+                            + outside[3]
                             + if self.split_caption_handled {
                                 0.
                             } else {
                                 cap[3]
                             };
+                        if object.a("reflowColumnSpan") == "1" {
+                            self.page_float_floor = self.page_float_floor.max(y);
+                        }
                     } else {
                         y = self.report.bounds[bounds_start..]
                             .iter()
@@ -452,9 +489,13 @@ impl<'a> Engine<'a> {
                         .iter()
                         .map(|l| l.height)
                         .sum::<f64>();
+                    let row_extent = ls[at + count..at + count + row_count]
+                        .iter()
+                        .map(|l| l.extent)
+                        .fold(0., f64::max);
                     let reserve = self
                         .footnote_reservation(&incoming, self.left + col as f64 * (width + gap));
-                    if y + used + row_height > self.ph - self.bottom - reserve + 0.001 {
+                    if y + used + row_extent > self.ph - self.bottom - reserve + 0.001 {
                         break;
                     }
                     used += row_height;

@@ -111,6 +111,41 @@ fn supplied_math_full_reflow_keeps_equations_and_pictures() {
 }
 
 #[test]
+fn numbering_edited_math_full_reflow_retains_nine_pages_and_all_objects() {
+    let input = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("Hancom-Note-Wrap-20261016/01_print/04_math_black_markers_no_list_numbers.hwpx");
+    if !input.exists() {
+        return;
+    }
+    let d = Document::open(&input).unwrap();
+    let mut saved = Engine::new(&d, fonts());
+    saved.render().unwrap();
+    let mut flowed = Engine::new(&d, fonts());
+    flowed.render_reflow().unwrap();
+    assert_eq!(flowed.pages.len(), 9);
+    assert_eq!(saved.report.equations, flowed.report.equations);
+    assert_eq!(saved.report.pictures, flowed.report.pictures);
+    assert_eq!(text(&flowed).matches("[정답]").count(), 26);
+    let notes: Vec<_> = flowed
+        .report
+        .bounds
+        .iter()
+        .filter(|b| b.kind == "endnote-fragment")
+        .collect();
+    assert_eq!(notes.len(), 26);
+    assert!(notes.iter().all(|b| b.page == 9));
+    for pair in notes.windows(2) {
+        assert!((pair[1].y - pair[0].y - 10.).abs() < 0.01);
+    }
+    let q = qa::inspect(&flowed.pages, &flowed.fonts, &flowed.report.bounds);
+    assert!(q.text_overlaps.is_empty());
+    assert!(q.outside_page.is_empty());
+    assert!(q.border_crossings.is_empty());
+}
+
+#[test]
 fn merged_body_cells_are_not_promoted_to_headers() {
     for explicit_zero in [true, false] {
         let mut d = Document::open(

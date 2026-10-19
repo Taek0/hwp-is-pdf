@@ -54,38 +54,87 @@ fn logical_blank_flow_matches_reference_independently_of_saved_column_resets() {
         (false, 4000, 8000, 2, 120., 2, 40., 104.),
         (false, 2000, 4000, 1, 36., 1, 210., 228.),
     ] {
-        let d = probe(stalled, top, bottom);
-        let original = d.sections.clone();
+        for reflow in [false, true] {
+            let d = probe(stalled, top, bottom);
+            let original = d.sections.clone();
+            let fonts = Path::new(if cfg!(windows) {
+                "C:/Windows/Fonts"
+            } else {
+                "/mnt/c/Windows/Fonts"
+            });
+            let mut e = Engine::new(&d, fonts);
+            if reflow {
+                e.render_reflow().unwrap();
+            } else {
+                e.render().unwrap();
+            }
+            assert_eq!(e.pages.len(), pages);
+            for (id, page, x, y) in [
+                ("probe-0", 1, 40., top as f64 / 100.),
+                ("probe-18", 1, 210., b_y),
+                ("probe-30", c_page, c_x, c_y),
+            ] {
+                let b = e
+                    .report
+                    .bounds
+                    .iter()
+                    .find(|b| b.kind == "line" && b.id == id)
+                    .unwrap();
+                assert_eq!(b.page, page, "{stalled}/{bottom}/{id}");
+                assert!(
+                    (b.x - x).abs() < 0.001 && (b.y - y).abs() < 0.001,
+                    "{stalled}/{bottom}/{id}: {},{}",
+                    b.x,
+                    b.y
+                );
+            }
+            assert_eq!(d.sections, original);
+            assert!(!e.pages.iter().flat_map(|p| &p.ops).any(|op| matches!(op,
+            hwp_engine::pdf::Op::Line {x,x2,..} if (*x-200.).abs()<0.001 && (*x2-200.).abs()<0.001)));
+        }
+    }
+}
+
+#[test]
+fn reflow_keeps_blank_lines_when_hiding_is_disabled_or_the_break_is_explicit() {
+    for explicit in [false, true] {
+        let mut d = probe(true, 4000, 4000);
+        if explicit {
+            d.sections[0]
+                .children
+                .iter_mut()
+                .filter(|p| p.name == "p")
+                .nth(14)
+                .unwrap()
+                .attrs
+                .insert("pageBreak".into(), "1".into());
+        } else {
+            fn disable(n: &mut hwp_engine::model::Node) {
+                if n.name == "visibility" {
+                    n.attrs.insert("hideFirstEmptyLine".into(), "0".into());
+                }
+                for child in &mut n.children {
+                    disable(child);
+                }
+            }
+            disable(&mut d.sections[0]);
+        }
         let fonts = Path::new(if cfg!(windows) {
             "C:/Windows/Fonts"
         } else {
             "/mnt/c/Windows/Fonts"
         });
         let mut e = Engine::new(&d, fonts);
-        e.render().unwrap();
-        assert_eq!(e.pages.len(), pages);
-        for (id, page, x, y) in [
-            ("probe-0", 1, 40., top as f64 / 100.),
-            ("probe-18", 1, 210., b_y),
-            ("probe-30", c_page, c_x, c_y),
-        ] {
-            let b = e
-                .report
-                .bounds
-                .iter()
-                .find(|b| b.kind == "line" && b.id == id)
-                .unwrap();
-            assert_eq!(b.page, page, "{stalled}/{bottom}/{id}");
-            assert!(
-                (b.x - x).abs() < 0.001 && (b.y - y).abs() < 0.001,
-                "{stalled}/{bottom}/{id}: {},{}",
-                b.x,
-                b.y
-            );
-        }
-        assert_eq!(d.sections, original);
-        assert!(!e.pages.iter().flat_map(|p| &p.ops).any(|op| matches!(op,
-            hwp_engine::pdf::Op::Line {x,x2,..} if (*x-200.).abs()<0.001 && (*x2-200.).abs()<0.001)));
+        e.render_reflow().unwrap();
+        let b = e
+            .report
+            .bounds
+            .iter()
+            .find(|b| b.kind == "line" && b.id == "probe-18")
+            .unwrap();
+        assert_eq!(b.page, if explicit { 2 } else { 1 });
+        assert!((b.x - if explicit { 40. } else { 210. }).abs() < 0.001);
+        assert!((b.y - 104.).abs() < 0.001, "{}", b.y);
     }
 }
 
