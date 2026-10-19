@@ -1,98 +1,60 @@
-# Current-corpus validation — 2026-10-19
+# Current-corpus validation — 2026-10-19, stage 60
 
-October 19 increment: all 60 inputs / 273 pages were reconverted; source hashes,
-page counts and per-page extracted text are unchanged, with zero conversion or
-four-class geometry findings. All-target tests now total 239 and Clippy passes.
-Only three PDFs changed from stage 57 (drawing fills/strokes); their eight
-changed page streams were rasterized and reviewed. Searchable character outlines
-were separately rendered and checked using a new synthetic fixture. Exact
-Hancom outline/dash calibration remains pending. See [TEXT_OUTLINES.md](TEXT_OUTLINES.md)
-and [DRAWING_STYLES.md](DRAWING_STYLES.md); artifacts are in
-output/roadmap/59-text-outlines/verification.json. The detailed earlier comparison
-below is retained as stage-57 evidence, not a fresh 24-reference rerun.
-
-## Result
-
-The issues identified in the currently supplied documents have been corrected and
-rechecked. This is a statement about this corpus and its available references,
-not a percentage of universal HWP compatibility.
+The four-priority Hancom prints exposed new format/layout issues. The engine now
+includes the corrections in [OFFICIAL_PROBE_CALIBRATION.md](OFFICIAL_PROBE_CALIBRATION.md).
+The following results describe the supplied corpus, not universal compatibility
+or pixel identity. Remaining visible differences are recorded in that document.
 
 | Check | Result |
 |---|---|
-| Main corpus | 53 unique HWP5/HWPX documents, 260 pages |
-| Earlier user-printed probes | 7 additional unique documents, 13 pages |
-| Combined conversion | 60 documents, 273 pages; no conversion failures |
-| Geometry | No text overlaps, rule crossings, outside-page content or unintended foreground-image overlaps |
-| PDF text extraction | No replacement characters or unresolved CID strings |
-| Inputs | All 60 SHA256 hashes unchanged |
-| Rust validation | 235 tests and all-target Clippy pass |
-| Reference PDFs | 24 documents, 160 pages; every page count matches |
+| Inputs | 73 unique HWP5/HWPX documents; all source SHA256 hashes unchanged |
+| Conversion | 308 pages, zero failures |
+| Geometry | Zero text-overlap, border-crossing, outside-page or unintended foreground-image findings |
+| Hancom references | 40 PDFs / 199 pages; all page counts agree |
+| Existing 60 inputs | All page counts and per-page non-whitespace character multisets unchanged; 49 PDFs byte-identical |
+| Rust | 263 tests pass; all-target Clippy with warnings denied passes |
+| Image review | 74 changed/new pages rasterized; contacts and detailed comparison crops reviewed |
+| PDF extraction | No replacement-character or unresolved-CID strings |
 
-The main reference set contains 17 PDFs / 147 pages. Fifteen match per-page Hangul
-multisets, including all 50 report pages. Two retain additional searchable text
-where the reference uses outlines or embedded metafile drawing. The seven older
-probes also match their reference's per-page non-whitespace character multisets.
-No reference Hangul is missing. Character counts complement the rendered-page
-reviews; they do not replace visual checks or establish reading order by themselves.
+The report remains 50 pages, with the research table on 46–47 and the restored
+schedule bars on 49. The form remains 2 pages. The new checkbox form is 10 pages
+(previously 15); all ten per-page Hangul multisets match its Hancom reference.
+The source-driven HWPX hanging-indent repair also improves the math page-6 box;
+its four rows and following answer remain within their verified boundaries.
 
-## Completed corrections
+## Text extraction interpretation
 
-- Native paragraph margins, hanging indents, word spacing and stale line caches.
-  Note-bearing paragraphs preserve their saved page slots and annotation pages.
-- Plain and merged table fragments retain cell padding and vertical alignment.
-  Closed merge bands track unconsumed lines and remeasure the remaining row grid;
-  a pure preflight runs before page painting. Complete rows keep measured heights.
-- Repeated headers, outside spacing, table/body repagination and deferred table
-  notes. The research table remains on pages 46–47; note 44 retains its 3+1 split.
-  The report's empty TOC page 2 and empty page 6 match the supplied print.
-- Character borders, native page-number styles, CJK punctuation font slots,
-  missing HCI Poppy/Junggothic symbol faces, and U+2024 fallback.
-- Ellipsis line-start protection and mixed-language ToUnicode mappings, including
-  multi-character ligatures. The character-style sample's extracted text now
-  equals the reference while the Unicode-only change preserved its page pixels.
-- Synthetic italic uses the measured 0.34202 base shear with character-width and
-  line-fit scaling. Native italic faces stay native. Positive authored advances
-  are retained across slanted/upright style boundaries; generated labels follow
-  the same transform. The supplied style sample's X errors are below 0.065pt.
+Raw reference text counts differ for eleven pairs. Five effect/vertical/parity
+prints repeat 368 Hangul characters in decorative shadow layers; the engine
+preserves all 72 source Hangul characters once, painting effects as glyph paths.
+The outline probe likewise retains all 49 source Hangul characters. Other
+extras are searchable engine labels where the reference uses outlines or
+metafile/chart drawing (columns, WMF, fields title, charts and outlines).
+These differences are documented rather than hidden by a global normalization.
+Text counts alone cannot establish correct glyph placement or reading order.
 
-Stage 57 changes three PDFs, each on its first page: the comprehensive example,
-character-style example and law exam. Their per-page text is unchanged; the other
-50 main-corpus PDFs are byte-identical to stage 56. Changed pages were rendered
-and reviewed. Earlier reviews cover unchanged pages.
+The earlier blank-column references use landscape A4 printing of 400x300pt
+source pages; the engine retains source dimensions. Page-count agreement does
+not mean that those physical paper sizes are equal.
 
-## Reference interpretation
+## Reproduce and inspect
 
-- Column labels and several WMF labels are outlines in their reference PDFs;
-  searchable engine text is intentional. Column glyph raster extents agree
-  within one pixel at the compared resolution. WMF pages retain the prior full
-  11-page image review.
-- The native PCX logo is preserved by default. `--hancom-hide-pcx` reproduces the
-  viewer's omission; no source or application security setting is changed.
-- The blank-column probes declare 400×300pt paper. The engine preserves it;
-  the reference printer used landscape A4. Their document-area word positions
-  agree within 0.241pt horizontally and 0.089pt vertically at physical scale.
-- Printer-grid rounding, JPEG recompression and unavailable original faces can
-  produce small rendering differences. These checks do not claim pixel identity.
-- Broader format limits, including uncalibrated cases outside these examples,
-  remain listed in [FORMAT_COVERAGE.md](../FORMAT_COVERAGE.md). Password documents,
-  HWP 2.x/3.x and source editing remain excluded by user decision.
+Local artifact directory: `output/roadmap/60-official-probe-calibration/`.
 
-## Reproduction and artifacts
+- `all-inputs.json`: the 73-input manifest; only two early synthetic-cache style
+  probes explicitly use reflow. Other documents retain normal saved-layout mode.
+- `regression-final/`: final PDFs, layout reports, geometry reports and corpus report.
+- `verification.json`, `tested-source.json`, `baseline-comparison.json`,
+  `reference-pairs.json`, `reference-comparison.json`, `effect-source-text.json`.
+- `tests-final.log`, `clippy-final.log`, `changed-pages.json`, `raster-manifest.json`.
+- `page-images-final/`, `new-probes-contact-*.jpg`, `changed-existing-contact-*.jpg`,
+  `compare-forms-detail.png`, `compare-report-49.png`, `compare-math-hanging.png`,
+  and `compare-*.png` for detailed side-by-side examples.
 
-Main manifest: `output/roadmap/41-paper-picture-placement/all-inputs.json`.
-Probe manifest: `output/roadmap/57-synthetic-italic/prior-probes-inputs.json`.
+Run `cargo run --example reconvert_manifest -- MANIFEST OUTPUT --keep-going`.
+Run `cargo test --all-targets --no-fail-fast` and
+`cargo clippy --all-targets -- -D warnings` in the configured font environment.
 
-Latest artifact directory: `output/roadmap/57-synthetic-italic/`:
-
-- `regression-final/`: all 53 main PDFs, layout reports and geometry checks.
-- `prior-probes/`: the seven earlier probe conversions and checks.
-- `final-verification.json`, `all-verification.json`, `text-integrity.json`.
-- `reference-comparison.json`, `reference-summary.json`,
-  `prior-probes-verification.json`, `probe-visual-verification.json`.
-- `tests-final.log`, `clippy-final.log`, `page-images-final/`,
-  `final-report-comparison.png`, `italic-comparison.png`, `contact-final.jpg`,
-  and `blank-probes-physical-*.png`.
-
-User documents, fonts and generated artifacts remain outside Git. Earlier
-experiments, measurements and their historical unfinished items are preserved in
-[CORPUS_VALIDATION_HISTORY.md](CORPUS_VALIDATION_HISTORY.md).
+No input documents, private fonts, diagnostic reference-font subset or generated
+PDFs/images are committed. Broader limits remain in [FORMAT_COVERAGE.md](../FORMAT_COVERAGE.md).
+Password documents, HWP 2.x/3.x and source editing remain excluded by user choice.
