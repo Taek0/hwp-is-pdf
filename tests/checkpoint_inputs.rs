@@ -75,3 +75,33 @@ fn static_ole_wmf_is_a_picture_not_a_legacy_chart() {
             .any(|op| matches!(op, Op::Bezier { .. }))
     );
 }
+
+#[test]
+fn compound_wmf_keeps_content_and_reports_damaged_source_bitmaps() {
+    let path = input("20_vector__wmf_fill_shapes.hwpx");
+    if !path.exists() || !fonts().exists() {
+        return;
+    }
+    let d = Document::open(&path).unwrap();
+    for id in ["image3", "image4", "image5"] {
+        let im = image::load_from_memory(&d.binaries[id]).unwrap().to_rgb8();
+        assert!(im.width() > 1000);
+        assert!(
+            im.pixels()
+                .filter(|p| p[2] > p[0].saturating_add(40))
+                .count()
+                > 1000
+        );
+    }
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    assert_eq!(e.pages.len(), 15);
+    assert_eq!(
+        e.report
+            .warnings
+            .iter()
+            .filter(|w| w.starts_with("Source image "))
+            .count(),
+        5
+    );
+}

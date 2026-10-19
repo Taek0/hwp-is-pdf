@@ -1,6 +1,7 @@
 //! Bounded, non-executing Windows metafile playback into existing PDF operations.
 use anyhow::{Context, Result, ensure};
 use std::collections::BTreeMap;
+mod complex;
 mod paint;
 pub(crate) mod presentation;
 mod raster;
@@ -77,10 +78,20 @@ fn records(b: &[u8]) -> Result<Vec<Record<'_>>> {
     ensure!(eof, "Missing WMF EOF");
     Ok(out)
 }
-pub(crate) fn prepare(images: &mut BTreeMap<String, Vec<u8>>) -> Result<()> {
+pub(crate) fn prepare(images: &mut BTreeMap<String, Vec<u8>>) -> Result<Vec<String>> {
     let mut extra = vec![];
+    let mut software = vec![];
     for (id, b) in images.iter().filter(|(_, b)| is_wmf(b)) {
-        for r in records(b)? {
+        let records = records(b)?;
+        if complex::needed(&records) {
+            extra.push((
+                id.clone(),
+                complex::render(&records).with_context(|| format!("Complex WMF {id}"))?,
+            ));
+            software.push(id.clone());
+            continue;
+        }
+        for r in records {
             if r.kind == 0xf43 {
                 extra.push((format!("{id}-wmf-{}", r.offset), raster::bitmap(r.data)?));
             }
@@ -89,7 +100,26 @@ pub(crate) fn prepare(images: &mut BTreeMap<String, Vec<u8>>) -> Result<()> {
     for (id, b) in extra {
         images.insert(id, b);
     }
-    Ok(())
+    Ok(software)
+}
+pub(crate) fn mark_software(nodes: &mut [crate::model::Node], ids: &[String]) {
+    for node in nodes {
+        if node.name == "pic"
+            && node
+                .child("img")
+                .is_some_and(|img| ids.iter().any(|id| id == img.a("binaryItemIDRef")))
+        {
+            node.attrs.insert("softwareWMF".into(), "1".into());
+            // The intermediate bitmap resolution is not the original picture's
+            // crop coordinate system. Retain vector playback's target rectangle.
+            for child in &mut node.children {
+                if child.name == "imgClip" {
+                    child.name = "wmfSourceClip".into();
+                }
+            }
+        }
+        mark_software(&mut node.children, ids);
+    }
 }
 
 #[cfg(test)]

@@ -1,6 +1,7 @@
 use anyhow::{Context, Result, bail};
 use std::{collections::BTreeMap, fs::File, io::Read, path::Path};
 mod alternate;
+mod damaged_images;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Node {
@@ -183,7 +184,11 @@ impl Document {
         if sections.is_empty() {
             bail!("No sections")
         }
-        crate::metafile::prepare(&mut binaries)?;
+        let software = crate::metafile::prepare(&mut binaries)?;
+        crate::metafile::mark_software(&mut sections, &software);
+        crate::metafile::mark_software(&mut masters, &software);
+        damaged_images::mark(&mut sections, &mut binaries)?;
+        damaged_images::mark(&mut masters, &mut binaries)?;
         crate::image_effects::apply(&mut sections, &mut binaries)?;
         crate::image_effects::apply(&mut masters, &mut binaries)?;
         crate::image_effects::apply(std::slice::from_mut(&mut header), &mut binaries)?;

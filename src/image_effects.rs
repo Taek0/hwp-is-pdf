@@ -13,9 +13,9 @@ pub(crate) fn apply(nodes: &mut [Node], binaries: &mut BTreeMap<String, Vec<u8>>
                 let id = node.a("binaryItemIDRef").to_owned();
                 let derived = format!("{id}-effect-{brightness}-{contrast}-{gray}-{monochrome}");
                 if !binaries.contains_key(&derived) {
-                    let image = image::load_from_memory(
-                        binaries.get(&id).context("Missing effect image")?,
-                    )?;
+                    let image =
+                        image::load_from_memory(binaries.get(&id).context("Missing effect image")?)
+                            .with_context(|| format!("Image effects for {id}"))?;
                     let mut rgba = image.to_rgba8();
                     for px in rgba.pixels_mut() {
                         // Hancom's grayscale uses the encoded RGB luma weights,

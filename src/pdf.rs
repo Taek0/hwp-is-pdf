@@ -405,7 +405,8 @@ pub fn save(
                 } => {
                     if !image_ids.contains_key(id) {
                         let bytes = images.get(id).context("Missing image payload")?;
-                        let decoded = image::load_from_memory(bytes)?;
+                        let decoded = image::load_from_memory(bytes)
+                            .with_context(|| format!("PDF image {id}"))?;
                         let rgba = decoded.to_rgba8();
                         let mask = if rgba.pixels().any(|p| p[3] != 255) {
                             let alpha = rgba.pixels().map(|p| p[3]).collect::<Vec<_>>();

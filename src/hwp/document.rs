@@ -498,7 +498,9 @@ pub fn open(path: &Path) -> Result<Document> {
     }
     super::ole_objects::normalize(&mut sections, &mut binaries)?;
     super::ole_objects::normalize(&mut masters, &mut binaries)?;
-    crate::metafile::prepare(&mut binaries)?;
+    let software = crate::metafile::prepare(&mut binaries)?;
+    crate::metafile::mark_software(&mut sections, &software);
+    crate::metafile::mark_software(&mut masters, &software);
     Ok(Document {
         header,
         sections,

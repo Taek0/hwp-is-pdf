@@ -367,7 +367,13 @@ impl<'a> Engine<'a> {
                 self.paint_equation(n, x, y, w, h)?;
             }
             "pic" => {
+                if n.a("softwareWMF") == "1" {
+                    self.report.warnings.insert("Complex WMF uses bounded independent software raster playback; source vector crop coordinates are not interpreted as intermediate bitmap pixels".into());
+                }
                 let img = n.child("img").context("Missing image reference")?;
+                if !img.a("unavailableSourceImage").is_empty() {
+                    self.report.warnings.insert(format!("Source image {} has a truncated BMP pixel payload; its layout is preserved with transparent unavailable content", img.a("unavailableSourceImage")));
+                }
                 let id = img.a("binaryItemIDRef").to_string();
                 if metafile {
                     self.current.ops.extend(crate::metafile::draw(
