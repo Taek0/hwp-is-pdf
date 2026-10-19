@@ -48,7 +48,7 @@ impl<'a> Engine<'a> {
                 }
                 if let Some(id) = crate::pdf::glyph_id(&face, c) {
                     self.current.ops.push(Op::GlyphPaint {
-                        x: x + 1.2,
+                        x,
                         y: yy + side,
                         font,
                         glyph: id.0,
@@ -83,10 +83,11 @@ impl<'a> Engine<'a> {
             });
         }
         let face = ttf_parser::Face::parse(&self.fonts.list[g.font].bytes, 0)?;
+        // Center the em cell, excluding extra Windows internal leading.
         let baseline = y
-            + (h + (face.ascender() as f64 + face.descender() as f64) * g.size
-                / face.units_per_em() as f64)
-                / 2.;
-        self.paint_generated_text(label, g, x + side + 3.6, baseline)
+            + (h - g.size) / 2.
+            + g.size
+            + face.descender() as f64 * g.size / face.units_per_em() as f64;
+        self.paint_generated_text(label, g, x + side + 2.4, baseline)
     }
 }

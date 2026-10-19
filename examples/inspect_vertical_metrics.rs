@@ -22,6 +22,15 @@ fn main() -> anyhow::Result<()> {
         face.vertical_ascender(),
         face.vertical_descender()
     );
+    if let Some(os2) = face.tables().os2 {
+        println!(
+            "Windows metrics {}/{}; typo {}/{}",
+            os2.windows_ascender(),
+            os2.windows_descender(),
+            os2.typographic_ascender(),
+            os2.typographic_descender()
+        );
+    }
     for c in args
         .get(2)
         .map(String::as_str)
