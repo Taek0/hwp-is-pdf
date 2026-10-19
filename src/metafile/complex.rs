@@ -63,6 +63,9 @@ pub(super) fn render(rs: &[Record<'_>]) -> Result<Vec<u8>> {
     let wx = i16(window.data, 2)? as f32;
     let wy = i16(window.data, 0)? as f32;
     ensure!(wx != 0. && wy != 0., "Zero WMF window extent");
+    if let Some(bytes) = super::emf::embedded(rs)? {
+        return super::emf::render(&bytes, wx, wy);
+    }
     let width = (wx.abs() * 3.).ceil().clamp(1., 4096.) as u32;
     let height = (wy.abs() * 3.).ceil().clamp(1., 4096.) as u32;
     ensure!(

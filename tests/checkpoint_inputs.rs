@@ -105,3 +105,68 @@ fn compound_wmf_keeps_content_and_reports_damaged_source_bitmaps() {
         5
     );
 }
+
+#[test]
+fn embedded_emf_plus_only_icons_survive_inside_blue_circles() {
+    let path = input("20_vector__wmf_fill_shapes.hwpx");
+    if !path.exists() {
+        return;
+    }
+    let d = Document::open(&path).unwrap();
+    let im = image::load_from_memory(&d.binaries["image4"])
+        .unwrap()
+        .to_rgb8();
+    let (w, h) = im.dimensions();
+    let mut seen = vec![false; (w * h) as usize];
+    let mut icons = 0;
+    let blue = |x: u32, y: u32| {
+        let p = im.get_pixel(x, y);
+        p[0] < 40 && p[1] > 60 && p[2] > p[1].saturating_add(25)
+    };
+    for y in 0..h {
+        for x in 0..w {
+            if seen[(y * w + x) as usize] || !blue(x, y) {
+                continue;
+            }
+            let mut queue = vec![(x, y)];
+            seen[(y * w + x) as usize] = true;
+            let (mut left, mut top, mut right, mut bottom) = (x, y, x, y);
+            let mut pos = 0;
+            while pos < queue.len() {
+                let (a, b) = queue[pos];
+                pos += 1;
+                left = left.min(a);
+                top = top.min(b);
+                right = right.max(a);
+                bottom = bottom.max(b);
+                for (nx, ny) in [
+                    (a.wrapping_sub(1), b),
+                    (a + 1, b),
+                    (a, b.wrapping_sub(1)),
+                    (a, b + 1),
+                ] {
+                    if nx < w && ny < h && !seen[(ny * w + nx) as usize] && blue(nx, ny) {
+                        seen[(ny * w + nx) as usize] = true;
+                        queue.push((nx, ny));
+                    }
+                }
+            }
+            let (bw, bh) = (right - left + 1, bottom - top + 1);
+            if bw < 40 || bh < 40 || !(0.8..1.2).contains(&(bw as f64 / bh as f64)) {
+                continue;
+            }
+            let mut white = 0;
+            for yy in top + bh / 4..bottom - bh / 4 {
+                for xx in left + bw / 4..right - bw / 4 {
+                    if im.get_pixel(xx, yy).0.iter().all(|v| *v > 220) {
+                        white += 1;
+                    }
+                }
+            }
+            if white > 40 {
+                icons += 1;
+            }
+        }
+    }
+    assert!(icons >= 3, "EMF+ only icons were lost: {icons}");
+}

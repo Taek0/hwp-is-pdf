@@ -2,6 +2,8 @@
 use anyhow::{Context, Result, ensure};
 use std::collections::BTreeMap;
 mod complex;
+mod emf;
+mod emf_plus;
 mod paint;
 pub(crate) mod presentation;
 mod raster;
@@ -110,11 +112,34 @@ pub(crate) fn mark_software(nodes: &mut [crate::model::Node], ids: &[String]) {
                 .is_some_and(|img| ids.iter().any(|id| id == img.a("binaryItemIDRef")))
         {
             node.attrs.insert("softwareWMF".into(), "1".into());
-            // The intermediate bitmap resolution is not the original picture's
-            // crop coordinate system. Retain vector playback's target rectangle.
-            for child in &mut node.children {
-                if child.name == "imgClip" {
-                    child.name = "wmfSourceClip".into();
+            // HWPX metafiles without imgDim use the writer's 200px (15000-unit)
+            // virtual image square in the measured full/cropped source probes.
+            // Never infer this coordinate frame from our rendering resolution.
+            if node.a("binaryHwp") != "1"
+                && node.child("imgDim").is_none()
+                && node.child("imgClip").is_some_and(|c| {
+                    c.n("left") >= 0.
+                        && c.n("top") >= 0.
+                        && c.n("right") > c.n("left")
+                        && c.n("bottom") > c.n("top")
+                        && c.n("right") <= 15000.
+                        && c.n("bottom") <= 15000.
+                })
+            {
+                node.children.push(crate::model::Node {
+                    name: "imgDim".into(),
+                    attrs: BTreeMap::from([
+                        ("dimwidth".into(), "15000".into()),
+                        ("dimheight".into(), "15000".into()),
+                    ]),
+                    ..Default::default()
+                });
+                node.attrs.insert("inferredVectorCrop".into(), "1".into());
+            } else if node.child("imgDim").is_none() {
+                for child in &mut node.children {
+                    if child.name == "imgClip" {
+                        child.name = "wmfSourceClip".into();
+                    }
                 }
             }
         }
