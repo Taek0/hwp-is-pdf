@@ -58,12 +58,18 @@ fn retreat(mut cut: f64, ink: &[(f64, f64)]) -> f64 {
 
 /// Close the visible fragment using the cell's own bottom rule, if it has one.
 pub(super) fn bottom_rules(ops: &[Op], cells: &[TableCellPaint], cut: f64) -> Vec<Op> {
+    fragment_rules(ops, cells, cut, true)
+}
+pub(super) fn top_rules(ops: &[Op], cells: &[TableCellPaint], cut: f64) -> Vec<Op> {
+    fragment_rules(ops, cells, cut, false)
+}
+fn fragment_rules(ops: &[Op], cells: &[TableCellPaint], cut: f64, bottom_edge: bool) -> Vec<Op> {
     let mut out = Vec::new();
     for c in cells
         .iter()
         .filter(|c| c.y < cut - 0.01 && c.y + c.height > cut + 0.01)
     {
-        let bottom = c.y + c.height;
+        let bottom = if bottom_edge { c.y + c.height } else { c.y };
         for op in &ops[c.borders.clone()] {
             if matches!(op, Op::Line{y,y2,..} if (*y-bottom).abs()<0.01 && (*y-*y2).abs()<0.001)
                 || matches!(op, Op::Path{points,..} if points.len()==2 && points.iter().all(|p|(p.1-bottom).abs()<0.01))
@@ -221,5 +227,35 @@ mod tests {
             bounds: 0..0,
         };
         assert!(bottom_rules(&[], &[cell], 70.).is_empty());
+    }
+    #[test]
+    fn continuation_top_uses_existing_top_rule_without_inventing_a_border() {
+        let ops = vec![Op::Line {
+            x: 10.,
+            y: 20.,
+            x2: 60.,
+            y2: 20.,
+            width: 0.4,
+            color: [0.2, 0.3, 0.4],
+        }];
+        let cell = TableCellPaint {
+            y: 20.,
+            height: 100.,
+            ops: 1..1,
+            borders: 0..1,
+            bounds: 0..0,
+        };
+        let rules = top_rules(&ops, &[cell], 70.);
+        assert!(
+            matches!(rules.as_slice(),[Op::Line{y,y2,width,..}] if *y==70. && *y2==70. && *width==0.4)
+        );
+        let cell = TableCellPaint {
+            y: 20.,
+            height: 100.,
+            ops: 0..0,
+            borders: 0..0,
+            bounds: 0..0,
+        };
+        assert!(top_rules(&[], &[cell], 70.).is_empty());
     }
 }

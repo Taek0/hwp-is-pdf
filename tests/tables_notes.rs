@@ -80,8 +80,8 @@ fn public_tables_and_notes_keep_text_and_avoid_collisions() {
         if name == "inner-table-01" {
             assert_eq!(
                 e.pages.len(),
-                3,
-                "Ordinary nested tables must retain row-based pagination"
+                2,
+                "The supplied Hancom print continues the nested table across two pages"
             );
         }
         let q = qa::inspect(&e.pages, &e.fonts, &e.report.bounds);

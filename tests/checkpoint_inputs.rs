@@ -170,3 +170,57 @@ fn embedded_emf_plus_only_icons_survive_inside_blue_circles() {
     }
     assert!(icons >= 3, "EMF+ only icons were lost: {icons}");
 }
+
+#[test]
+fn nested_table_matches_printed_fragments_and_following_text_positions() {
+    let path = input("08_tables-notes__inner-table-01.hwp");
+    if !path.exists() || !fonts().exists() {
+        return;
+    }
+    let d = Document::open(&path).unwrap();
+    let source = d.sections.clone();
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    assert_eq!(e.pages.len(), 2);
+    for (page, word, expected) in [
+        (0, "사업개요", 587.16),
+        (0, "사업내용", 655.2),
+        (0, "데이터허브구축", 720.24),
+        (1, "전사데이터", 142.2),
+        (1, "SFR-CLOUD-001", 367.32),
+        (1, "끝", 587.04),
+    ] {
+        let mut chars = Vec::new();
+        let mut matrix = hwp_engine::graphics::IDENTITY;
+        let mut stack = Vec::new();
+        for op in &e.pages[page].ops {
+            match op {
+                Op::TransformBegin { matrix: m } => {
+                    stack.push(matrix);
+                    matrix = hwp_engine::graphics::compose(matrix, *m);
+                }
+                Op::TransformEnd => matrix = stack.pop().unwrap(),
+                Op::Text { text, x, y, .. } | Op::Shaped { text, x, y, .. } => {
+                    let (_, y) = hwp_engine::graphics::point(matrix, *x, *y);
+                    chars.extend(text.chars().filter(|c| !c.is_whitespace()).map(|c| (c, y)));
+                }
+                _ => {}
+            }
+        }
+        let needle: Vec<_> = word.chars().collect();
+        let actual = chars
+            .windows(needle.len())
+            .find(|s| s.iter().zip(&needle).all(|((a, _), b)| a == b))
+            .unwrap()[0]
+            .1;
+        assert!(
+            (actual - expected).abs() < 0.15,
+            "{word}: {actual} vs {expected}"
+        );
+    }
+    assert_eq!(d.sections, source);
+    let q = hwp_engine::qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
+    assert!(
+        q.outside_page.is_empty() && q.text_overlaps.is_empty() && q.border_crossings.is_empty()
+    );
+}

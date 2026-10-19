@@ -227,7 +227,7 @@ fn floating_extent(list: &Node) -> (f64, f64) {
                     && pos.a("treatAsChar") == "0"
                     && pos.a("vertRelTo") == "PARA"
                 {
-                    let y = py + pos.signed("vertOffset") / 100.;
+                    let y = py + pos.signed("vertOffset") / 100. - n.n("savedBeforeLine");
                     top = top.min(y);
                     bottom = bottom.max(y + effective_height(n));
                 }
@@ -412,6 +412,7 @@ mod reflow_paragraph;
 mod reflow_table;
 mod reflow_units;
 mod saved_blank_flow;
+mod saved_block_tables;
 mod saved_cell_text;
 mod saved_column_bands;
 mod saved_float_order;

@@ -12,6 +12,7 @@ fn dump(n: &Node) {
                 .collect::<Vec<_>>())
         );
         let a = n.child("cellAddr").unwrap();
+        println!("SUBLIST {:?}", n.child("subList").map(|l| &l.attrs));
         let mut ls = vec![];
         n.all("lineseg", &mut ls);
         println!(
@@ -32,6 +33,15 @@ fn dump(n: &Node) {
 fn main() -> Result<()> {
     let a: Vec<_> = std::env::args().collect();
     let d = Document::open(std::path::Path::new(&a[1]))?;
+    if a.get(2).is_some_and(|s|s=="equations") {
+        for section in &d.sections {
+            let mut equations=Vec::new();section.all("equation",&mut equations);
+            for equation in equations {
+                println!("EQUATION {:?} SIZE {:?} SCRIPT {:?}",equation.attrs,equation.child("sz"),equation.child("script").map(hwp_engine::model::text));
+            }
+        }
+        return Ok(());
+    }
     if a.get(2).is_some_and(|s| s == "object") {
         fn walk<'a>(n: &'a Node, id: &str, parent: Option<&'a Node>) {
             if n.a("id") == id {

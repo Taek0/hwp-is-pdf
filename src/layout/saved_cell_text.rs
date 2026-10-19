@@ -21,6 +21,13 @@ impl<'a> Engine<'a> {
         }
         let mut base = n.clone();
         let mut changed = self.repair_nested_saved_tables(&mut base)?;
+        if base.a("binaryHwp") == "1" {
+            changed |= saved_block_tables::mark_fragments(&mut base);
+        }
+        if base.a("binaryHwp") == "1" && saved_block_tables::mark(&mut base) {
+            changed = true;
+            self.report.warnings.insert("Native floating table precedes its cached anchor line; complete reserved gap used without adding the table height twice".into());
+        }
         if base.a("binaryHwp") == "1" && self.repair_native_cell_cache(&mut base)? {
             changed = true;
             self.report.warnings.insert(

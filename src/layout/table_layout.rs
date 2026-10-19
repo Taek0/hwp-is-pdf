@@ -39,8 +39,8 @@ impl<'a> Engine<'a> {
             );
             return Ok(());
         }
-        // Saved text tables can cross a page within a cell. Measure their actual
-        // ink and note anchors, as for mixed tables, instead of moving whole rows.
+        // Saved text tables, including inner tables, can continue within a cell.
+        // The vector splitter keeps glyphs and inner row boundaries intact.
         if self.depth == 0
             && n.a("binaryHwp") == "1"
             && n.a("pageBreak") == "TABLE"
@@ -57,7 +57,7 @@ impl<'a> Engine<'a> {
                 .all(|p| {
                     Self::items(p)
                         .iter()
-                        .all(|i| !matches!(i.kind, ItemKind::Object(_)))
+                        .all(|i| !matches!(&i.kind, ItemKind::Object(o) if !matches!(o.name.as_str(), "tbl" | "rect")))
                 })
             && self.split_nested_vectors(n, x, y, w, total)?
         {

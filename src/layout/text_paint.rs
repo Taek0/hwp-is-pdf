@@ -473,7 +473,7 @@ impl<'a> Engine<'a> {
                         && pos.is_some_and(|p| {
                             p.a("treatAsChar") != "1" && p.a("vertRelTo") == "PARA"
                         });
-                    let mut object_y = line_y;
+                    let mut object_y = line_y - n.n("savedBeforeLine");
                     if block && n.child("caption").is_some() {
                         let e = caption_extent(n);
                         let m = margin(n, "outMargin");

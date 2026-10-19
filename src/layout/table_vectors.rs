@@ -80,7 +80,31 @@ impl<'a> Engine<'a> {
         self.table_cells.clear();
         self.table_note_anchors.clear();
         self.depth += 1;
-        let rendered = self.table(n, x, 0., w, total).and_then(|()| {
+        let mut captured = n.clone();
+        let declared_first = (n.a("binaryHwp") == "1"
+            && table_nodes.len() > 1
+            && n.children_named("tr")
+                .flat_map(|r| r.children_named("tc"))
+                .filter_map(|c| c.child("subList"))
+                .any(|l| l.n("savedFirstFragmentHeight") > 0.))
+        .then(|| {
+            if n.n("nativeDeclaredHeight") > 0. {
+                n.n("nativeDeclaredHeight") / 100.
+            } else {
+                val(n.child("sz"), "height")
+            }
+        })
+        .filter(|h| *h > 24. && *h < total);
+        if n.a("binaryHwp") == "1" && table_nodes.len() > 1 {
+            let available = self.ph - self.bottom - top.max(self.top + above) - outside[3];
+            captured.attrs.insert(
+                "firstFragmentCapacity".into(),
+                available
+                    .min(declared_first.unwrap_or(available))
+                    .to_string(),
+            );
+        }
+        let rendered = self.table(&captured, x, 0., w, total).and_then(|()| {
             if n.a("reflowTable") == "1" {
                 let mut side = n.clone();
                 side.children
@@ -214,14 +238,15 @@ impl<'a> Engine<'a> {
                         .ops
                         .iter()
                         .filter_map(|o| match o {
-                            Op::Path { points, .. }
+                            Op::Path { points, width, .. }
                                 if points.len() == 2
+                                    && (points[0].1 - points[1].1).abs() < 0.001
                                     && points[0].1 >= *y
                                     && points[0].1 < y + size * 0.5 + 4.
                                     && points[0].0.min(points[1].0) < right
                                     && points[0].0.max(points[1].0) > *x =>
                             {
-                                Some(points[0].1 + 0.6)
+                                Some(points[0].1 + width / 2.)
                             }
                             _ => None,
                         })
@@ -230,25 +255,27 @@ impl<'a> Engine<'a> {
                         .ops
                         .iter()
                         .filter_map(|o| match o {
-                            Op::Path { points, .. }
+                            Op::Path { points, width, .. }
                                 if points.len() == 2
+                                    && (points[0].1 - points[1].1).abs() < 0.001
                                     && points[0].1 <= *y
                                     && points[0].1 > y - size * 1.1
                                     && points[0].0.min(points[1].0) < right
                                     && points[0].0.max(points[1].0) > *x =>
                             {
-                                Some(points[0].1 - 0.6)
+                                Some(points[0].1 - width / 2.)
                             }
                             _ => None,
                         })
                         .fold(*y, f64::min);
+                    let padding = self.fonts.ink_padding(*font, *size).max(0.05);
                     for c in text.chars().filter(|c| !c.is_whitespace()) {
                         if let Some(bb) = crate::pdf::glyph_id(&face, c)
                             .and_then(|id| face.glyph_bounding_box(id))
                         {
                             ink.push((
-                                (y - bb.y_max as f64 * unit).min(decoration_top) - 0.6,
-                                (y - bb.y_min as f64 * unit).max(decoration_bottom) + 0.6,
+                                (y - bb.y_max as f64 * unit).min(decoration_top) - padding,
+                                (y - bb.y_min as f64 * unit).max(decoration_bottom) + padding,
                             ));
                         }
                     }
@@ -318,6 +345,9 @@ impl<'a> Engine<'a> {
                 - top
                 - outside[3]
                 - self.footnote_reservation(&bottom_notes, x);
+            if first && let Some(declared) = declared_first {
+                capacity = capacity.min(declared);
+            }
             if start + capacity >= total {
                 capacity -= below;
             }
@@ -512,6 +542,11 @@ impl<'a> Engine<'a> {
                 self.current
                     .ops
                     .extend(table_cell_split::bottom_rules(&canvas.ops, &cells, cut));
+            }
+            if notes_at_end && !first {
+                self.current
+                    .ops
+                    .extend(table_cell_split::top_rules(&canvas.ops, &cells, start));
             }
             self.current.ops.push(Op::TransformEnd);
             for b in &bounds {

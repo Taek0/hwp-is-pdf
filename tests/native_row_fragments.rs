@@ -101,14 +101,14 @@ fn text_after_nested_top_bottom_table_starts_below_its_bottom_border() {
         }),
     );
     e.render().unwrap();
-    assert_eq!(e.pages.len(), 3);
+    assert_eq!(e.pages.len(), 2);
     let last = e
         .report
         .bounds
         .iter()
-        .rfind(|b| b.kind == "tbl" && b.page == 3)
+        .rfind(|b| b.kind == "tbl" && b.id == "hwp-203b" && b.page == 2)
         .unwrap();
-    let y = e.pages[2]
+    let y = e.pages[1]
         .ops
         .iter()
         .find_map(|o| match o {

@@ -54,6 +54,7 @@ impl<'a> Engine<'a> {
             {
                 if let ItemKind::Object(n) = &it.kind
                     && n.a("textWrap") == "TOP_AND_BOTTOM"
+                    && n.n("savedBeforeLine") == 0.
                     && n.child("pos").is_some_and(|pos| {
                         pos.a("treatAsChar") == "0" && pos.a("vertRelTo") == "PARA"
                     })
