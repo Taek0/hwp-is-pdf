@@ -536,7 +536,13 @@ impl<'a> Engine<'a> {
                     self.object_with_baseline(
                         n,
                         [ox, object_y, base, x, width],
-                        centered_native.then_some(0.5),
+                        centered_native.then_some(0.5).or_else(|| {
+                            object_position::hwpx_table_baseline_fraction(
+                                n,
+                                seg,
+                                p.a("reflowed") == "1",
+                            )
+                        }),
                     )?;
                     if n.name == "tbl"
                         && self.pages.len() > object_start_page

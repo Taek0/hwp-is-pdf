@@ -23,6 +23,21 @@ fn document(body: String) -> Document {
 }
 const PAGE: &str = r#"<secPr><pagePr width="40000" height="40000"><margin left="5000" right="5000" top="5000" bottom="5000"/></pagePr></secPr>"#;
 #[test]
+fn hwpx_inline_table_cache_reserves_its_complete_outside_box() {
+    let d = document(format!(
+        r#"<sec><p paraPrIDRef="0"><run charPrIDRef="0">{PAGE}<tbl id="probe" rowCnt="1" colCnt="1"><sz width="10000" height="4000"/><pos treatAsChar="1"/><outMargin top="200" bottom="600"/><tr><tc borderFillIDRef="1"><cellAddr rowAddr="0" colAddr="0"/><cellSpan rowSpan="1" colSpan="1"/><cellSz width="10000" height="4000"/><subList><p paraPrIDRef="0"><run charPrIDRef="0"><t>X</t></run><linesegarray><lineseg textpos="0" vertpos="0" vertsize="1200" baseline="1000" horzsize="10000"/></linesegarray></p></subList></tc></tr></tbl></run><linesegarray><lineseg textpos="0" vertpos="0" vertsize="4800" textheight="4800" baseline="4080" horzsize="30000"/></linesegarray></p></sec>"#
+    ));
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    let table = e
+        .report
+        .bounds
+        .iter()
+        .find(|b| b.kind == "tbl" && b.id == "probe")
+        .unwrap();
+    assert!((table.y - 52.).abs() < 0.01, "{}", table.y);
+}
+#[test]
 fn native_inline_picture_baseline_includes_margins_and_vertical_captions() {
     for side in ["NONE", "TOP", "BOTTOM"] {
         let caption = if side == "NONE" {

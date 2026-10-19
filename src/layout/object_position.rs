@@ -1,4 +1,27 @@
 //! Shared vertical reference semantics for saved and rebuilt object anchors.
+pub(super) fn hwpx_table_baseline_fraction(
+    node: &crate::model::Node,
+    line: &crate::model::Node,
+    reflowed: bool,
+) -> Option<f64> {
+    if reflowed
+        || node.name != "tbl"
+        || node.a("binaryHwp") == "1"
+        || node.a("reflowTable") == "1"
+        || node.child("pos")?.a("treatAsChar") != "1"
+    {
+        return None;
+    }
+    let height = node.child("sz")?.n("height") / 100.;
+    let margin = node.child("outMargin")?;
+    let outside = (margin.n("top") + margin.n("bottom")) / 100.;
+    let outer = height + outside;
+    (height > 0.
+        && outside > 0.
+        && (line.n("textheight") / 100. - outer).abs() < 0.02
+        && (line.n("baseline") - line.n("textheight") * 0.85).abs() <= 1.)
+        .then_some(0.85 * outer / height)
+}
 pub(super) fn within_paper(n: &crate::model::Node, area: [f64; 4], paper: [f64; 2]) -> bool {
     let [x, y, mut w, mut h] = area;
     let angle = crate::graphics::source_angle(n);
