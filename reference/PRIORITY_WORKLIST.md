@@ -2,7 +2,8 @@
 
 The newly printed format probes exposed additional differences. The latest
 implementation and remaining visible limits are documented in
-[OFFICIAL_PROBE_CALIBRATION.md](OFFICIAL_PROBE_CALIBRATION.md). Page/content/geometry
+[CURRENT_CORPUS_VALIDATION.md](CURRENT_CORPUS_VALIDATION.md) and the stage 61–64
+reports linked there. Page/content/geometry
 checks and visual fidelity are separate results; a passing corpus does not prove
 universal compatibility. Retain tests, images, commits and pushes for each stage.
 
@@ -13,7 +14,7 @@ universal compatibility. Retain tests, images, commits and pushes for each stage
 | 3. Wrapping | Native hanging indents, word spacing, annotated same-count caches and ellipsis boundaries verified | Unmeasured stale caches, justification and protection combinations |
 | 4. Tables/notes | Remaining-cell merged grids, repeated headers, padding, table tails and supplied note-page distribution verified | HWPX CELL splitting/check appearances now supported; wider mixed-object structures retain guarded fallback paths |
 | 5. Pictures/borders | Supplied grayscale/contrast probes and placement verified; source PCX preserved with optional viewer-compatible hiding | Wider tone parameters, visibility policies and compound-rule variants |
-| 6. Formats/PDF semantics | Supplied chart/WMF/EMF/OLE examples and shaped ToUnicode strings verified | Complete metafile/chart families, exact vertical origins, equation font/grammar, 3D styling and remaining brush variants |
+| 6. Formats/PDF semantics | Supplied chart/WMF/EMF/OLE examples and shaped ToUnicode strings verified | Complete metafile/chart families, vertical objects, broader equation commands/original faces, unmeasured chart styles and brush variants |
 
 See [CURRENT_CORPUS_VALIDATION.md](CURRENT_CORPUS_VALIDATION.md) for current evidence,
 [FORMAT_COVERAGE.md](../FORMAT_COVERAGE.md) for supported scope, and

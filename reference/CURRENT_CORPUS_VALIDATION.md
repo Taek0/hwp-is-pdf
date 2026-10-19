@@ -1,60 +1,69 @@
-# Current-corpus validation — 2026-10-19, stage 60
+# Current-corpus validation — 2026-10-19, stage 64
 
-The four-priority Hancom prints exposed new format/layout issues. The engine now
-includes the corrections in [OFFICIAL_PROBE_CALIBRATION.md](OFFICIAL_PROBE_CALIBRATION.md).
-The following results describe the supplied corpus, not universal compatibility
-or pixel identity. Remaining visible differences are recorded in that document.
+Stages 61–64 improve measured typography, equations, brushes, table grids,
+form captions, native inline baselines and mixed writing-direction sections.
+This document reports observed checks; it does not assert universal HWP
+compatibility or pixel identity with Hancom.
 
-| Check | Result |
+| Check | Latest result |
 |---|---|
-| Inputs | 73 unique HWP5/HWPX documents; all source SHA256 hashes unchanged |
+| Source inputs | 73 unique HWP5/HWPX files; source hashes unchanged |
 | Conversion | 308 pages, zero failures |
-| Geometry | Zero text-overlap, border-crossing, outside-page or unintended foreground-image findings |
+| Automatic geometry | Zero text overlaps, border crossings, outside-page content or unintended foreground-image findings |
 | Hancom references | 40 PDFs / 199 pages; all page counts agree |
-| Existing 60 inputs | All page counts and per-page non-whitespace character multisets unchanged; 49 PDFs byte-identical |
-| Rust | 263 tests pass; all-target Clippy with warnings denied passes |
-| Image review | 74 changed/new pages rasterized; contacts and detailed comparison crops reviewed |
-| PDF extraction | No replacement-character or unresolved-CID strings |
+| Rust checks | 280 tests and all-target Clippy with warnings denied pass |
+| Final-stage regression | All 73 PDFs byte-identical to stage 63 |
+| Mixed-direction probe | Four pages; text, paper and glyph origins equal isolated outputs (0pt maximum delta); zero QA findings |
 
-The report remains 50 pages, with the research table on 46–47 and the restored
-schedule bars on 49. The form remains 2 pages. The new checkbox form is 10 pages
-(previously 15); all ten per-page Hangul multisets match its Hancom reference.
-The source-driven HWPX hanging-indent repair also improves the math page-6 box;
-its four rows and following answer remain within their verified boundaries.
+## Measured corrections
 
-## Text extraction interpretation
+- Superscript/subscript, vertical origins, explicit offsets and cumulative spaces:
+  the supplied reference positions are checked with 0.15pt tolerances.
+- The checkbox form remains 10 pages; all per-page Hangul multisets match. Shared
+  merged-column boundaries replace inconsistent equal-width guesses. The first
+  five caption origins agree within 0.25pt.
+- The law exam remains 15 pages. Name and candidate-number tables start at
+  199.995/200.0pt versus Hancom's 200.04pt; the type label starts at 188.39pt
+  versus 188.4pt. The native 50% and ordinary 85% baseline cases are separately
+  covered. The unrelated paragraph-relative floating label still uses its prior
+  anchoring path; these fixes do not establish every sub-point/anchor position.
+- The report remains 50 pages, with the research table on 46–47 and schedule
+  gradient bars on 49. The form remains 2 pages and the math exam 9 pages.
+- Scoped math styles, roman functions, Greek/operators, quoted terms, COLOR,
+  source whitespace semantics and large-operator limits are implemented. Fallback
+  font ink geometry is measured; no reference font subset is used for conversion.
+- Gradients emit clipped vector bands. 3D columns read source rotation/depth/gaps.
 
-Raw reference text counts differ for eleven pairs. Five effect/vertical/parity
-prints repeat 368 Hangul characters in decorative shadow layers; the engine
-preserves all 72 source Hangul characters once, painting effects as glyph paths.
-The outline probe likewise retains all 49 source Hangul characters. Other
-extras are searchable engine labels where the reference uses outlines or
-metafile/chart drawing (columns, WMF, fields title, charts and outlines).
-These differences are documented rather than hidden by a global normalization.
-Text counts alone cannot establish correct glyph placement or reading order.
+## Text and image interpretation
 
-The earlier blank-column references use landscape A4 printing of 400x300pt
-source pages; the engine retains source dimensions. Page-count agreement does
-not mean that those physical paper sizes are equal.
+The supplied shadow prints contain repeated decorative text; the engine paints
+those effects as glyph paths while preserving one searchable copy of the source.
+Reference outlines/metafiles/charts can instead produce additional searchable
+engine labels. Raw text-count differences are recorded in stage-60/61 comparison
+artifacts, not hidden by a universal normalization.
+
+Stage 61 images cover the new typography/math/graphics work. Stage 62 changes
+only the checkbox form and law page 1; the other 71 PDFs are identical to stage 61.
+Stage 63 changes only law page 1 and notice pages 21–22, without text changes;
+71 PDFs are identical to stage 62. Those pages were rendered and inspected.
+Stage 64 leaves all corpus PDFs unchanged and adds the mixed-page image check.
 
 ## Reproduce and inspect
 
-Local artifact directory: `output/roadmap/60-official-probe-calibration/`.
+Manifest: output/roadmap/60-official-probe-calibration/all-inputs.json.
+Two early synthetic-cache style probes explicitly use reflow; ordinary inputs
+keep the default saved-layout mode. Rejected multi-section files are excluded.
 
-- `all-inputs.json`: the 73-input manifest; only two early synthetic-cache style
-  probes explicitly use reflow. Other documents retain normal saved-layout mode.
-- `regression-final/`: final PDFs, layout reports, geometry reports and corpus report.
-- `verification.json`, `tested-source.json`, `baseline-comparison.json`,
-  `reference-pairs.json`, `reference-comparison.json`, `effect-source-text.json`.
-- `tests-final.log`, `clippy-final.log`, `changed-pages.json`, `raster-manifest.json`.
-- `page-images-final/`, `new-probes-contact-*.jpg`, `changed-existing-contact-*.jpg`,
-  `compare-forms-detail.png`, `compare-report-49.png`, `compare-math-hanging.png`,
-  and `compare-*.png` for detailed side-by-side examples.
+Latest output: output/roadmap/64-mixed-section-directions/regression-final/.
+Additional evidence directories: 61-fidelity-completion,
+62-table-column-constraints and 63-native-inline-centering under output/roadmap/.
+Each has tests, geometry reports, hash verification and comparison images.
 
-Run `cargo run --example reconvert_manifest -- MANIFEST OUTPUT --keep-going`.
-Run `cargo test --all-targets --no-fail-fast` and
-`cargo clippy --all-targets -- -D warnings` in the configured font environment.
+Run cargo test --all-targets --no-fail-fast and
+cargo clippy --all-targets -- -D warnings with the configured fonts.
+Use the reconvert_manifest example for the complete conversion batch.
 
-No input documents, private fonts, diagnostic reference-font subset or generated
-PDFs/images are committed. Broader limits remain in [FORMAT_COVERAGE.md](../FORMAT_COVERAGE.md).
-Password documents, HWP 2.x/3.x and source editing remain excluded by user choice.
+See TYPOGRAPHY_MATH_FIDELITY.md, TABLE_COLUMN_CONSTRAINTS.md,
+NATIVE_INLINE_CENTERING.md and MIXED_SECTION_DIRECTIONS.md for stage details.
+FORMAT_COVERAGE.md retains broader supported scope and limits. Generated PDFs,
+user documents, font files and the diagnostic reference subset remain outside Git.

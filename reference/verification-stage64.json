@@ -1,0 +1,43 @@
+{
+  "documents": 73,
+  "pages": 308,
+  "errors": [],
+  "qa_findings": [],
+  "source_hash_mismatches": [],
+  "rust_hash_mismatches": [],
+  "reference_page_mismatches": [],
+  "changed_pdfs_from_stage63": [],
+  "mixed_probe_pages": 4,
+  "mixed_composition": [
+    {
+      "page": 1,
+      "same_text": true,
+      "max_origin_delta_pt": 0.0,
+      "same_paper": true
+    },
+    {
+      "page": 2,
+      "same_text": true,
+      "max_origin_delta_pt": 0.0,
+      "same_paper": true
+    },
+    {
+      "page": 3,
+      "same_text": true,
+      "max_origin_delta_pt": 0.0,
+      "same_paper": true
+    },
+    {
+      "page": 4,
+      "same_text": true,
+      "max_origin_delta_pt": 0.0,
+      "same_paper": true
+    }
+  ],
+  "tests_passed": 280,
+  "clippy_passed": true,
+  "reference_pdfs": 40,
+  "reference_pages": 199,
+  "byte_identical_previous_stage": 73,
+  "mixed_probe_qa_findings": []
+}
