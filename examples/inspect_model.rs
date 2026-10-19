@@ -32,6 +32,31 @@ fn dump(n: &Node) {
 fn main() -> Result<()> {
     let a: Vec<_> = std::env::args().collect();
     let d = Document::open(std::path::Path::new(&a[1]))?;
+    if a.get(2).is_some_and(|s| s == "object") {
+        fn walk<'a>(n: &'a Node, id: &str, parent: Option<&'a Node>) {
+            if n.a("id") == id {
+                println!("OBJECT {} {:?}", n.name, n.attrs);
+                for key in ["pos", "sz", "orgSz", "curSz", "outMargin", "rotationInfo"] {
+                    println!("{key}: {:?}", n.child(key).map(|n| &n.attrs));
+                }
+                println!(
+                    "PARENT {:?} LINES {:?}",
+                    parent.map(|p| &p.attrs),
+                    parent
+                        .and_then(|p| p.child("linesegarray"))
+                        .map(|n| &n.children)
+                );
+            }
+            let parent = if n.name == "p" { Some(n) } else { parent };
+            for c in &n.children {
+                walk(c, id, parent);
+            }
+        }
+        for n in &d.sections {
+            walk(n, a.get(3).map(String::as_str).unwrap_or(""), None);
+        }
+        return Ok(());
+    }
     if a.get(2).is_some_and(|s| s == "border-users") {
         fn walk(
             n: &Node,

@@ -11,6 +11,15 @@ impl<'a> Engine<'a> {
         anchor: f64,
         container: f64,
     ) -> Result<()> {
+        self.object_with_baseline(n, [ox, line_y, base, anchor, container], None)
+    }
+    pub(super) fn object_with_baseline(
+        &mut self,
+        n: &Node,
+        placement: [f64; 5],
+        inline_fraction: Option<f64>,
+    ) -> Result<()> {
+        let [ox, line_y, base, anchor, container] = placement;
         if self.hancom_hide_pcx
             && n.name == "pic"
             && n.child("img").is_some_and(|i| i.a("sourceFormat") == "PCX")
@@ -39,12 +48,13 @@ impl<'a> Engine<'a> {
             let baseline = if n.name == "equation" {
                 n.n("baseLine") / 100.
             } else {
-                0.85
+                inline_fraction.unwrap_or(0.85)
             };
-            let baseline_height = if matches!(n.name.as_str(), "tbl" | "pic")
+            let baseline_height = if matches!(n.name.as_str(), "tbl" | "pic" | "rect")
                 && n.a("binaryHwp") == "1"
                 && n.a("reflowTable") != "1"
                 && n.a("reflowCaptions") != "1"
+                && !(n.name == "rect" && h > declared_h && base - line_y + 0.02 >= h * baseline)
             {
                 // Native cached line baselines include the table's outside box.
                 let cap = if n.name == "pic" {

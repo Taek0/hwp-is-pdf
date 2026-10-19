@@ -505,7 +505,15 @@ impl<'a> Engine<'a> {
                         // Block pictures precede their paragraph's first text line in the cache.
                         object_y -= effective_height(n) + margin(n, "outMargin")[3];
                     }
-                    self.object(n, ox, object_y, base, x, width)?;
+                    let centered_native = n.a("binaryHwp") == "1"
+                        && p.a("reflowed") != "1"
+                        && seg.n("textheight") > 0.
+                        && (seg.n("baseline") - seg.n("textheight") * 0.5).abs() <= 1.;
+                    self.object_with_baseline(
+                        n,
+                        [ox, object_y, base, x, width],
+                        centered_native.then_some(0.5),
+                    )?;
                     if n.name == "tbl"
                         && self.pages.len() > object_start_page
                         && its[idx + 1..]

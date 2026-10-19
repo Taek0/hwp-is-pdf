@@ -127,3 +127,67 @@ fn supplied_title_baselines_match_reference_positions() {
         assert!(q.border_crossings.is_empty());
     }
 }
+
+#[test]
+fn native_center_baseline_aligns_equal_boxes_with_different_outside_margins() {
+    let cell = |id: &str, margin: i32| {
+        format!(
+            r#"<tbl id="{id}" binaryHwp="1" rowCnt="1" colCnt="1" pageBreak="NONE"><sz width="10000" height="2448"/><pos treatAsChar="1"/><outMargin top="{margin}" bottom="{margin}"/><tr><tc><cellAddr rowAddr="0" colAddr="0"/><cellSpan rowSpan="1" colSpan="1"/><cellSz width="10000" height="2448"/><subList><p paraPrIDRef="0"><run charPrIDRef="0"><t>CELL</t></run><linesegarray><lineseg textpos="0" vertpos="0" vertsize="1200" baseline="1000" horzsize="10000"/></linesegarray></p></subList></tc></tr></tbl>"#
+        )
+    };
+    let body = format!(
+        r#"<sec><p paraPrIDRef="0"><run charPrIDRef="0">{PAGE}{}{}</run><linesegarray><lineseg textpos="0" vertpos="0" vertsize="3014" textheight="3014" baseline="1507" horzsize="30000"/></linesegarray></p></sec>"#,
+        cell("with-margin", 283),
+        cell("no-margin", 0)
+    );
+    let d = document(body);
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    let a = e
+        .report
+        .bounds
+        .iter()
+        .find(|b| b.id == "with-margin")
+        .unwrap();
+    let b = e
+        .report
+        .bounds
+        .iter()
+        .find(|b| b.id == "no-margin")
+        .unwrap();
+    assert!((a.y - 52.83).abs() < 0.01);
+    assert!((a.y - b.y).abs() < 0.01);
+}
+
+#[test]
+fn native_inline_rectangle_baseline_includes_its_bottom_margin() {
+    let d = document(format!(
+        r#"<sec><p paraPrIDRef="0"><run charPrIDRef="0">{PAGE}<rect id="box" binaryHwp="1"><sz width="10000" height="3610"/><pos treatAsChar="1"/><outMargin bottom="283"/><lineShape style="SOLID"/></rect></run><linesegarray><lineseg textpos="0" vertpos="0" vertsize="3893" textheight="3893" baseline="3309" horzsize="30000"/></linesegarray></p></sec>"#
+    ));
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    let b = e.report.bounds.iter().find(|b| b.id == "box").unwrap();
+    assert!((b.y - 50.).abs() < 0.01);
+}
+#[test]
+fn supplied_law_input_boxes_share_the_printed_baseline() {
+    let input = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("21_언어_기출_편집가능본.hwp");
+    if !input.exists() {
+        return;
+    }
+    let d = Document::open(&input).unwrap();
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    assert_eq!(e.pages.len(), 15);
+    for (id, y) in [
+        ("hwp-1c0c", 200.04),
+        ("hwp-1d72", 200.04),
+        ("hwp-18fd", 188.4),
+    ] {
+        let b = e.report.bounds.iter().find(|b| b.id == id).unwrap();
+        assert!((b.y - y).abs() < 0.15, "{id}: {} != {y}", b.y);
+    }
+}
