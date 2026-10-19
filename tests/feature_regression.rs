@@ -105,10 +105,19 @@ fn structured_equations_emit_content_and_reject_excessive_nesting() {
     ] {
         let b = hwp_engine::math::layout(script, 12., &mut fonts).unwrap();
         assert!(b.width > 0. && b.ascent > 0. && b.descent >= 0.);
-        assert!(
-            b.ops.iter().any(|op| matches!(op, Op::Path { .. })),
-            "{script}"
-        );
+        if script.starts_with("cases") {
+            assert!(
+                b.ops
+                    .iter()
+                    .any(|op| matches!(op,Op::Text{text,size,..} if text=="{" && *size>12.)),
+                "{script}"
+            );
+        } else {
+            assert!(
+                b.ops.iter().any(|op| matches!(op, Op::Path { .. })),
+                "{script}"
+            );
+        }
         assert!(
             b.ops.iter().any(|op| matches!(op, Op::Text { .. })),
             "{script}"

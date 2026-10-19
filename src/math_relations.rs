@@ -9,6 +9,7 @@ pub(crate) fn parse(
     size: f64,
     fonts: &mut Fonts,
     depth: usize,
+    style: crate::math::style::Style,
 ) -> Result<Option<(MathBox, usize)>> {
     let lower = tail.to_ascii_lowercase();
     if lower.starts_with("scale ") {
@@ -21,7 +22,7 @@ pub(crate) fn parse(
             "Invalid equation scale"
         );
         let (body, rest) = group(rest);
-        let b = layout_inner(body, size * ratio / 100., fonts, depth)?;
+        let b = layout_inner(body, size * ratio / 100., fonts, depth, style)?;
         return Ok(Some((b, tail.len() - rest.len())));
     }
     let (key, bottom) = if lower.starts_with("buildrel ") {
@@ -37,11 +38,11 @@ pub(crate) fn parse(
     }
     let (top, rest) = group(rest);
     let (below, rest) = if bottom { group(rest) } else { ("", rest) };
-    let a = layout_inner(top, size * 0.65, fonts, depth)?;
-    let b = layout_inner(below, size * 0.65, fonts, depth)?;
+    let a = layout_inner(top, size, fonts, depth, style)?;
+    let b = layout_inner(below, size, fonts, depth, style)?;
     let width = a.width.max(b.width).max(size * 1.6) + size * 0.4;
-    let ay = -size * 0.55 - a.descent;
-    let by = size * 0.25 + b.ascent;
+    let ay = -size * 0.5 - a.descent;
+    let by = b.ascent - size * 0.15;
     let mut result = MathBox {
         width,
         ascent: (a.ascent - ay).max(size * 0.85),
@@ -73,7 +74,7 @@ pub(crate) fn parse(
             x2: width,
             y2: y + offset,
             width: 0.5,
-            color: [0.; 3],
+            color: style.color,
         });
     }
     for (tip, sign) in [(0., 1.), (width, -1.)] {
@@ -86,7 +87,7 @@ pub(crate) fn parse(
                 ],
                 closed: false,
                 width: 0.5,
-                color: [0.; 3],
+                color: style.color,
                 fill: None,
             });
         }

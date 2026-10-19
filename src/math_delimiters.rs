@@ -9,6 +9,7 @@ pub(crate) fn parse(
     size: f64,
     fonts: &mut Fonts,
     depth: usize,
+    style: crate::math::style::Style,
 ) -> Result<Option<(MathBox, usize)>> {
     if !tail
         .get(..4)
@@ -47,10 +48,10 @@ pub(crate) fn parse(
     if !")]} >|.".contains(right) {
         return Ok(None);
     }
-    let expression = layout_inner(&body[..at], size, fonts, depth)?;
-    let pad = size * 0.35;
-    let ascent = expression.ascent.max(size * 0.8) + size * 0.08;
-    let descent = expression.descent.max(size * 0.2) + size * 0.08;
+    let expression = layout_inner(&body[..at], size, fonts, depth, style)?;
+    let pad = size * 0.625;
+    let ascent = expression.ascent.max(size * 0.8);
+    let descent = expression.descent.max(size * 0.2);
     let width = expression.width + 2. * pad;
     let mut result = MathBox {
         width,
@@ -76,8 +77,8 @@ pub(crate) fn parse(
             let scale_y = (ascent + descent) / height;
             let size = scale_y * face.units_per_em() as f64;
             let advance = fonts.width(font, &symbol.to_string(), size).max(0.01);
-            let scale = pad * 0.85 / advance;
-            let xx = if sign > 0. { x } else { x - pad * 0.85 };
+            let scale = pad / advance;
+            let xx = if sign > 0. { x } else { x - pad };
             let baseline = -ascent + bounds.y_max as f64 * scale_y;
             result.ops.push(Op::Text {
                 x: xx,
@@ -86,7 +87,7 @@ pub(crate) fn parse(
                 font,
                 size,
                 scale,
-                color: [0.; 3],
+                color: style.color,
             });
         }
     }

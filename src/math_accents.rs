@@ -9,6 +9,7 @@ pub(crate) fn parse(
     size: f64,
     fonts: &mut Fonts,
     depth: usize,
+    style: crate::math::style::Style,
 ) -> Result<Option<(MathBox, usize)>> {
     let lower = tail.to_ascii_lowercase();
     let Some(key) = [
@@ -37,7 +38,7 @@ pub(crate) fn parse(
         return Ok(None);
     };
     let (body, rest) = group(&tail[key.len()..]);
-    let mut b = layout_inner(body, size, fonts, depth)?;
+    let mut b = layout_inner(body, size, fonts, depth, style)?;
     let width = b.width.max(size * 0.4);
     let dx = (width - b.width) / 2.;
     b.ops = b.ops.into_iter().map(|o| moved(o, dx, 0.)).collect();
@@ -50,13 +51,13 @@ pub(crate) fn parse(
         x2,
         y2,
         width: 0.45,
-        color: [0.; 3],
+        color: style.color,
     };
     let path = |points| Op::Path {
         points,
         closed: false,
         width: 0.45,
-        color: [0.; 3],
+        color: style.color,
         fill: None,
     };
     match key {
@@ -101,7 +102,7 @@ pub(crate) fn parse(
                 ]],
                 closed: false,
                 width: 0.45,
-                color: [0.; 3],
+                color: style.color,
                 fill: None,
             });
             b.ascent = -top + h + 0.3;
@@ -123,7 +124,7 @@ pub(crate) fn parse(
                         .collect(),
                     closed: true,
                     width: 0.1,
-                    color: [0.; 3],
+                    color: style.color,
                     fill: Some([0.; 3]),
                 });
             }

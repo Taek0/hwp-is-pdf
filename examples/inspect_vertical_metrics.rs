@@ -6,9 +6,12 @@ fn main() -> anyhow::Result<()> {
         "FONT_DIRECTORY FONT_FAMILY [CHARACTERS]"
     );
     let mut f = hwp_engine::pdf::Fonts::new(std::path::Path::new(&args[0]));
-    let id = f
-        .family(&args[1], false, false)?
-        .ok_or_else(|| anyhow::anyhow!("Missing face"))?;
+    let id = if args[1].to_ascii_lowercase().ends_with(".ttf") {
+        f.get(&args[1])?
+    } else {
+        f.family(&args[1], false, false)?
+            .ok_or_else(|| anyhow::anyhow!("Missing face"))?
+    };
     let face = ttf_parser::Face::parse(&f.list[id].bytes, 0)?;
     println!(
         "{} units={} ascent={} descent={} vertical={:?}/{:?}",

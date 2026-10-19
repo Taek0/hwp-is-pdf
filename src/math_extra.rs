@@ -26,6 +26,7 @@ pub fn parse(
     size: f64,
     fonts: &mut Fonts,
     depth: usize,
+    style: crate::math::style::Style,
 ) -> Result<Option<(MathBox, usize)>> {
     let lower = tail.to_ascii_lowercase();
     if lower.starts_with("sqrt") || lower.starts_with("root") {
@@ -36,7 +37,7 @@ pub fn parse(
             let next = rest.trim_start();
             (body, rest) = group(next.strip_prefix("of").unwrap_or(next));
         }
-        let b = layout_inner(body, size, fonts, depth)?;
+        let b = layout_inner(body, size, fonts, depth, style)?;
         let top = -b.ascent - size * 0.12;
         let mut out = MathBox {
             width: b.width + size * 0.65,
@@ -46,19 +47,19 @@ pub fn parse(
                 points: vec![
                     (0., -size * 0.2),
                     (size * 0.15, 0.),
-                    (size * 0.35, top),
+                    (size * 0.1, top),
                     (size * 0.6 + b.width, top),
                 ],
                 closed: false,
                 width: 0.6,
-                color: [0.; 3],
+                color: style.color,
                 fill: None,
             }],
         };
         out.ops
             .extend(b.ops.into_iter().map(|o| moved(o, size * 0.6, 0.)));
         if let Some(d) = degree {
-            let index = layout_inner(d, size * 0.45, fonts, depth)?;
+            let index = layout_inner(d, size * 0.45, fonts, depth, style)?;
             out.ops
                 .extend(index.ops.into_iter().map(|o| moved(o, 0., top * 0.55)));
         }
@@ -109,7 +110,7 @@ pub fn parse(
         let mut ascent = 0f64;
         let mut descent = 0f64;
         for (i, cell) in row.iter().enumerate() {
-            let b = layout_inner(cell, size * 0.9, fonts, depth)?;
+            let b = layout_inner(cell, size, fonts, depth, style)?;
             if i >= widths.len() {
                 widths.push(0f64);
             }
@@ -127,10 +128,10 @@ pub fn parse(
         size * 0.5
     };
     let width = widths.iter().sum::<f64>()
-        + size * 0.6 * widths.len().saturating_sub(1) as f64
+        + size * 0.28 * widths.len().saturating_sub(1) as f64
         + padding * 2.;
     let total = heights.iter().map(|(a, d)| a + d).sum::<f64>()
-        + size * 0.35 * rows.len().saturating_sub(1) as f64;
+        + size * 0.1 * rows.len().saturating_sub(1) as f64;
     let ascent = total / 2. + size * 0.25;
     let mut out = MathBox {
         width,
@@ -156,13 +157,34 @@ pub fn parse(
                     .into_iter()
                     .map(|o| moved(o, xx + dx, yy + heights[i].0)),
             );
-            xx += widths[j] + size * 0.6;
+            xx += widths[j] + size * 0.28;
         }
-        yy += heights[i].0 + heights[i].1 + size * 0.35;
+        yy += heights[i].0 + heights[i].1 + size * 0.1;
     }
     if padding > 0. {
         for side in [0., width] {
             if *kind == "cases" && side > 0. {
+                continue;
+            }
+            if *kind == "cases" {
+                let font = fonts.get("times.ttf")?;
+                let face = ttf_parser::Face::parse(&fonts.list[font].bytes, 0)?;
+                if let Some(bb) = face
+                    .glyph_index('{')
+                    .and_then(|g| face.glyph_bounding_box(g))
+                {
+                    let u = total / (bb.y_max as f64 - bb.y_min as f64).max(1.);
+                    let glyph_size = u * face.units_per_em() as f64;
+                    out.ops.push(Op::Text {
+                        x: side,
+                        y: -ascent + bb.y_max as f64 * u,
+                        text: "{".into(),
+                        font,
+                        size: glyph_size,
+                        scale: padding * 0.7 / fonts.width(font, "{", glyph_size).max(0.01),
+                        color: style.color,
+                    });
+                }
                 continue;
             }
             let inset = if side == 0. {
@@ -191,7 +213,7 @@ pub fn parse(
                 points,
                 closed: false,
                 width: 0.5,
-                color: [0.; 3],
+                color: style.color,
                 fill: None,
             });
         }

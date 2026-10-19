@@ -11,9 +11,10 @@ pub(crate) fn compose(
     fonts: &mut Fonts,
     depth: usize,
     brackets: bool,
+    style: crate::math::style::Style,
 ) -> Result<MathBox> {
-    let a = layout_inner(top, size * 0.85, fonts, depth)?;
-    let b = layout_inner(bottom, size * 0.85, fonts, depth)?;
+    let a = layout_inner(top, size * 0.85, fonts, depth, style)?;
+    let b = layout_inner(bottom, size * 0.85, fonts, depth, style)?;
     let gap = size * 0.15;
     let padding = if brackets { size * 0.4 } else { size * 0.1 };
     let width = a.width.max(b.width) + padding * 2.;
@@ -52,7 +53,7 @@ pub(crate) fn compose(
                 ]],
                 closed: false,
                 width: 0.5,
-                color: [0.; 3],
+                color: style.color,
                 fill: None,
             });
         }
@@ -64,6 +65,7 @@ pub(crate) fn prefix(
     size: f64,
     fonts: &mut Fonts,
     depth: usize,
+    style: crate::math::style::Style,
 ) -> Result<Option<(MathBox, usize)>> {
     if !tail
         .get(..5)
@@ -78,7 +80,7 @@ pub(crate) fn prefix(
     let (a, rest) = group(&tail[5..]);
     let (b, rest) = group(rest);
     Ok(Some((
-        compose(a, b, size, fonts, depth, true)?,
+        compose(a, b, size, fonts, depth, true, style)?,
         tail.len() - rest.len(),
     )))
 }
