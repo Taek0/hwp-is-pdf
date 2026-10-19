@@ -3,6 +3,7 @@ use std::{collections::BTreeMap, fs::File, io::Read, path::Path};
 mod alternate;
 mod damaged_images;
 mod groups;
+mod picture_coordinates;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Node {
@@ -193,6 +194,8 @@ impl Document {
         let software = crate::metafile::prepare(&mut binaries)?;
         crate::metafile::mark_software(&mut sections, &software);
         crate::metafile::mark_software(&mut masters, &software);
+        picture_coordinates::normalize(&mut sections, &binaries);
+        picture_coordinates::normalize(&mut masters, &binaries);
         damaged_images::mark(&mut sections, &mut binaries)?;
         damaged_images::mark(&mut masters, &mut binaries)?;
         crate::image_effects::apply(&mut sections, &mut binaries)?;

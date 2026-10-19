@@ -368,6 +368,9 @@ impl<'a> Engine<'a> {
                 self.paint_equation(n, x, y, w, h)?;
             }
             "pic" => {
+                if n.a("cropBasis") == "retainedImageRect" {
+                    self.report.warnings.insert("Picture crop exceeds replacement bitmap dimensions; retained source image rectangle supplies the crop coordinate frame".into());
+                }
                 if n.a("softwareWMF") == "1" {
                     self.report.warnings.insert("Complex WMF uses bounded independent software raster playback; source vector crop coordinates are not interpreted as intermediate bitmap pixels".into());
                 }
