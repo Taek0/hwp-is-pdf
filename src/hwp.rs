@@ -298,6 +298,7 @@ mod tests {
 
 mod compound_compat;
 mod fill_records;
+mod group_geometry;
 mod ole_equations;
 mod ole_objects;
 pub(crate) use ole_objects::normalize as normalize_ole;

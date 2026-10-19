@@ -373,3 +373,31 @@ fn hwpx_static_emf_ole_restores_logo_and_declared_font_keeps_one_page() {
     let q = hwp_engine::qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
     assert!(q.text_overlaps.is_empty() && q.outside_page.is_empty());
 }
+
+#[test]
+fn nested_native_group_title_uses_root_frame_once_and_resolved_textbox_height() {
+    let path = input("24_extended__shapecontainer-2.hwp");
+    if !path.exists() || !fonts().exists() {
+        return;
+    }
+    let d = Document::open(&path).unwrap();
+    let mut e = Engine::new(&d, fonts());
+    e.render().unwrap();
+    assert_eq!(e.pages.len(), 1);
+    for (needle, x, y) in [("목", 95.04, 118.88), ("차", 117.12, 132.2)] {
+        let (actual_x, actual_y) = e.pages[0]
+            .ops
+            .iter()
+            .find_map(|o| match o {
+                Op::Text { text, x, y, .. } if text == needle => Some((*x, *y)),
+                _ => None,
+            })
+            .unwrap();
+        assert!(
+            (actual_x - x).abs() < 0.15 && (actual_y - y).abs() < 0.15,
+            "{needle}: {actual_x}, {actual_y}"
+        );
+    }
+    let q = hwp_engine::qa::inspect(&e.pages, &e.fonts, &e.report.bounds);
+    assert!(q.text_overlaps.is_empty() && q.outside_page.is_empty());
+}

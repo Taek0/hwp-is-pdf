@@ -254,6 +254,7 @@ pub(super) fn control(r: &Record) -> Result<Node> {
                 let oh = u32(cd, 24)?.max(1) as f64;
                 let sx = u32(cd, 28)? as f64 / ow;
                 let sy = u32(cd, 32)? as f64 / oh;
+                let parent_box = super::group_geometry::axis_box(cd)?;
                 for child in comp.children.iter().filter(|c| c.tag == 76) {
                     let mut child = child.clone();
                     if child.data.get(..4) != child.data.get(4..8) {
@@ -264,11 +265,38 @@ pub(super) fn control(r: &Record) -> Result<Node> {
                     let mut d = vec![0u8; 46];
                     d[..4].copy_from_slice(b" osg");
                     d[4..8].copy_from_slice(&0x310u32.to_le_bytes());
+                    let resolved = super::group_geometry::axis_box(&child.data)?
+                        .zip(parent_box)
+                        .map(|(c, p)| [c[0] - p[0], c[1] - p[1], c[2], c[3]]);
                     for (offset, value) in [
-                        (8, (i32(&child.data, 12)? as f64 * sy) as i32),
-                        (12, (i32(&child.data, 8)? as f64 * sx) as i32),
-                        (16, (u32(&child.data, 28)? as f64 * sx) as i32),
-                        (20, (u32(&child.data, 32)? as f64 * sy) as i32),
+                        (
+                            8,
+                            resolved
+                                .map(|b| b[1])
+                                .unwrap_or(i32(&child.data, 12)? as f64 * sy)
+                                .round() as i32,
+                        ),
+                        (
+                            12,
+                            resolved
+                                .map(|b| b[0])
+                                .unwrap_or(i32(&child.data, 8)? as f64 * sx)
+                                .round() as i32,
+                        ),
+                        (
+                            16,
+                            resolved
+                                .map(|b| b[2])
+                                .unwrap_or(u32(&child.data, 28)? as f64 * sx)
+                                .round() as i32,
+                        ),
+                        (
+                            20,
+                            resolved
+                                .map(|b| b[3])
+                                .unwrap_or(u32(&child.data, 32)? as f64 * sy)
+                                .round() as i32,
+                        ),
                     ] {
                         d[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
                     }
@@ -279,7 +307,20 @@ pub(super) fn control(r: &Record) -> Result<Node> {
                         offset: child.offset,
                         children: vec![child],
                     };
-                    group.children.push(control(&fake)?);
+                    let mut normalized = control(&fake)?;
+                    if let Some(b) = resolved {
+                        if let Some(size) =
+                            normalized.children.iter_mut().find(|n| n.name == "curSz")
+                        {
+                            size.name = "sourceCurSz".into();
+                        }
+                        normalized.children.push(
+                            n("curSz")
+                                .at("width", b[2].round())
+                                .at("height", b[3].round()),
+                        );
+                    }
+                    group.children.push(normalized);
                 }
                 return Ok(group);
             }
