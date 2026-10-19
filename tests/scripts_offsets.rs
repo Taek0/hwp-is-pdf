@@ -33,12 +33,12 @@ fn scripts_offsets_and_decoration_follow_the_requested_baseline() {
     assert!(
         texts
             .iter()
-            .any(|(t, y, s)| *t == "2" && (*y - 197.7).abs() < 0.01 && (*s - 11.7).abs() < 0.01)
+            .any(|(t, y, s)| *t == "2" && (*y - 196.08).abs() < 0.01 && (*s - 11.52).abs() < 0.01)
     );
     assert!(
         texts
             .iter()
-            .any(|(t, y, s)| *t == "2" && (*y - 271.7).abs() < 0.01 && (*s - 11.7).abs() < 0.01)
+            .any(|(t, y, s)| *t == "2" && (*y - 271.16).abs() < 0.01 && (*s - 11.52).abs() < 0.01)
     );
     for (t, offset) in [("가", -3.6), ("A", 1.8), ("漢", 5.4), ("あ", 7.2)] {
         assert!(

@@ -356,8 +356,7 @@ impl<'a> Engine<'a> {
         } else {
             crate::reflow::wrap(&grouped, width, &settings)?
         };
-        if self.vertical_mode == 0
-            && nesting == 0
+        if nesting == 0
             && self.doc.header.a("binaryHwp") != "1"
             && settings.spacing == "PERCENT"
             && general.is_empty()
@@ -372,7 +371,16 @@ impl<'a> Engine<'a> {
                 let stop = grouped.partition_point(|u| u.pos < end);
                 let units = &grouped[begin..stop];
                 let em = units.iter().map(|u| u.em).fold(0., f64::max);
-                let ascent = units.iter().map(|u| u.ascent).fold(0., f64::max);
+                let ascent = units
+                    .iter()
+                    .map(|u| {
+                        if u.baseline_ascent > 0. {
+                            u.baseline_ascent
+                        } else {
+                            u.ascent
+                        }
+                    })
+                    .fold(0., f64::max);
                 let descent = units.iter().map(|u| u.descent).fold(0., f64::max);
                 let inline_object = inline_positions.range(wrapped[i].pos..end).next().is_some();
                 if inline_object && !wrapped[i].block {
@@ -395,7 +403,7 @@ impl<'a> Engine<'a> {
             ..Default::default()
         };
         let mut yy = 0.;
-        for l in &wrapped {
+        for (line_index, l) in wrapped.iter().enumerate() {
             let mut n = Node {
                 name: "lineseg".into(),
                 ..Default::default()
@@ -404,7 +412,24 @@ impl<'a> Engine<'a> {
                 ("textpos", l.pos.to_string()),
                 ("vertpos", (yy * 100.).to_string()),
                 ("vertsize", (l.height * 100.).to_string()),
-                ("textheight", (l.height * 100.).to_string()),
+                (
+                    "textheight",
+                    (if self.vertical_mode > 0 {
+                        let end = wrapped
+                            .get(line_index + 1)
+                            .map(|l| l.pos)
+                            .unwrap_or(usize::MAX);
+                        grouped
+                            .iter()
+                            .filter(|u| u.pos >= l.pos && u.pos < end)
+                            .map(|u| u.em)
+                            .fold(0., f64::max)
+                            .max(1.)
+                    } else {
+                        l.height
+                    } * 100.)
+                        .to_string(),
+                ),
                 ("baseline", (l.baseline * 100.).to_string()),
                 ("spacing", "0".into()),
                 ("horzpos", (l.left * 100.).to_string()),

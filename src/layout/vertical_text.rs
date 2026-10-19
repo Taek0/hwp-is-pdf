@@ -51,10 +51,10 @@ impl<'a> Engine<'a> {
                         page.attrs.insert("height".into(), width);
                         if let Some(m) = page.children.iter_mut().find(|c| c.name == "margin") {
                             let values = [
-                                m.n("top") + m.n("header"),
-                                m.n("bottom") + m.n("footer"),
-                                m.n("right"),
-                                m.n("left"),
+                                m.n("left") + m.n("header"),
+                                m.n("right") + m.n("footer"),
+                                m.n("top"),
+                                m.n("bottom"),
                             ];
                             for (key, value) in
                                 ["left", "right", "top", "bottom"].into_iter().zip(values)

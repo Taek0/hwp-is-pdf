@@ -102,7 +102,7 @@ impl<'a> Engine<'a> {
             / 100.;
         let superscript = ch.child("supscript").is_some();
         let subscript = ch.child("subscript").is_some();
-        let script_scale = if superscript || subscript { 0.65 } else { 1. };
+        let script_scale = if superscript || subscript { 0.64 } else { 1. };
         let size = nominal_size * script_scale;
         let offset = text_metrics::property(
             ch,
@@ -116,16 +116,20 @@ impl<'a> Engine<'a> {
             0.,
         );
         let shift = nominal_size
-            * (offset / 100.
+            * ((if self.vertical_mode > 0 {
+                -offset
+            } else {
+                offset
+            }) / 100.
                 + if superscript {
-                    -0.35
+                    if self.vertical_mode > 0 { -0.32 } else { -0.44 }
                 } else if subscript {
-                    0.15
+                    if self.vertical_mode > 0 { 0.24 } else { 0.12 }
                 } else {
                     0.
                 });
         if superscript || subscript {
-            self.report.warnings.insert("Superscript/subscript use 65% size and nominal-font baseline shifts; exact Hancom metrics unverified".into());
+            self.report.warnings.insert("Superscript/subscript use 64% size and nominal-font baseline shifts; exact Hancom metrics unverified".into());
         }
         let scale = text_metrics::property(ch, "ratio", script, fallback, 100.) / 100.;
         // Latin spacing uses the half-em character cell, including spaces;
@@ -139,7 +143,9 @@ impl<'a> Engine<'a> {
         } else {
             self.fonts.width(font, &c.to_string(), size)
         };
-        let width = if vertical_text::upright(self.vertical_mode, c) && !c.is_whitespace() {
+        let width = if self.vertical_mode > 0 && c == ' ' {
+            nominal_size * 0.5 * scale + spacing
+        } else if vertical_text::upright(self.vertical_mode, c) && !c.is_whitespace() {
             size + spacing
         } else {
             advance * scale + spacing
@@ -178,6 +184,7 @@ impl<'a> Engine<'a> {
             self.report.warnings.insert("Character outline uses vector PDF text with nominal stroke/dash metrics; exact Hancom calibration pending".into());
         }
         let glyph = Glyph {
+            nominal_size,
             vertical_origin: crate::pdf::glyph_id(&face, c)
                 .and_then(|id| {
                     face.glyph_y_origin(id).or_else(|| {

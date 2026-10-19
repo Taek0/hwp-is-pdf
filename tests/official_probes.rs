@@ -318,7 +318,7 @@ fn vertical_character_offset_moves_across_the_column_not_down_the_run() {
         }
     }
     assert_eq!(points.len(), 2);
-    assert!((points[1].0 - points[0].0 + 2.4).abs() < 0.001);
+    assert!((points[1].0 - points[0].0 - 2.4).abs() < 0.001);
     assert!((points[1].1 - points[0].1 - 12.).abs() < 0.001);
 }
 

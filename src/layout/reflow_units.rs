@@ -9,7 +9,7 @@ impl<'a> Engine<'a> {
                 n.n("height") / 100. * text_metrics::property(n, "relSz", "latin", "latin", 100.)
                     / 100.
                     * if n.child("supscript").is_some() || n.child("subscript").is_some() {
-                        0.65
+                        0.64
                     } else {
                         1.
                     }
@@ -26,8 +26,9 @@ impl<'a> Engine<'a> {
             let g = self.glyph(' ', run.a("charPrIDRef"))?;
             return Ok(vec![crate::reflow::Unit {
                 ascent: g.ascent,
+                baseline_ascent: (g.ascent + g.shift).max(0.),
                 descent: g.descent,
-                em: g.size,
+                em: g.nominal_size,
                 ..Default::default()
             }]);
         }
@@ -42,8 +43,9 @@ impl<'a> Engine<'a> {
                             pos: item.pos,
                             ch: Some('\n'),
                             ascent: g.ascent,
+                            baseline_ascent: (g.ascent + g.shift).max(0.),
                             descent: g.descent,
-                            em: g.size,
+                            em: g.nominal_size,
                             block: false,
                             ..Default::default()
                         },
@@ -59,8 +61,9 @@ impl<'a> Engine<'a> {
                             width: g.width.max(0.),
                             trailing: g.tracking,
                             ascent: g.ascent,
+                            baseline_ascent: (g.ascent + g.shift).max(0.),
                             descent: g.descent,
-                            em: g.size,
+                            em: g.nominal_size,
                             block: false,
                         },
                         Some(g),
@@ -186,7 +189,7 @@ impl<'a> Engine<'a> {
                             pos: item.pos,
                             width: w,
                             ascent: g.size,
-                            em: g.size,
+                            em: g.nominal_size,
                             ..Default::default()
                         },
                         None,
@@ -200,8 +203,9 @@ impl<'a> Engine<'a> {
                             pos: item.pos,
                             width: w,
                             ascent: g.ascent,
+                            baseline_ascent: (g.ascent + g.shift).max(0.),
                             descent: g.descent,
-                            em: g.size,
+                            em: g.nominal_size,
                             ..Default::default()
                         },
                         None,
@@ -216,8 +220,9 @@ impl<'a> Engine<'a> {
                             ch: Some(' '),
                             width,
                             ascent: g.ascent,
+                            baseline_ascent: (g.ascent + g.shift).max(0.),
                             descent: g.descent,
-                            em: g.size,
+                            em: g.nominal_size,
                             ..Default::default()
                         },
                         None,

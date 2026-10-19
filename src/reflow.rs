@@ -8,6 +8,7 @@ pub(crate) struct Unit {
     /// Advance adjustment that applies only when another unit follows on the line.
     pub trailing: f64,
     pub ascent: f64,
+    pub baseline_ascent: f64,
     pub descent: f64,
     pub em: f64,
     pub block: bool,
@@ -493,6 +494,7 @@ mod tests {
                     width: 10.,
                     trailing: 0.,
                     ascent: 8.,
+                    baseline_ascent: 8.,
                     descent: 2.,
                     em: 10.,
                     block: false,

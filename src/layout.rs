@@ -251,6 +251,7 @@ struct Item {
 }
 #[derive(Clone)]
 struct Glyph {
+    nominal_size: f64,
     vertical_origin: f64,
     native_advance: f64,
     shadow: Option<text_shadows::Shadow>,

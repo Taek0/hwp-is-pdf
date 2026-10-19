@@ -376,7 +376,7 @@ impl<'a> Engine<'a> {
                             x,
                             base + g.shift,
                             line_y,
-                            seg.n("vertsize") / 100.,
+                            seg.n("textheight") / 100.,
                         );
                     }
                     if grouped {
