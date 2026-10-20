@@ -510,6 +510,7 @@ impl<'a> Engine<'a> {
 }
 
 mod native_paragraph_cache;
+mod native_inline_tail;
 
 mod character_borders;
 

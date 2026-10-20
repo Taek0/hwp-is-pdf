@@ -142,6 +142,9 @@ impl<'a> Engine<'a> {
                 }
                 for p in section.children_named("p") {
                     let original_last = lines(p).last().map(|l| l.n("vertpos"));
+                    let original_end = lines(p)
+                        .last()
+                        .map(|l| l.n("vertpos") + l.n("vertsize") + l.n("spacing"));
                     let native_repaired = if cols == 1 {
                         self.repair_native_paragraph_cache(p, cw)?
                     } else {
@@ -484,7 +487,13 @@ impl<'a> Engine<'a> {
                     if native_repaired.is_some()
                         && let (Some(old), Some(new)) = (original_last, ls.last())
                     {
-                        flow_shift += (new.n("vertpos") - old) / 100.;
+                        let growth = (new.n("vertpos") + new.n("vertsize") + new.n("spacing")
+                            - original_end.unwrap())
+                            / 100.;
+                        flow_shift += growth;
+                        if growth > 0.01 {
+                            repage_saved_tail = true;
+                        }
                         last = Some(old);
                     }
                 }

@@ -26,6 +26,9 @@ impl<'a> Engine<'a> {
         source: &Node,
         width: f64,
     ) -> Result<Option<Node>> {
+        if let Some(repaired) = self.repair_native_inline_tail(source, width)? {
+            return Ok(Some(repaired));
+        }
         let saved = lines(source);
         let crosses_page = saved
             .windows(2)
