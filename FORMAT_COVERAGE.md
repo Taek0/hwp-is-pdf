@@ -7,7 +7,7 @@ distribution documents. Password-encrypted documents, HWP 2.x/3.x and editing ar
 excluded by user decision. **Full format compatibility and pixel identity with
 Hancom are not achieved.**
 
-Latest work: [collapsed-axis fraction rules](reference/COLLAPSED_AXIS_LINES.md), [native inline overflow](reference/NATIVE_INLINE_TAIL.md),
+Latest work: [full visual graphic audit and cell diagonals](reference/VISUAL_GRAPHIC_AUDIT.md), [collapsed-axis fraction rules](reference/COLLAPSED_AXIS_LINES.md), [native inline overflow](reference/NATIVE_INLINE_TAIL.md),
 [reflow extents and endnote spacing](reference/REFLOW_LINE_EXTENTS.md), [source charts and OLE](reference/SOURCE_CHARTS_AND_OLE.md),
 [group frames](reference/NATIVE_GROUP_FRAMES.md),
 [table grids and space budgets](reference/TABLE_SPACE_CONDENSATION.md),

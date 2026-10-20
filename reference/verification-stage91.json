@@ -1,0 +1,31 @@
+{
+  "inputs": 203,
+  "frozen_source_copies": 456,
+  "source_copies_rechecked": 454,
+  "unavailable_old_source_copies": [
+    "D:\\ChatGPT\\hwp\\hwp-editor\\.tools\\test-temp\\hwp-editor-native-test-1656\\21_언어_기출_편집가능본.hwp.hwpx",
+    "D:\\ChatGPT\\hwp\\hwp-editor\\.tools\\test-temp\\hwp-editor-native-test-1656\\복학원서.hwp.hwpx"
+  ],
+  "pages": 594,
+  "page_overviews_reviewed": 594,
+  "source_graphic_objects": 284,
+  "source_explicit_line_objects": 43,
+  "visible_line_instances_checked": 126,
+  "invisible_line_instances": 2,
+  "missing_graphic_bound_records": 0,
+  "reference_pdfs_screened": 64,
+  "missing_stroke_bug": "Native cell diagonal properties/stroke omitted",
+  "fixed_line_instances": 10,
+  "changed_inputs": [
+    "041_government-notice",
+    "112_21_언어_기출_편집가능본"
+  ],
+  "unchanged_inputs": 201,
+  "source_hash_failures": [],
+  "raw_qa_changes": [],
+  "limits": "Overview/contact sheets plus targeted magnification and vector/source checks; not full pixel identity or proof of completeness for documents without reference prints.",
+  "engine_commit": "0dd068e4765dc6816f6fea83da40edf85cb56721",
+  "base_snapshot": "verification-stage90.json",
+  "tests_passed": 336,
+  "all_target_clippy": "passed"
+}
