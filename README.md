@@ -60,6 +60,11 @@ hwp_engine::convert_configured(input_path, output_path, font_directory,
 `run-cargo.sh`는 이 작업 공간의 WSL 도구 체인용 편의 스크립트입니다.
 일반 환경에서는 표준 Cargo를 사용합니다. EXE 배포 패키지는 만들지 않습니다.
 
+Linux 컨테이너에서는 다단계 [Dockerfile](Dockerfile)로 CLI를 빌드합니다.
+입력·출력 볼륨, 읽기 전용 글꼴 마운트, 비루트 권한, 자원·시간 제한과 이미지 복구는
+[Docker 실행 설명](DOCKER.md)을 참고하세요. 글꼴을 이미지에 포함하지 않으며,
+컨테이너 실행 시 글꼴 디렉터리 `/fonts`를 명시합니다.
+
 ## 구성과 검증 자료
 
 - [src/README.md](src/README.md): 파서, 배치, 글꼴, PDF 출력의 모듈별 책임.

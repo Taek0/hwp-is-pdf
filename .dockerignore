@@ -1,0 +1,24 @@
+# Allowlist: never send private documents, outputs, fonts, .git or credentials.
+**
+!Dockerfile
+!Cargo.toml
+!Cargo.lock
+!src/
+!src/**
+!vendor/
+!vendor/legacy-chart/
+!vendor/legacy-chart/Cargo.toml
+!vendor/legacy-chart/Cargo.lock
+!vendor/legacy-chart/LICENSE
+!vendor/legacy-chart/UPSTREAM.md
+!vendor/legacy-chart/src/
+!vendor/legacy-chart/src/**
+**/*.ttf
+**/*.TTF
+**/*.ttc
+**/*.TTC
+**/*.otf
+**/*.OTF
+**/*.hwp
+**/*.hwpx
+**/*.pdf
