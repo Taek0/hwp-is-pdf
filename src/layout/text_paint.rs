@@ -312,10 +312,9 @@ impl<'a> Engine<'a> {
         let word_spaces = total <= avail
             && matches!(align, "JUSTIFY" | "DISTRIBUTE_SPACE")
             && its.iter().any(|i| matches!(i.kind, ItemKind::Char(' ')));
+        let space_slots = justification::interword_spaces(&its, &widths);
         let stretch = if word_spaces {
-            its.iter()
-                .filter(|i| matches!(i.kind, ItemKind::Char(' ')))
-                .count()
+            space_slots.iter().filter(|slot| **slot).count()
         } else if atomic_display {
             its.windows(2)
                 .filter(|p| {
@@ -346,7 +345,7 @@ impl<'a> Engine<'a> {
         let mut underlines: Vec<(String, f64, f64, f64, f64, f64)> = Vec::new();
         let mut strikes: Vec<(String, f64, f64, f64, f64)> = Vec::new();
         for (idx, it) in its.iter().enumerate() {
-            let gap = if word_spaces && !matches!(it.kind, ItemKind::Char(' ')) {
+            let gap = if word_spaces && !space_slots[idx] {
                 0.
             } else {
                 gap

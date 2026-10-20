@@ -41,6 +41,9 @@ fn overflowing_inline_groups_move_only_the_text_tail_and_repaginate_following_bo
     e.render().unwrap();
     assert_eq!(e.pages.len(), 2);
     assert_eq!(e.report.equations, 3);
+    assert!(e.pages[0].ops.iter().any(|o| matches!(o,
+        Op::Text {text,x,y,..} if text == "B" && (*x - 91.69).abs() < 0.1 && *y > 310. && *y < 320.
+    )), "leading spaces must retain the reference's formula origin");
     let fraction_rule = e
         .report
         .bounds
