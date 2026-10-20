@@ -41,6 +41,20 @@ fn overflowing_inline_groups_move_only_the_text_tail_and_repaginate_following_bo
     e.render().unwrap();
     assert_eq!(e.pages.len(), 2);
     assert_eq!(e.report.equations, 3);
+    let fraction_rule = e
+        .report
+        .bounds
+        .iter()
+        .find(|b| b.id == "hwp-d9d" && b.kind == "line")
+        .unwrap();
+    assert!((fraction_rule.w - 40.96).abs() < 0.01);
+    assert!(fraction_rule.h.abs() < 0.01);
+    assert!((fraction_rule.y - 285.885).abs() < 0.1);
+    assert!(e.pages[0].ops.iter().any(|op| matches!(op,
+        Op::Line { x, y, x2, y2, width, .. }
+        if (*x - fraction_rule.x).abs() < 0.01 && (*y - fraction_rule.y).abs() < 0.01
+            && (*x2 - *x - 40.96).abs() < 0.01 && (*y2 - *y).abs() < 0.01 && *width > 0.
+    )));
     let bounds = |id: &str| {
         e.report
             .bounds

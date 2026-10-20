@@ -20,7 +20,15 @@ pub(super) fn axis_box(data: &[u8]) -> Result<Option<[f64; 4]>> {
         matrix = crate::graphics::compose(matrix, read(100 + i * 96)?);
         matrix = crate::graphics::compose(matrix, read(148 + i * 96)?);
     }
-    if matrix[1].abs() > 1e-8 || matrix[2].abs() > 1e-8 || matrix[0] <= 0. || matrix[3] <= 0. {
+    // A line can intentionally collapse one axis (e.g. a fraction rule).
+    // Falling back to its 100x100 construction box loses the actual length.
+    let line = data.get(..4) == Some(b"nil$");
+    if matrix[1].abs() > 1e-8
+        || matrix[2].abs() > 1e-8
+        || matrix[0] < 0.
+        || matrix[3] < 0.
+        || (!line && (matrix[0] == 0. || matrix[3] == 0.))
+    {
         return Ok(None);
     }
     let rect = crate::graphics::rect(
@@ -60,5 +68,25 @@ mod tests {
         }
         assert_eq!(axis_box(&d).unwrap(), Some([1000., 300., 500., 500.]));
         assert!(axis_box(&d[..100]).is_err());
+    }
+    #[test]
+    fn horizontal_line_keeps_its_scaled_width_when_the_vertical_axis_collapses() {
+        let mut d = vec![0; 196];
+        d[..4].copy_from_slice(b"nil$");
+        d[20..24].copy_from_slice(&100u32.to_le_bytes());
+        d[24..28].copy_from_slice(&100u32.to_le_bytes());
+        d[50..52].copy_from_slice(&1u16.to_le_bytes());
+        for (offset, a) in [
+            (52, [1., 0., 300., 0., 1., 200.]),
+            (100, [40., 0., 0., 0., 0., 0.]),
+            (148, [1., 0., 0., 0., 1., 0.]),
+        ] {
+            for (i, v) in a.into_iter().enumerate() {
+                d[offset + i * 8..offset + (i + 1) * 8].copy_from_slice(&f64::to_le_bytes(v));
+            }
+        }
+        assert_eq!(axis_box(&d).unwrap(), Some([300., 200., 4000., 0.]));
+        d[..4].copy_from_slice(b"cer$");
+        assert_eq!(axis_box(&d).unwrap(), None);
     }
 }
