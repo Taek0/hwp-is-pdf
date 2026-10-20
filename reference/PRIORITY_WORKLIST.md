@@ -2,7 +2,7 @@
 
 The newly printed format probes exposed additional differences. The latest
 implementation and remaining visible limits are documented in
-[CURRENT_CORPUS_VALIDATION.md](CURRENT_CORPUS_VALIDATION.md) and the stage 65–91
+[CURRENT_CORPUS_VALIDATION.md](CURRENT_CORPUS_VALIDATION.md) and the stage 65–93
 reports linked there. Page/content/geometry
 checks and visual fidelity are separate results; a passing corpus does not prove
 universal compatibility. Retain tests, images, commits and pushes for each stage.
@@ -42,3 +42,7 @@ axis for native lines. See [COLLAPSED_AXIS_LINES.md](COLLAPSED_AXIS_LINES.md).
 The 594-page visual/geometry audit restored ten missing straight cell diagonals
 in two inputs. Placement differences and incomplete references remain separate
 from missing strokes: [VISUAL_GRAPHIC_AUDIT.md](VISUAL_GRAPHIC_AUDIT.md).
+
+Stage 93 keeps leading padding fixed during word justification and validates the
+current build in Docker/WSL. 202/203 historical inputs are currently available;
+font outlines and some precise line/page positions remain follow-ups.

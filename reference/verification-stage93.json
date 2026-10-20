@@ -1,0 +1,38 @@
+{
+  "engine_commit": "4f497c00273dd66c4174e86f4ac902a76cef0d51",
+  "base_snapshot": "verification-stage91.json",
+  "remote_base": "e9f017d",
+  "historical_inputs": 203,
+  "converted_inputs": 202,
+  "pages": 592,
+  "unavailable_inputs": [
+    "202_복학원서.hwp"
+  ],
+  "changed_inputs": [
+    "017_inner-table-01",
+    "041_government-notice",
+    "045_20_vector__wmf_fill_shapes",
+    "060_government-faq",
+    "071_form-002",
+    "093_distribution",
+    "112_21_언어_기출_편집가능본",
+    "125_report_original",
+    "142_12_equation__ole",
+    "184_21_vector__wmf_ole",
+    "197_law-probe",
+    "203_25_native_ole_equations"
+  ],
+  "byte_identical_inputs": 190,
+  "per_page_text_preserved": true,
+  "page_counts_preserved": true,
+  "raw_qa_changes": [],
+  "source_hash_failures": [],
+  "rendered_changed_pages": 161,
+  "wsl_tests_passed": 337,
+  "all_target_clippy": "passed",
+  "docker_parity": "202 inputs / 592 pages byte-identical with WSL and current baseline",
+  "docker_image": "hwp-engine:0.1.0-container.2-4f497c0",
+  "docker_image_id": "sha256:dc83aa11009cc84a238f5b724053c61611b9a83311120f1331928d0024da7c6f",
+  "docker_binary_sha256": "0315d77e88ea31c58cf8812f98efd6283e0484141fac0b1760f10cf8a55011f9",
+  "docker_verification": "Full corpus on probe image; same engine binary SHA-256 in versioned image, with separate input-25 smoke test."
+}

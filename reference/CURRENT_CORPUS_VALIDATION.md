@@ -1,23 +1,25 @@
-# Current-corpus validation — 2026-10-20, stage 91
+# Current-corpus validation — 2026-10-20, stage 93
 
-Engine snapshot: `0dd068e4765dc6816f6fea83da40edf85cb56721`.
-Engine changes and visual audit: [VISUAL_GRAPHIC_AUDIT.md](VISUAL_GRAPHIC_AUDIT.md).
+Engine snapshot: `4f497c00273dd66c4174e86f4ac902a76cef0d51`.
+Latest change: [JUSTIFIED_PADDING.md](JUSTIFIED_PADDING.md); stage-91 visual audit retained.
 This audit distinguishes exercising a file from proving exact Hancom fidelity.
 It does not certify a universal 95% format-completion figure.
 
 | Check | Result |
 |---|---|
 | Workspace inventory | Frozen 456 copies, 454 currently accessible; 203 distinct SHA-256 inputs, including sibling editor exports |
-| Conversion | 203/203, 594 pages, no failures or zero-page outputs |
+| Conversion | 202 available inputs, 592 pages, no failures; one historical input unavailable |
 | Source preservation | All 454 accessible copies match; two old editor temporary duplicates unavailable |
-| Raster validation | All 594 pages rerendered and reviewed in overview sheets; explicit lines magnified; 45 changed-document pages rerendered |
+| Raster validation | 161 changed-document pages rerendered and reviewed; unchanged PDFs retain previous raster evidence |
 | Drawable inventory | All 203 inputs scanned, no unknown positioned/group-child drawable kinds |
 | Independent references | 64 PDFs / 249 pages; all page counts agree; two references omit source OLE content |
 | Text glyph warnings | Zero missing-glyph warnings |
-| Rust checks | Full 336-test suite and all-target Clippy pass |
-| Latest change | 10 cell diagonals restored in two inputs; other 201 PDFs byte-identical |
+| Rust checks | Full 337-test suite and all-target Clippy pass |
+| Latest change | Leading padding remains fixed during word justification; 12 PDFs change, 190 available PDFs byte-identical |
 
 ## Corrections verified in this increment
+
+- [Justified padding](JUSTIFIED_PADDING.md): formula/paragraph x origins corrected; current Docker/WSL output parity verified for 202 inputs.
 
 - [Full visual graphic audit](VISUAL_GRAPHIC_AUDIT.md): found and restored cell diagonals in language-exam counters and notice title bands.
 
@@ -59,6 +61,10 @@ geometry classifications, not a declaration that every glyph/pixel is identical.
 
 ## Explicit validation boundaries
 
+- Historical editor export `202_복학원서.hwp` is unavailable by its recorded SHA-256.
+  Its two old pages are excluded from the current 202-input/592-page run. Other
+  available form versions are included; this is not a conversion failure.
+
 - 139 inputs have no paired independent PDF. They received conversion,
   raster, source/structure and regression checks, not a fabricated visual oracle.
 - Seven archived viewer-rejected inputs remain marked as such. Successful tolerant
@@ -81,9 +87,9 @@ geometry classifications, not a declaration that every glyph/pixel is identical.
   50 without full prints were additionally inspected. Copied template thumbnails
   were not used to overwrite the actual source content.
 
-Portable summary: [verification-stage91.json](verification-stage91.json).
+Portable summary: [verification-stage93.json](verification-stage93.json).
 Local current PDF index and reference checks:
-`output/roadmap/91-visual-geometry-audit/index.html`.
+`output/roadmap/93-justified-padding/index.html`.
 Earlier detailed ledger and unchanged raster evidence remain in stage 81.
 The ledger records every input, mode, source hash, output hash and limitation.
 Earlier stage numbers are historical in [CORPUS_VALIDATION_HISTORY.md](CORPUS_VALIDATION_HISTORY.md).

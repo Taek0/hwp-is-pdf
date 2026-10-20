@@ -184,3 +184,13 @@ docker load -i hwp-engine-verified.tar
 
 참고: [Docker 빌드 권장 사항](https://docs.docker.com/build/building/best-practices/),
 [Dockerfile 참조](https://docs.docker.com/reference/dockerfile/).
+
+## 추가 엔진 검증 — stage 93
+
+앞 공백의 양쪽 맞춤 오류를 수정한 엔진 `4f497c00273dd66c4174e86f4ac902a76cef0d51`를
+`hwp-engine:0.1.0-container.2-4f497c0`로 로컬 빌드했다. 검증용 이미지와 버전 이미지의 엔진
+바이너리 SHA-256이 같고, 202종·592쪽의 WSL/Docker PDF·보고서·QA가 모두 일치한다.
+버전 이미지에서는 25번 문서도 별도로 재검증했다. 기존 이미지 보관 및 외부 게시 없음.
+이미지 ID는 `sha256:dc83aa11009cc84a238f5b724053c61611b9a83311120f1331928d0024da7c6f`이다.
+과거 원본 1종은 부재로 제외했다. 상세 범위는
+[JUSTIFIED_PADDING.md](reference/JUSTIFIED_PADDING.md)를 참조한다.

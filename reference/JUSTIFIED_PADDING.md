@@ -44,3 +44,10 @@ Local evidence: `output/roadmap/93-justified-padding/`, including the available 
 unavailable manifests, changed-input list, raw QA comparisons, reference-position
 checks, page images and `formula-position-comparison.png`. Docker parity results
 are recorded separately under its `container` directory.
+
+The Linux Docker probe and WSL release CLI produce byte-identical PDFs, sidecar
+reports and QA for all 202 available inputs (592 pages), also identical to the
+current baseline. The versioned local image `hwp-engine:0.1.0-container.2-4f497c0`
+contains the same engine binary SHA-256 and passes an additional input-25 smoke
+test. Image ID: `sha256:dc83aa11009cc84a238f5b724053c61611b9a83311120f1331928d0024da7c6f`.
+No image was published externally and the previous image was retained.
