@@ -320,12 +320,29 @@ pub fn open(path: &Path) -> Result<Document> {
             20 => {
                 let id = (borders.len() + 1).to_string();
                 let mut b = n("borderFill").at("id", &id);
+                let flags = u16(d, 0)?;
+                for (name, shift, crooked_shift, crooked_mask, counter_shift) in
+                    [("slash", 2, 8, 3, 11), ("backSlash", 5, 10, 1, 12)]
+                {
+                    b.children.push(
+                        n(name)
+                            .at("type", (flags >> shift) & 7)
+                            .at("Crooked", (flags >> crooked_shift) & crooked_mask)
+                            .at("isCounter", (flags >> counter_shift) & 1),
+                    );
+                }
                 let widths = [
                     0.1, 0.12, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 1., 1.5, 2., 3., 4., 5.,
                 ];
-                for (i, key) in ["leftBorder", "rightBorder", "topBorder", "bottomBorder"]
-                    .iter()
-                    .enumerate()
+                for (i, key) in [
+                    "leftBorder",
+                    "rightBorder",
+                    "topBorder",
+                    "bottomBorder",
+                    "diagonal",
+                ]
+                .iter()
+                .enumerate()
                 {
                     let typ = bytes(d, 2 + 6 * i, 1)?[0];
                     let weight = bytes(d, 3 + 6 * i, 1)?[0] as usize;

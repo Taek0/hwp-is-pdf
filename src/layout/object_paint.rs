@@ -593,6 +593,7 @@ impl<'a> Engine<'a> {
                         .extend(border_strokes::stroke(s, (a, bb), (c, d)));
                 }
             }
+            self.current.ops.extend(cell_diagonals::paint(b, [x, y, w, h]));
         }
     }
 }

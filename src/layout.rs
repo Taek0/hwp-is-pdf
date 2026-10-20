@@ -374,6 +374,7 @@ pub struct Engine<'a> {
 }
 mod anchors;
 mod border_strokes;
+mod cell_diagonals;
 mod caption_layout;
 use caption_layout::side_caption_height;
 mod arrowheads;
