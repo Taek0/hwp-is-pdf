@@ -2,7 +2,7 @@
 
 The newly printed format probes exposed additional differences. The latest
 implementation and remaining visible limits are documented in
-[CURRENT_CORPUS_VALIDATION.md](CURRENT_CORPUS_VALIDATION.md) and the stage 65–89
+[CURRENT_CORPUS_VALIDATION.md](CURRENT_CORPUS_VALIDATION.md) and the stage 65–90
 reports linked there. Page/content/geometry
 checks and visual fidelity are separate results; a passing corpus does not prove
 universal compatibility. Retain tests, images, commits and pushes for each stage.
@@ -35,3 +35,6 @@ are explicitly recorded rather than converted into a universal 95% score.
 Input 25 now recovers a measured native inline-text overflow and its following
 page break; its two original OLE table expressions remain visible even though
 the viewer print omits them. See [NATIVE_INLINE_TAIL.md](NATIVE_INLINE_TAIL.md).
+
+Input 25's missing grouped fraction rule is restored by accepting a collapsed
+axis for native lines. See [COLLAPSED_AXIS_LINES.md](COLLAPSED_AXIS_LINES.md).

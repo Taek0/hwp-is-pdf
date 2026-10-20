@@ -7,7 +7,7 @@ distribution documents. Password-encrypted documents, HWP 2.x/3.x and editing ar
 excluded by user decision. **Full format compatibility and pixel identity with
 Hancom are not achieved.**
 
-Latest work: [native inline overflow](reference/NATIVE_INLINE_TAIL.md),
+Latest work: [collapsed-axis fraction rules](reference/COLLAPSED_AXIS_LINES.md), [native inline overflow](reference/NATIVE_INLINE_TAIL.md),
 [reflow extents and endnote spacing](reference/REFLOW_LINE_EXTENTS.md), [source charts and OLE](reference/SOURCE_CHARTS_AND_OLE.md),
 [group frames](reference/NATIVE_GROUP_FRAMES.md),
 [table grids and space budgets](reference/TABLE_SPACE_CONDENSATION.md),
@@ -37,7 +37,7 @@ path. GIF/TIFF/WebP are not enabled as general document-image decoders; decoding
 saved GIF thumbnails during the audit does not expand the engine's support.
 The new HwpEq5x path covers the observed version-5 envelope and bounded prefix
 fraction/root/operator commands. Native cumulative positive axis-aligned group
-geometry and HWPX child affine matrices are distinct paths; arbitrary native
+geometry (including zero-axis native lines) and HWPX child affine matrices are distinct paths; arbitrary native
 affine combinations remain bounded. Broader chart styles can retain cached
 appearances rather than claiming complete editable chart reconstruction.
 

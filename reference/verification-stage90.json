@@ -1,0 +1,28 @@
+{
+  "inputs": 203,
+  "physical_copies": 456,
+  "pages": 594,
+  "changed_inputs": [
+    "203_25_native_ole_equations"
+  ],
+  "source_hash_failures": [],
+  "new_qa": {
+    "background_images_exempted": 0,
+    "border_crossings": [],
+    "foreground_image_overlaps": [],
+    "glyphs_checked": 1272,
+    "intentional_overlays_exempted": 0,
+    "outside_page": [],
+    "text_overlaps": []
+  },
+  "engine_commit": "0da9b7a3f4575c567e07e4e57b22c38374f53b70",
+  "base_snapshot": "verification-stage89.json",
+  "previous_pdfs_byte_identical": 202,
+  "text_positions_unchanged": true,
+  "after_line_width_pt": 40.96,
+  "viewer_line_width_pt": 40.92,
+  "new_pdf_sha256": "59a664b621084be6da88361640d31f3705dd9e6c406bba3736fb8c90ad89dd18",
+  "scope": "Restored missing grouped fraction rule; no claim of exact font or horizontal placement fidelity.",
+  "tests_passed": 334,
+  "all_target_clippy": "passed"
+}

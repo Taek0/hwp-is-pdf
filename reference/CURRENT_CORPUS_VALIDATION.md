@@ -1,7 +1,7 @@
-# Current-corpus validation — 2026-10-20, stage 89
+# Current-corpus validation — 2026-10-20, stage 90
 
-Engine snapshot: `098659d7d404586669b6ec5e69ef348a34a6b1fe`.
-Engine changes: [REFLOW_LINE_EXTENTS.md](REFLOW_LINE_EXTENTS.md).
+Engine snapshot: `0da9b7a3f4575c567e07e4e57b22c38374f53b70`.
+Engine changes: [COLLAPSED_AXIS_LINES.md](COLLAPSED_AXIS_LINES.md).
 This audit distinguishes exercising a file from proving exact Hancom fidelity.
 It does not certify a universal 95% format-completion figure.
 
@@ -14,10 +14,12 @@ It does not certify a universal 95% format-completion figure.
 | Drawable inventory | All 203 inputs scanned, no unknown positioned/group-child drawable kinds |
 | Independent references | 64 PDFs / 249 pages; all page counts agree; two references omit source OLE content |
 | Text glyph warnings | Zero missing-glyph warnings |
-| Rust checks | Full 333-test suite and all-target Clippy pass |
-| Latest change | Native inline tail corrected in new input 25; previous 202 PDFs byte-identical |
+| Rust checks | Full 334-test suite and all-target Clippy pass |
+| Latest change | Collapsed-axis fraction rule restored in input 25; previous 202 PDFs byte-identical |
 
 ## Corrections verified in this increment
+
+- [Collapsed-axis lines](COLLAPSED_AXIS_LINES.md): recover a native grouped fraction rule instead of a tiny diagonal tick.
 
 - [Native inline text overflow](NATIVE_INLINE_TAIL.md): retained OLE equations, recovered closing-brace wrap and subsequent page continuation in input 25.
 
@@ -77,9 +79,9 @@ geometry classifications, not a declaration that every glyph/pixel is identical.
   50 without full prints were additionally inspected. Copied template thumbnails
   were not used to overwrite the actual source content.
 
-Portable summary: [verification-stage89.json](verification-stage89.json).
+Portable summary: [verification-stage90.json](verification-stage90.json).
 Local current PDF index and reference checks:
-`output/roadmap/89-native-ole-reference/index.html`.
+`output/roadmap/90-degenerate-line/index.html`.
 Earlier detailed ledger and unchanged raster evidence remain in stage 81.
 The ledger records every input, mode, source hash, output hash and limitation.
 Earlier stage numbers are historical in [CORPUS_VALIDATION_HISTORY.md](CORPUS_VALIDATION_HISTORY.md).
