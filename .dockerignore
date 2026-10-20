@@ -3,6 +3,10 @@
 !Dockerfile
 !Cargo.toml
 !Cargo.lock
+!LICENSE
+!THIRD_PARTY_NOTICES.md
+!scripts/
+!scripts/collect-dependency-licenses.sh
 !src/
 !src/**
 !vendor/

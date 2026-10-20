@@ -85,6 +85,10 @@ Linux 컨테이너에서는 다단계 [Dockerfile](Dockerfile)로 CLI를 빌드�
 
 ## 근거와 라이선스
 
+엔진 자체 작성 코드는 [MIT License](LICENSE), Copyright (c) 2026 Taek0로 제공합니다.
+외부 코드·글꼴·문서의 권리는 [별도 고지](THIRD_PARTY_NOTICES.md)를 따릅니다.
+백엔드 연동 시 [CLI 계약](CLI_CONTRACT.md)의 입출력·종료·부분 파일 처리 조건을 참고하세요.
+
 [한컴 공개 형식 자료](https://www.store.hancom.com/support/downloadCenter/hwpOwpml)를 참조합니다.
 뷰어에 대한 REA 조사 범위와 한계는 [reference/viewer-analysis/README.md](reference/viewer-analysis/README.md)에 있습니다.
 전체 내부 렌더러를 역공학했다는 주장은 하지 않습니다.

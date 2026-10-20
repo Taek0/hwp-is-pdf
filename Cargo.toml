@@ -3,6 +3,8 @@ name = "hwp-engine"
 version = "0.1.0"
 edition = "2024"
 description = "Independent HWP 5 / HWPX reader and vector PDF renderer"
+license = "MIT"
+repository = "https://github.com/Taek0/hwp-is-pdf"
 
 [dependencies]
 anyhow = "1"

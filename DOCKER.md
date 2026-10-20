@@ -10,9 +10,9 @@
 
 ```sh
 revision=$(git rev-parse HEAD)
-image="hwp-engine:0.1.0-container.1-$(git rev-parse --short=7 HEAD)"
+image="hwp-engine:0.1.0-container.3-$(git rev-parse --short=7 HEAD)"
 docker build --pull --build-arg VCS_REF="$revision" \
-  --build-arg IMAGE_VERSION=0.1.0-container.1 -t "$image" .
+  --build-arg IMAGE_VERSION=0.1.0-container.3 -t "$image" .
 docker image inspect "$image" --format '{{.Id}}'
 ```
 
@@ -20,9 +20,9 @@ PowerShell:
 
 ```powershell
 $revision = git rev-parse HEAD
-$image = 'hwp-engine:0.1.0-container.1-' + (git rev-parse --short=7 HEAD)
+$image = 'hwp-engine:0.1.0-container.3-' + (git rev-parse --short=7 HEAD)
 docker build --pull --build-arg "VCS_REF=$revision" `
-  --build-arg IMAGE_VERSION=0.1.0-container.1 -t $image .
+  --build-arg IMAGE_VERSION=0.1.0-container.3 -t $image .
 docker image inspect $image --format '{{.Id}}'
 ```
 
@@ -34,11 +34,16 @@ Dockerfile은 Rust **1.99.1 / bookworm**과 **Debian bookworm-slim**의 manifest
 오프라인 재빌드가 가능하다. 플랫폼별 이미지/컴파일러 차이까지 같은 바이너리 바이트를
 보장한다는 뜻은 아니다. 첫 검증 플랫폼은 `linux/amd64`다.
 
-`.dockerignore`는 Cargo 파일, 엔진 소스, 필요한 vendor 파일만 허용한다.
+`.dockerignore`는 Cargo 파일, 엔진 소스, 필요한 vendor·라이선스·고지 수집 스크립트만 허용한다.
 문서·글꼴·`output/`·`.git`·자격 증명은 빌드 컨텍스트로 보내지 않는다.
 런타임에는 Rust 도구 체인과 사용자 글꼴이 없다. 기본 실행 사용자는 `10001:10001`이다.
 고정 digest는 자동 보안 업데이트를 받지 않으므로 기본 이미지 교체 시 새 버전으로
 빌드하고 문서·글꼴 회귀 검증 후 선택한다.
+
+현재 패키징 버전 `0.1.0-container.3`은 엔진 MIT 라이선스와 외부 종속성 고지를
+`/usr/share/licenses/hwp-engine/`에 포함한다. `Cargo.lock`의 외부 crate 자체 라이선스는
+그대로 보존한다. 입출력·오류·부분 파일 처리는 [CLI 계약](CLI_CONTRACT.md)을 따른다.
+아래의 container.1/container.2 결과는 이전 버전의 실제 검증 기록이다.
 
 ## 입력, 출력, 글꼴 마운트
 
