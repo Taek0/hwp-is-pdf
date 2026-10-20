@@ -2,7 +2,7 @@
 
 The newly printed format probes exposed additional differences. The latest
 implementation and remaining visible limits are documented in
-[CURRENT_CORPUS_VALIDATION.md](CURRENT_CORPUS_VALIDATION.md) and the stage 65–88
+[CURRENT_CORPUS_VALIDATION.md](CURRENT_CORPUS_VALIDATION.md) and the stage 65–89
 reports linked there. Page/content/geometry
 checks and visual fidelity are separate results; a passing corpus does not prove
 universal compatibility. Retain tests, images, commits and pushes for each stage.
@@ -23,11 +23,15 @@ See [CURRENT_CORPUS_VALIDATION.md](CURRENT_CORPUS_VALIDATION.md) for current evi
 Keep excluded: password-encrypted documents, HWP 2.x/3.x and source-file editing.
 Do not replace format rules with filename-specific coordinates or page conditions.
 
-The held-file audit now covers every one of 202 distinct inputs (454 copies),
+The held-file audit now covers every one of 203 distinct inputs (456 copies),
 including the sibling editor's old exports. Paired independent PDFs are
-still unavailable for 139 inputs, and the OLE equation viewer reference is incomplete.
+still unavailable for 139 inputs, and two OLE equation viewer references are incomplete.
 The separately exercised numbering-edited math probe now produces 9 pages under
 full `--reflow`, with all 26 answers advancing by 10pt on page 9. Primary saved
 layout also remains 9. Body paragraph origins and some font/rule appearances
 still differ; see [REFLOW_LINE_EXTENTS.md](REFLOW_LINE_EXTENTS.md). These limits
 are explicitly recorded rather than converted into a universal 95% score.
+
+Input 25 now recovers a measured native inline-text overflow and its following
+page break; its two original OLE table expressions remain visible even though
+the viewer print omits them. See [NATIVE_INLINE_TAIL.md](NATIVE_INLINE_TAIL.md).

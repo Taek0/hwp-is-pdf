@@ -1,23 +1,25 @@
-# Current-corpus validation — 2026-10-20, stage 88
+# Current-corpus validation — 2026-10-20, stage 89
 
-Engine snapshot: `0b16b80925e38a61eb7175d810511104409a53a7`.
+Engine snapshot: `098659d7d404586669b6ec5e69ef348a34a6b1fe`.
 Engine changes: [REFLOW_LINE_EXTENTS.md](REFLOW_LINE_EXTENTS.md).
 This audit distinguishes exercising a file from proving exact Hancom fidelity.
 It does not certify a universal 95% format-completion figure.
 
 | Check | Result |
 |---|---|
-| Workspace inventory | 454 physical HWP/HWPX files, 202 distinct SHA-256 inputs, including sibling editor exports |
-| Conversion | 202/202, 592 pages, no failures or zero-page outputs |
-| Source preservation | All 454 source-copy hashes unchanged |
-| Raster validation | All 592 pages rendered; page inventories and changed-page comparisons retained |
-| Drawable inventory | All 202 inputs scanned, no unknown positioned/group-child drawable kinds |
-| Independent references | 63 PDFs / 247 pages; all page counts agree; one reference is incomplete |
+| Workspace inventory | 456 physical HWP/HWPX files, 203 distinct SHA-256 inputs, including sibling editor exports |
+| Conversion | 203/203, 594 pages, no failures or zero-page outputs |
+| Source preservation | All 456 source-copy hashes unchanged |
+| Raster validation | 594 current-page rasters available; two new pages rendered, previous 592 retained with byte-identical PDFs |
+| Drawable inventory | All 203 inputs scanned, no unknown positioned/group-child drawable kinds |
+| Independent references | 64 PDFs / 249 pages; all page counts agree; two references omit source OLE content |
 | Text glyph warnings | Zero missing-glyph warnings |
-| Rust checks | 331-test suite passes; final note-only change also passes targeted integration tests and all-target Clippy |
-| Latest change | 47 PDFs change from stage 82 with identical character multisets; other 155 PDFs byte-identical |
+| Rust checks | Full 333-test suite and all-target Clippy pass |
+| Latest change | Native inline tail corrected in new input 25; previous 202 PDFs byte-identical |
 
 ## Corrections verified in this increment
+
+- [Native inline text overflow](NATIVE_INLINE_TAIL.md): retained OLE equations, recovered closing-brace wrap and subsequent page continuation in input 25.
 
 - [HWPX property alternates](HWPX_PROPERTY_ALTERNATES.md): header tab branches resolve once.
 - [Reflow line extents](REFLOW_LINE_EXTENTS.md): blank-column boundaries, table height/margins, spanning headings, hanging indents and endnote spacing.
@@ -59,8 +61,9 @@ geometry classifications, not a declaration that every glyph/pixel is identical.
   conversion does not establish their package/schema validity.
 - Input 20 contains five truncated BMP payloads and replacement thumbnail images.
   Missing original pixels are reported and are not reconstructed.
-- Input 12's viewer print omits its OLE formula and explanation paragraphs. The
-  engine preserves them; a complete print is still needed for exact comparison.
+- Inputs 12 and 25 have incomplete viewer prints. Input 12 omits its OLE formula
+  and explanation paragraphs; input 25 omits two table-cell OLE expressions.
+  The engine preserves the source data. Exact OLE appearance remains unverified.
 - Four deliberately stale generator caches use explicit `--reflow` in the ledger.
   The numbering-edited counterfactual math probe was also tested separately with
   full reflow: now 9 pages, matching the primary saved-layout result and Hancom.
@@ -74,9 +77,9 @@ geometry classifications, not a declaration that every glyph/pixel is identical.
   50 without full prints were additionally inspected. Copied template thumbnails
   were not used to overwrite the actual source content.
 
-Portable summary: [verification-stage88.json](verification-stage88.json).
+Portable summary: [verification-stage89.json](verification-stage89.json).
 Local current PDF index and reference checks:
-`output/roadmap/88-endnote-leading/index.html`.
+`output/roadmap/89-native-ole-reference/index.html`.
 Earlier detailed ledger and unchanged raster evidence remain in stage 81.
 The ledger records every input, mode, source hash, output hash and limitation.
 Earlier stage numbers are historical in [CORPUS_VALIDATION_HISTORY.md](CORPUS_VALIDATION_HISTORY.md).

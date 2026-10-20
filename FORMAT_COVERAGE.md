@@ -1,4 +1,4 @@
-# Current HWP/HWPX coverage — 2026-10-19
+# Current HWP/HWPX coverage — 2026-10-20
 
 본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 
@@ -7,7 +7,8 @@ distribution documents. Password-encrypted documents, HWP 2.x/3.x and editing ar
 excluded by user decision. **Full format compatibility and pixel identity with
 Hancom are not achieved.**
 
-Latest work: [source charts and OLE](reference/SOURCE_CHARTS_AND_OLE.md),
+Latest work: [native inline overflow](reference/NATIVE_INLINE_TAIL.md),
+[reflow extents and endnote spacing](reference/REFLOW_LINE_EXTENTS.md), [source charts and OLE](reference/SOURCE_CHARTS_AND_OLE.md),
 [group frames](reference/NATIVE_GROUP_FRAMES.md),
 [table grids and space budgets](reference/TABLE_SPACE_CONDENSATION.md),
 [endnote origins](reference/NATIVE_ENDNOTE_ORIGIN.md),

@@ -1,0 +1,37 @@
+{
+  "distinct_inputs": 203,
+  "physical_source_copies": 456,
+  "pages": 594,
+  "changed_prior_inputs": [],
+  "source_hash_failures": [],
+  "new_input": {
+    "group": "all-held",
+    "name": "203_25_native_ole_equations",
+    "input": "D:\\ChatGPT\\hwp\\Hancom-95-Checkpoint-20261019\\01_print\\25.hwp",
+    "sha256": "6BB61D19A68B573900797D5BCD920FE7406405806B93CA13148016CDBE58BC1C",
+    "copies": [
+      "D:\\ChatGPT\\hwp\\Hancom-95-Checkpoint-20261019\\01_print\\25.hwp",
+      "D:\\ChatGPT\\hwp\\hwp-engine\\output\\reference-candidates-25\\usage-fee.hwp"
+    ]
+  },
+  "new_input_qa": {
+    "background_images_exempted": 0,
+    "border_crossings": [],
+    "foreground_image_overlaps": [],
+    "glyphs_checked": 1272,
+    "intentional_overlays_exempted": 0,
+    "outside_page": [],
+    "text_overlaps": []
+  },
+  "engine_commit": "098659d7d404586669b6ec5e69ef348a34a6b1fe",
+  "base_snapshot": "verification-stage88.json",
+  "previous_pdfs_byte_identical": 202,
+  "reference_pdfs": 64,
+  "reference_pages": 249,
+  "incomplete_reference_pdfs": 2,
+  "reference_sha256": "26f70382c5bfa72ab72d7a962f2a947e35811882c37f60ad9095dc74a853c011",
+  "new_pdf_sha256": "fe3584fa5ff28f0879b13a98918848e255ad6fd859934dcd4815e60189d58731",
+  "scope": "Delta evidence: original 202 primary PDFs unchanged; input 25 retains source OLE expressions omitted by viewer print. Not exact visual fidelity.",
+  "tests_passed": 333,
+  "all_target_clippy": "passed"
+}
