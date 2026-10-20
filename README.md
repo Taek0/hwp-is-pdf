@@ -58,6 +58,9 @@ hwp_engine::convert_configured(input_path, output_path, font_directory,
 ```
 
 `run-cargo.sh`는 이 작업 공간의 WSL 도구 체인용 편의 스크립트입니다.
+스크립트가 있는 체크아웃에서 실행하고 그 체크아웃의 `target/`을 기본으로 사용하므로
+격리 워크트리에서도 원래 체크아웃을 빌드하지 않습니다. `CARGO_HOME`, `RUSTUP_HOME`,
+`CARGO_TARGET_DIR`를 명시하면 해당 설정을 사용합니다.
 일반 환경에서는 표준 Cargo를 사용합니다. EXE 배포 패키지는 만들지 않습니다.
 
 Linux 컨테이너에서는 다단계 [Dockerfile](Dockerfile)로 CLI를 빌드합니다.
