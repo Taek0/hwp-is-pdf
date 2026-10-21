@@ -21,6 +21,25 @@ DLL을 호출하지 않습니다. 글꼴은 지정한 디렉터리에서 읽으�
 전수 검사 통과는 전체 HWP 포맷의 95% 또는 한컴과의 픽셀 단위 일치를 뜻하지 않습니다.
 형식 지원 범위는 [FORMAT_COVERAGE.md](FORMAT_COVERAGE.md)를 참고하세요.
 
+## 성능 실험 — 2026-10-20
+
+202개 문서·592쪽의 기존 검증 로그에서 집계한 문서당 실행 시간입니다.
+Rust 릴리스 빌드를 사용했으며 프로세스/컨테이너 시작, 글꼴 로딩, PDF·검사 보고서 저장을 포함합니다.
+
+| 환경 | 평균 | 중앙값 | 95백분위 |
+|---|---:|---:|---:|
+| 로컬 WSL | 3.39초 | 3.56초 | 4.47초 |
+| Docker | 3.56초 | 3.76초 | 4.66초 |
+
+별도로 대표 문서 5개를 WSL에서 순차 변환하며 `/usr/bin/time`으로 측정한 최대 RSS는
+**70~442MiB**였습니다. 복학원서 2쪽은 154MiB, 언어 기출문서 15쪽은 251MiB,
+중간보고서 50쪽은 442MiB를 사용했습니다.
+
+시간은 병렬 검증 중의 경과 시간이고, 메모리는 별도 순차 실행의 엔진 프로세스 최대 RSS입니다.
+Docker 전체 메모리나 서버 처리량을 측정한 값은 아니며 CPU·디스크·글꼴·문서 구성에 따라 달라집니다.
+시간 로그는 `output/roadmap/93-justified-padding/container/logs/`, 메모리 기록은
+`output/memory-benchmark-20261020/results.json`에 있습니다. 이 로컬 산출물은 Git에 포함되지 않습니다.
+
 ## 실행
 
 Rust stable / edition 2024 환경에서:
@@ -69,7 +88,8 @@ Linux 컨테이너에서는 다단계 [Dockerfile](Dockerfile)로 CLI를 빌드�
 
 - [src/README.md](src/README.md): 파서, 배치, 글꼴, PDF 출력의 모듈별 책임.
 - `tests/`: 기능·회귀 검사. 일부 통합 검사는 로컬 사용자 문서와 Windows 글꼴이 필요합니다.
-- `samples/`, `examples/`: 공개 예제, 재현용 HWPX 생성기 및 진단 명령.
+- [samples/README.md](samples/README.md): 샘플 폴더별 용도, 출처와 변환·회귀 검사 방법.
+- `examples/`: 재현용 HWPX 생성기 및 진단 명령.
 - `output/roadmap/15-tables/` ~ `57-synthetic-italic/`: 단계별 PDF·이미지·검증 로그.
 - `output/roadmap/57-synthetic-italic/regression-final/`: 최신 53개 문서의 PDF·배치·검사 보고서.
 - 같은 단계의 `all-inputs.json`, `all-verification.json`, `page-images/`: 원본 목록·검증 결과·전체 페이지 이미지.
